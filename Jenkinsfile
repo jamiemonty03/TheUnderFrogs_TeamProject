@@ -1,8 +1,8 @@
 pipeline {
     agent any
-    environment {
-        JAVA_HOME = '/usr/lib/jvm/java-21-amazon-corretto.x86_64'
-        PATH = '/usr/lib/jvm/java-21-amazon-corretto.x86_64/bin:${env.PATH}'
+    tools {
+        jdk 'JDK21'
+        maven 'maven'
     }
     stages {
         stage('Checkout') {
