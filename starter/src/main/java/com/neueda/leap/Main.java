@@ -5,6 +5,6 @@ public class Main {
         System.out.println("Hello world from the Underfrogs!");
     }
     public static void Goodbye() {
-        System.out.println("Goodbye world from Team 2!");
+        System.out.println("Bye world from the Underfrogs!");
     }
 }
