@@ -23,7 +23,7 @@ CREATE TABLE instruments (
 
 CREATE TABLE orders (
     order_id         CHAR(36) NOT NULL PRIMARY KEY,
-    account_id       BIGINT NOT NULL REFERENCES accounts(account_id),
+    account_id       VARCHAR(32) NOT NULL REFERENCES accounts(account_id),
     symbol           VARCHAR(20)  NOT NULL REFERENCES instruments(symbol),
     side             VARCHAR(4) NOT NULL,
     quantity         INT NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE orders (
 );
 
 CREATE TABLE positions (
-    account_id  INT NOT NULL,
+    account_id  VARCHAR(32) NOT NULL,
     symbol      VARCHAR(10) NOT NULL,
     quantity    DECIMAL(18, 4) NOT NULL,
     average_cost DECIMAL(18, 4) NOT NULL,
