@@ -1,5 +1,7 @@
 DROP TABLE IF EXISTS accounts CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS positions CASCADE;
 
 CREATE TABLE accounts (
     id           SERIAL PRIMARY KEY,
@@ -28,4 +30,14 @@ CREATE TABLE orders (
     price            INT NOT NULL,
     order_status     VARCHAR(20) NOT NULL,
     idempotency_key  VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE positions (
+    account_id  INT NOT NULL,
+    symbol      VARCHAR(10) NOT NULL,
+    quantity    DECIMAL(18, 4) NOT NULL,
+    average_cost DECIMAL(18, 4) NOT NULL,
+    PRIMARY KEY (account_id, symbol),
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    FOREIGN KEY (symbol) REFERENCES instruments(symbol)
 );
