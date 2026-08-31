@@ -8,6 +8,11 @@
 
 - https://underfrog.atlassian.net/?continue=https%3A%2F%2Funderfrog.atlassian.net%2Fwelcome%2Fsoftware%3FprojectId%3D10000&atlOrigin=eyJpIjoiNGY4NzRlNDY5N2I4NDUwYmI3NDFjYjY2ZGUyYWRmMDUiLCJwIjoiamlyYS1zb2Z0d2FyZSJ9
 
+## Entity Relationship Diagram
+Shows the database schema and relationships between the `accounts`, `instruments`, `orders`, and `positions` tables.
+
+![ERD Diagram](images/ERD-Diagram.PNG)
+
 ## Branching Strategy (GitFlow)
 # Purpose
 Our project follows a GitFlow-style branching model to keep development organized, support parallel feature work, and maintain stability.
