@@ -29,7 +29,8 @@ CREATE TABLE orders (
     quantity         INT NOT NULL,
     price            NUMERIC(18,2) NOT NULL,
     order_status     VARCHAR(20) NOT NULL,
-    idempotency_key  VARCHAR(100) UNIQUE
+    idempotency_key  VARCHAR(100) UNIQUE,
+    created_at       TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE positions (
