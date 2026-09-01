@@ -10,7 +10,7 @@ CREATE TABLE accounts (
     cash_balance  NUMERIC(18, 2) NOT NULL,
     status        VARCHAR(20) NOT NULL,
     version       INTEGER DEFAULT 0,
-    last_updated  TIMESTAMP DEFAULT NOW(),
+    last_updated  TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE instruments (
