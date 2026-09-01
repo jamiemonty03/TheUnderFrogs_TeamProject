@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: underfrog-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/tables.sql:/docker-entrypoint-initdb.d/01-tables.sql
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: underfrog-app
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8080"
+
+volumes:
+  postgres_data:
