@@ -9,16 +9,23 @@ CREATE TABLE accounts (
     holder_name   VARCHAR(255) NOT NULL,
     cash_balance  NUMERIC(18, 2) NOT NULL,
     status        VARCHAR(20) NOT NULL,
-    version       INTEGER DEFAULT 0,
-    last_updated  TIMESTAMP DEFAULT NOW()
+    version       INTEGER NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
 
 CREATE TABLE instruments (
     symbol      VARCHAR(10) PRIMARY KEY,
     name        VARCHAR(100) NOT NULL,
-    asset_class VARCHAR(50) NOT NULL,
+    -- Asset class of the instrument (e.g., Equity, Bond, Commodity)
+    asset_class VARCHAR(50) NOT NULL CHECK (asset_class IN ('Equity', 'Bond', 'Commodity')),
     currency    CHAR(3) NOT NULL,
-    tradable    BOOLEAN NOT NULL
+    tradable    BOOLEAN NOT NULL DEFAULT FALSE,
+    version       INTEGER NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
 
 CREATE TABLE orders (
@@ -30,7 +37,11 @@ CREATE TABLE orders (
     price            NUMERIC(18,2) NOT NULL,
     order_status     VARCHAR(20) NOT NULL,
     idempotency_key  VARCHAR(100) UNIQUE,
-    created_at       TIMESTAMP DEFAULT NOW()
+    created_at       TIMESTAMP DEFAULT NOW(),
+    version       INTEGER NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
 
 CREATE TABLE positions (
@@ -38,5 +49,9 @@ CREATE TABLE positions (
     symbol      VARCHAR(10) NOT NULL REFERENCES instruments(symbol),
     quantity    DECIMAL(18, 4) NOT NULL CHECK (quantity >= 0),
     average_cost DECIMAL(18, 4) NOT NULL CHECK (average_cost >= 0),
-    PRIMARY KEY (account_id, symbol)
+    PRIMARY KEY (account_id, symbol),
+    version       INTEGER NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),
+    updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
