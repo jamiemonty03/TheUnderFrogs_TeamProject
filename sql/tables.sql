@@ -28,7 +28,7 @@ CREATE TABLE orders (
     side             VARCHAR(4) NOT NULL CHECK (side IN ('BUY', 'SELL')),
     quantity         INT NOT NULL CHECK (quantity > 0),
     price            NUMERIC(18,2) NOT NULL CHECK (price > 0),
-    order_status     VARCHAR(20) NOT NULL,
+    order_status     VARCHAR(20) NOT NULL CHECK (order_status IN ('NEW', 'FILLED', 'CANCELLED', 'REJECTED')),
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
