@@ -10,7 +10,7 @@ services:
       - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/tables:/docker-entrypoint-initdb.d
+      - ./sql/tables:/docker-entrypoint-initdb.d # This change mounts the entire tables directory instead of a single SQL file
 
   app:
     build:
