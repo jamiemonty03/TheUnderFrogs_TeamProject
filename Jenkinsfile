@@ -36,7 +36,7 @@ pipeline {
                 
                 # Wait for PostgreSQL to be ready
                 for i in {1..30}; do
-                    if docker exec underfrog-postgres pg_isready -U ${POSTGRES_USER} > /dev/null 2>&1; then
+                    if docker exec underfrog-jenkins pg_isready -U ${POSTGRES_USER} > /dev/null 2>&1; then
                         echo "Database is ready"
                         break
                     fi
@@ -45,7 +45,7 @@ pipeline {
                 done
                 #Validate data presence
                 
-                docker exec underfrog-postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
+                docker exec underfrog-jenkins psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
                 SELECT table_name FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 ORDER BY table_name;
