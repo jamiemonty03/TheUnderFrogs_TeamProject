@@ -33,10 +33,10 @@ pipeline {
                 sh '''
 
                 # Clean up any leftover containers from a previous run
-                docker-compose down --remove-orphans 2>/dev/null || true
+                docker-compose down --remove-orphans --volumes || true
                 
                 # Force remove any remaining containers as a fallback
-                docker rm -f underfrog-postgres underfrog-app 2>/dev/null || true
+                docker rm -f underfrog-postgres underfrog-app || true
 
                 # Start services
                 docker-compose up -d
@@ -50,11 +50,6 @@ pipeline {
                     echo "Waiting for database... ($i/30)"
                     sleep 2
                 done
-                
-                # Debug: Check if initialization files were mounted and executed
-                echo "Checking PostgreSQL logs for initialization..."
-                docker logs underfrog-postgres | grep -i 'init\|executing\|error' || echo "No init logs found"
-                
                 #Validate data presence
                 
                 docker exec underfrog-postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
