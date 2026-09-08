@@ -50,6 +50,11 @@ pipeline {
                     echo "Waiting for database... ($i/30)"
                     sleep 2
                 done
+                
+                # Debug: Check if initialization files were mounted and executed
+                echo "Checking PostgreSQL logs for initialization..."
+                docker logs underfrog-postgres | grep -i "init\|executing\|error" || echo "No init logs found"
+                
                 #Validate data presence
                 
                 docker exec underfrog-postgres psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "
