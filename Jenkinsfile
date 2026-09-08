@@ -33,10 +33,10 @@ pipeline {
                 sh '''
 
                 # Clean up any leftover containers from a previous run
-                
+                docker-compose down --remove-orphans 2>/dev/null || true
                 
                 # Force remove any remaining containers as a fallback
-                docker rm -f underfrog-postgres underfrog-app || true
+                docker rm -f underfrog-postgres underfrog-app 2>/dev/null || true
 
                 # Start services
                 docker-compose up -d
