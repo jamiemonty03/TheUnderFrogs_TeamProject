@@ -40,7 +40,7 @@ pipeline {
                 
                 # Wait for PostgreSQL to be ready
                 for i in {1..30}; do
-                    if docker exec underfrog-pos pg_isready -U ${POSTGRES_USER} > /dev/null 2>&1; then
+                    if docker exec underfrog-postgres pg_isready -U ${POSTGRES_USER} > /dev/null 2>&1; then
                         echo "Database is ready"
                         break
                     fi
