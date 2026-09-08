@@ -53,7 +53,7 @@ pipeline {
                 
                 # Debug: Check if initialization files were mounted and executed
                 echo "Checking PostgreSQL logs for initialization..."
-                docker logs underfrog-postgres | grep -i "init\|executing\|error" || echo "No init logs found"
+                docker logs underfrog-postgres | grep -i 'init\|executing\|error' || echo "No init logs found"
                 
                 #Validate data presence
                 
