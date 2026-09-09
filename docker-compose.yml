@@ -22,5 +22,17 @@ services:
     ports:
       - "8081:8080"
 
+  notebooks:
+    build:
+      context: .
+      dockerfile: Dockerfile.notebook
+    container_name: underfrog-notebooks
+    depends_on:
+      - postgres
+    ports:
+      - "0.0.0.0:8888:8888"
+    volumes:
+      - ./notebooks:/notebooks
+
 volumes:
   postgres_data:
