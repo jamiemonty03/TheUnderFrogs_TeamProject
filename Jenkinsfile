@@ -17,6 +17,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                sh 'rm -rf sql/ || true'
                 checkout scm
                 sh 'chmod -R u+rw sql/ || true'  // Ensure writable just in case
             }
