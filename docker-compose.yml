@@ -33,6 +33,8 @@ services:
       - "0.0.0.0:8888:8888"
     volumes:
       - ./notebooks:/notebooks
+      - ./sql:/sql
+      - ./.env:/sql/.env
 
 volumes:
   postgres_data:
