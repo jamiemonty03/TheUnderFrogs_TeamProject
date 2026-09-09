@@ -103,11 +103,11 @@ def insert_prices_to_db(prices):
         cursor = conn.cursor()
         
         # Delete existing prices
-        cursor.execute("DELETE FROM prices;")
+        cursor.execute("DELETE FROM raw_prices;")
         
         # Insert prices using parameterized query (prevents SQL injection)
         insert_query = """
-            INSERT INTO prices 
+            INSERT INTO raw_prices 
             (symbol, date, open, high, low, close, volume, created_at, updated_by) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
