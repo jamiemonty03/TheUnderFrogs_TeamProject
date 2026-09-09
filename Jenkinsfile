@@ -1,10 +1,9 @@
 pipeline {
     agent any
     environment {
-        POSTGRES_DB='underfrog'
-        POSTGRES_USER='postgres'
-
-        //Password is securely managed via Jenkins Credentials plugin 
+         //Variables are securely managed via Jenkins Credentials security settings 
+        POSTGRES_DB = credentials('postgres-db')
+        POSTGRES_USER = credentials('postgres-user')
         POSTGRES_PASSWORD = credentials('postgres-password') 
     }
 
