@@ -18,6 +18,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                sh 'chmod -R u+rw sql/ || true'  // Ensure writable just in case
             }
         }
         stage('Build Image') {
