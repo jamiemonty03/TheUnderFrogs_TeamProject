@@ -17,9 +17,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                sh 'rm -rf sql/ || true'
+                sh 'sudo chown -R jenkins:jenkins . || true'  // Ensure permissions
                 checkout scm
-                sh 'chmod -R u+rw sql/ || true'  // Ensure writable just in case
             }
         }
         stage('Build Image') {
