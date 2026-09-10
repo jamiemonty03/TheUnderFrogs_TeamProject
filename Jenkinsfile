@@ -1,5 +1,12 @@
 pipeline {
     agent any
+    environment {
+         //Variables are securely managed via Jenkins Credentials security settings 
+        POSTGRES_DB = credentials('postgres-db')
+        POSTGRES_USER = credentials('postgres-user')
+        POSTGRES_PASSWORD = credentials('postgres-password') 
+    }
+
     triggers {
         cron('*/15 * * * *')
     }
@@ -19,9 +26,17 @@ pipeline {
                 sh 'docker build -t team-skeleton:latest .'
             }
         }
-        stage('Smoke Test') {
+        
+        stage('Database Validation Test') {
             steps {
-                sh 'docker run --rm team-skeleton:latest'
+                sh 'chmod +x ./scripts/data_validation_test.sh'
+                sh './scripts/data_validation_test.sh'
+            }
+            post {
+                always {
+                    sh 'docker-compose down --remove-orphans --volumes || true'
+                    sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks || true'
+                }
             }
         }
     }
