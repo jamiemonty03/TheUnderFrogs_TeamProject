@@ -21,21 +21,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-EXTRACT_RAW_PRICES = sql.SQL("""
+EXTRACT_CLEAN_PRICES = sql.SQL("""
     SELECT 
-        rp.symbol,
-        rp.date,
-        rp.open,
-        rp.high,
-        rp.low,
-        rp.close,
-        rp.volume,
+        cp.symbol,
+        cp.date,
+        cp.open,
+        cp.high,
+        cp.low,
+        cp.close,
+        cp.volume,
         i.name AS ticker
-    FROM raw_prices rp
-    JOIN instruments i ON rp.symbol = i.symbol
-    WHERE rp.date >= CURRENT_DATE - MAKE_INTERVAL(days => %s)
+    FROM clean_prices cp
+    JOIN instruments i ON cp.symbol = i.symbol
+    WHERE cp.date >= CURRENT_DATE - MAKE_INTERVAL(days => %s)
         AND i.tradable = TRUE
-    ORDER BY rp.symbol, rp.date
+    ORDER BY cp.symbol, cp.date
 """)
 
 INSERT_PRICE_METRICS = sql.SQL("""
@@ -56,35 +56,6 @@ INSERT_PRICE_METRICS = sql.SQL("""
         momentum_score = EXCLUDED.momentum_score,
         created_at = EXCLUDED.created_at
 """)
-
-CREATE_TABLE_PRICE_METRICS = [
-    sql.SQL("""DROP TABLE IF EXISTS price_metrics"""),
-    sql.SQL("""
-        CREATE TABLE price_metrics (
-            id SERIAL PRIMARY KEY,
-            ticker VARCHAR(100) NOT NULL,
-            trade_date DATE NOT NULL,
-            close_price NUMERIC(18, 4) NOT NULL,
-            daily_return NUMERIC(18, 8),
-            moving_avg_20 NUMERIC(18, 4),
-            moving_avg_50 NUMERIC(18, 4),
-            avg_volume_30d NUMERIC(20, 2),
-            volatility_30d NUMERIC(18, 8),
-            volume_spike_ratio NUMERIC(18, 4),
-            momentum_score NUMERIC(6, 2),
-            created_at TIMESTAMP NOT NULL,
-            UNIQUE(ticker, trade_date)
-        )
-    """),
-    sql.SQL("""
-        CREATE INDEX idx_price_metrics_ticker_date 
-            ON price_metrics(ticker, trade_date)
-    """),
-    sql.SQL("""
-        CREATE INDEX idx_price_metrics_created_at 
-            ON price_metrics(created_at)
-    """)
-]
 
 DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT', '5432')
@@ -148,19 +119,19 @@ class DatabaseConnection:
                 cursor.close()
 
 
-def extract_raw_prices(db: DatabaseConnection, lookback_days: int = 365) -> pd.DataFrame:
+def extract_clean_prices(db: DatabaseConnection, lookback_days: int = 365) -> pd.DataFrame:
     try:
         with db.get_cursor() as cursor:
-            cursor.execute(EXTRACT_RAW_PRICES, (lookback_days,))
+            cursor.execute(EXTRACT_CLEAN_PRICES, (lookback_days,))
             columns = [desc[0] for desc in cursor.description]
             data = cursor.fetchall()
             df = pd.DataFrame(data, columns=columns)
         
-        logger.info(f"Extracted {len(df)} raw price records")
+        logger.info(f"Extracted {len(df)} clean price records")
         return df
     
     except PsycopgError as e:
-        logger.error(f"Failed to extract raw prices: {e}")
+        logger.error(f"Failed to extract clean prices: {e}")
         raise
 
 
@@ -209,7 +180,7 @@ def calculate_momentum_score(
     return momentum
 
 
-def transform_raw_to_metrics(df: pd.DataFrame) -> pd.DataFrame:
+def transform_clean_to_metrics(df: pd.DataFrame) -> pd.DataFrame:
     df['date'] = pd.to_datetime(df['date'])
     
     df['close'] = pd.to_numeric(df['close'], errors='coerce')
@@ -301,10 +272,14 @@ def validate_metrics(df: pd.DataFrame) -> bool:
 
 def load_to_database(db: DatabaseConnection, df: pd.DataFrame) -> int:
     try:
+        # Read and execute table creation SQL
+        sql_file_path = os.path.join(os.path.dirname(__file__), 'tables', '07-price_metrics.sql')
+        with open(sql_file_path, 'r') as f:
+            sql_content = f.read()
+        
         with db.get_connection() as conn:
             with conn.cursor() as cursor:
-                for statement in CREATE_TABLE_PRICE_METRICS:
-                    cursor.execute(statement)
+                cursor.execute(sql_content)
                 conn.commit()
             
             logger.info("price_metrics table ready")
@@ -353,10 +328,10 @@ def run_etl_pipeline(lookback_days: int = 365) -> Dict[str, Any]:
         logger.info("Starting ETL Pipeline for Stock Price Metrics")
         logger.info("=" * 80)
         
-        raw_df = extract_raw_prices(db, lookback_days)
+        clean_df = extract_clean_prices(db, lookback_days)
         
-        if raw_df.empty:
-            logger.warning("No raw price data found")
+        if clean_df.empty:
+            logger.warning("No clean price data found")
             return {
                 'status': 'warning',
                 'message': 'No data to process',
@@ -364,7 +339,7 @@ def run_etl_pipeline(lookback_days: int = 365) -> Dict[str, Any]:
                 'duration_seconds': (datetime.now(timezone.utc) - start_time).total_seconds()
             }
         
-        metrics_df = transform_raw_to_metrics(raw_df)
+        metrics_df = transform_clean_to_metrics(clean_df)
         
         validate_metrics(metrics_df)
         
@@ -378,7 +353,7 @@ def run_etl_pipeline(lookback_days: int = 365) -> Dict[str, Any]:
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
             'duration_seconds': duration,
-            'records_extracted': len(raw_df),
+            'records_extracted': len(clean_df),
             'records_loaded': records_loaded,
             'unique_symbols': metrics_df['symbol'].nunique()
         }
