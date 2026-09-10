@@ -4,9 +4,7 @@ import os
 
 load_dotenv()
 
-DAYS = 60
-
-# Database connection from .env
+# To Run: docker exec underfrog-notebooks python /sql/etl_prices.py
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_NAME = os.getenv('POSTGRES_DB', 'underfrog')
@@ -27,7 +25,7 @@ def get_db_connection():
         print(f"Database connection failed: {e}")
         return None
 
-def get_raw_prices():
+def get_raw_prices() -> list:
     conn = get_db_connection()
     
     cursor = conn.cursor()
@@ -56,34 +54,20 @@ def get_raw_prices():
     
     return rows
 
-def is_valid(row):
+def is_valid(row: tuple) -> bool:
     
-    symbol, date, open_p, high, low, close, volume = row
+    symbol, date, open_price, high, low, close, volume = row
     
-    if open_p <= 0:
+    if any(val <= 0 for val in [open_price, high, low, close]) or volume < 0:
         return False
-    if high <= 0:
+    if high < low or high < open_price or high < close:
         return False
-    if low <= 0:
-        return False
-    if close <= 0:
-        return False
-    if high < low:
-        return False
-    if high < open_p:
-        return False
-    if high < close:
-        return False
-    if low > open_p:
-        return False
-    if low > close:
-        return False
-    if volume < 0:
+    if low > open_price or low > close:
         return False
 
     return True
     
-def insert_clean_price(cursor, row):
+def insert_clean_price(cursor, row: tuple) -> None:
     
     cursor.execute("""
         INSERT INTO clean_prices (symbol, date, open, high, low, close, volume)
