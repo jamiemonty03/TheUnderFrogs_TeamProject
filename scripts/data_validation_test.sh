@@ -33,6 +33,10 @@ for i in {1..30}; do
     sleep 2
 done
 
+# Check for errors in PostgreSQL logs
+echo "Checking for PostgreSQL init errors..."
+docker exec underfrog-postgres cat /var/log/postgresql/postgresql.log 2>/dev/null | grep -i error || echo "No errors found"
+
 # Validate data presence
 echo "Validating tables..."
 docker exec underfrog-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
