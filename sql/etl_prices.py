@@ -4,7 +4,6 @@ import os
 
 load_dotenv()
 
-# To Run: docker exec underfrog-notebooks python /sql/etl_prices.py
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '5432')
 DB_NAME = os.getenv('POSTGRES_DB', 'underfrog')
