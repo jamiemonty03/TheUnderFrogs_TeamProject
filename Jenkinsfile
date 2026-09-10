@@ -17,7 +17,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                sh 'sudo chown -R jenkins:jenkins . || true'  // Ensure permissions
                 checkout scm
             }
         }
@@ -35,7 +34,8 @@ pipeline {
             }
             post {
                 always {
-                    sh 'docker-compose down || true'
+                    sh 'docker-compose down --remove-orphans --volumes || true'
+                    sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks || true'
                 }
             }
         }

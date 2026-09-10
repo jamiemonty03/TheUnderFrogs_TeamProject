@@ -4,10 +4,6 @@ set -e  # Exit on error
 
 echo "Starting data validation test..."
 
-# Clean up any leftover containers
-docker-compose down --remove-orphans --volumes || true
-docker rm -f underfrog-postgres underfrog-app || true
-
 # Start services
 echo "Starting Docker containers..."
 docker-compose up -d
