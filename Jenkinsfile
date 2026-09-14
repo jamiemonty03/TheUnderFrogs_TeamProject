@@ -35,6 +35,7 @@ pipeline {
             post {
                 always {
                     sh 'docker-compose down --remove-orphans --volumes || true'
+                    sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks underfrog-python || true'
                     sh 'sleep 5'
                 }
             }
