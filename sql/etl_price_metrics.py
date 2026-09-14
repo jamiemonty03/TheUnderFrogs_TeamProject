@@ -23,14 +23,13 @@ logger = logging.getLogger(__name__)
 
 EXTRACT_CLEAN_PRICES = sql.SQL("""
     SELECT 
-        cp.symbol,
+        cp.symbol AS ticker,
         cp.date,
         cp.open,
         cp.high,
         cp.low,
         cp.close,
-        cp.volume,
-        i.name AS ticker
+        cp.volume
     FROM clean_prices cp
     JOIN instruments i ON cp.symbol = i.symbol
     WHERE cp.date >= CURRENT_DATE - MAKE_INTERVAL(days => %s)
@@ -193,15 +192,15 @@ def transform_clean_to_metrics(df: pd.DataFrame) -> pd.DataFrame:
     if null_counts.sum() > 0:
         logger.warning(f"Data conversion resulted in NaN values: {null_counts[null_counts > 0].to_dict()}")
     
-    df = df.sort_values(['symbol', 'date']).reset_index(drop=True)
+    df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
     
     metrics_data = []
     
-    for symbol, group in df.groupby('symbol'):
+    for ticker, group in df.groupby('ticker'):
         group = group.sort_values('date').reset_index(drop=True)
         
         metrics = pd.DataFrame({
-            'symbol': group['symbol'],
+
             'ticker': group['ticker'],
             'trade_date': group['date'],
             'close_price': group['close'],
@@ -355,7 +354,7 @@ def run_etl_pipeline(lookback_days: int = 365) -> Dict[str, Any]:
             'duration_seconds': duration,
             'records_extracted': len(clean_df),
             'records_loaded': records_loaded,
-            'unique_symbols': metrics_df['symbol'].nunique()
+            'unique_symbols': metrics_df['ticker'].nunique()
         }
         
         logger.info("=" * 80)
