@@ -29,6 +29,7 @@ pipeline {
         
         stage('Database Validation Test') {
             steps {
+                sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks underfrog-python || true'
                 sh 'chmod +x ./scripts/data_validation_test.sh'
                 sh './scripts/data_validation_test.sh'
             }
