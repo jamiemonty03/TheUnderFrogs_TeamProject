@@ -3,7 +3,6 @@ DROP TABLE IF EXISTS clean_stocks CASCADE;
 CREATE TABLE clean_stocks (
 
     symbol VARCHAR(10) NOT NULL,
-    trade_date DATE NOT NULL,
 
     sector VARCHAR(100) NOT NULL,
     industry VARCHAR(100) NOT NULL,
@@ -13,8 +12,6 @@ CREATE TABLE clean_stocks (
     shares_outstanding NUMERIC(20,2) NOT NULL,
 
     full_time_employees INTEGER,
-
-    beta NUMERIC(10,4),
 
     trailing_pe NUMERIC(10,4),
     forward_pe NUMERIC(10,4),
@@ -41,7 +38,7 @@ CREATE TABLE clean_stocks (
 
     updated_by VARCHAR(100) NOT NULL DEFAULT 'SysAdmin',
 
-    PRIMARY KEY (symbol, trade_date),
+    PRIMARY KEY (symbol),
 
     FOREIGN KEY (symbol) REFERENCES instruments(symbol),
 
