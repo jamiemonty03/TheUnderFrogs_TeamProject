@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "0.0.0.0:5432:5432"
+      - "0.0.0.0:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/tables:/docker-entrypoint-initdb.d
@@ -31,12 +31,25 @@ services:
     container_name: underfrog-python
     depends_on:
       - postgres
-    ports:
-      - "0.0.0.0:8888:8888"
     volumes:
-      - ./notebooks:/notebooks
       - ./sql:/sql
       - ./.env:/sql/.env
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.notebook
+    container_name: underfrog-dashboard
+    depends_on:
+      - postgres
+    ports:
+      - "0.0.0.0:8080:8080"
+    volumes:
+      - ./sql:/sql
+      - ./.env:/sql/.env
+    command: python /sql/dashboard_app.py
+  
+  
 
 volumes:
   postgres_data:
