@@ -35,6 +35,7 @@ pipeline {
             post {
                 always {
                     sh 'docker-compose down --remove-orphans --volumes || true'
+                    sh 'sleep 5'
                 }
             }
         }
