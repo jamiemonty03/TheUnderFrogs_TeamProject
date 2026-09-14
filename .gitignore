@@ -2,3 +2,4 @@ target/
 starter/
 .env
 .env.example
+__pycache__/

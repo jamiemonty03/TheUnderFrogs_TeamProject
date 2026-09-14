@@ -1,11 +1,11 @@
 FROM python:3.14
 
-WORKDIR /notebooks
+WORKDIR /sql
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY notebooks/ .
+COPY sql/ .
 
 EXPOSE 8888
 
