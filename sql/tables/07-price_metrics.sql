@@ -1,8 +1,7 @@
 DROP TABLE IF EXISTS price_metrics;
 
 CREATE TABLE price_metrics (
-    id SERIAL PRIMARY KEY,
-    ticker VARCHAR(100) NOT NULL,
+    ticker VARCHAR(100) NOT NULL REFERENCES instruments(symbol),
     trade_date DATE NOT NULL,
     close_price NUMERIC(18, 4) NOT NULL,
     daily_return NUMERIC(18, 8),
@@ -13,7 +12,7 @@ CREATE TABLE price_metrics (
     volume_spike_ratio NUMERIC(18, 4),
     momentum_score NUMERIC(6, 2),
     created_at TIMESTAMP NOT NULL,
-    UNIQUE(ticker, trade_date)
+    PRIMARY KEY(ticker, trade_date)
 );
 
 CREATE INDEX idx_price_metrics_ticker_date 
