@@ -100,6 +100,27 @@ def insert_clean_stock(cursor, stock):
             %(total_revenue)s,
             %(website)s
         )
+        
+        ON CONFLICT (symbol) DO UPDATE
+        SET
+            sector = EXCLUDED.sector,
+            industry = EXCLUDED.industry,
+            country = EXCLUDED.country,
+            market_cap = EXCLUDED.market_cap,
+            shares_outstanding = EXCLUDED.shares_outstanding,
+            full_time_employees = EXCLUDED.full_time_employees,
+            trailing_pe = EXCLUDED.trailing_pe,
+            forward_pe = EXCLUDED.forward_pe,
+            trailing_eps = EXCLUDED.trailing_eps,
+            dividend_rate = EXCLUDED.dividend_rate,
+            payout_ratio = EXCLUDED.payout_ratio,
+            price_to_book = EXCLUDED.price_to_book,
+            return_on_equity = EXCLUDED.return_on_equity,
+            total_revenue = EXCLUDED.total_revenue,
+            website = EXCLUDED.website,
+            last_updated = NOW(),
+            version = clean_stocks.version + 1
+        
     """, stock)
     
 def run_etl():

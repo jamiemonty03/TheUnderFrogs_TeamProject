@@ -20,7 +20,9 @@ CREATE TABLE clean_etfs (
 
     three_year_avg_return NUMERIC(10,6),
 
-    five_year_annual_return NUMERIC(10,6),
+    beta_3_year NUMERIC(10,6),
+
+    five_year_avg_return NUMERIC(10,6),
     
     distribution_yield NUMERIC(10,6),
 
@@ -28,7 +30,7 @@ CREATE TABLE clean_etfs (
 
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
 
     updated_by VARCHAR(100) NOT NULL DEFAULT 'system',
 
