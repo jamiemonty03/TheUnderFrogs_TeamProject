@@ -60,6 +60,7 @@ def insert_clean_bond(cursor, bond):
             ytd_return,
             three_year_avg_return,
             five_year_avg_return,
+            beta_3_year,
             distribution_yield
         ) VALUES (
             %(symbol)s,
@@ -73,6 +74,7 @@ def insert_clean_bond(cursor, bond):
             %(ytd_return)s,
             %(three_year_avg_return)s,
             %(five_year_avg_return)s,
+            %(beta_3_year)s,
             %(distribution_yield)s
         );
     """, bond)

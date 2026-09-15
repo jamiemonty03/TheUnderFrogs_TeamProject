@@ -21,6 +21,8 @@ CREATE TABLE clean_bonds (
 
     five_year_avg_return NUMERIC(10,6),
 
+    beta_3_year NUMERIC(10,6),
+
     distribution_yield NUMERIC(10,6),
 
      version INTEGER NOT NULL DEFAULT 0,
