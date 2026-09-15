@@ -59,6 +59,8 @@ public class Instrument {
         this.exchange = exchange;
         this.tradable = tradable;
         this.version = 0;
+        this.createdAt = LocalDateTime.now();
+        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getSymbol() {
@@ -119,10 +121,6 @@ public class Instrument {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     public LocalDateTime getLastUpdated() {

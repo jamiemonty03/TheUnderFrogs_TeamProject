@@ -81,6 +81,8 @@ public class Order {
         this.idempotencyKey = idempotencyKey;
         this.orderStatus = Status.NEW; 
         this.version = 0;
+        this.createdAt = LocalDateTime.now();
+        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getOrderId() {
@@ -149,10 +151,6 @@ public class Order {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 
     public LocalDateTime getLastUpdated() {

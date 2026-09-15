@@ -38,6 +38,8 @@ public class Position {
         this.quantity = quantity;
         this.averageCost = averageCost;
         this.version = 0;
+        this.createdAt = LocalDateTime.now();
+        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getAccountId() {
@@ -84,9 +86,7 @@ public class Position {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
+  
 
     public LocalDateTime getLastUpdated() {
         return lastUpdated;
