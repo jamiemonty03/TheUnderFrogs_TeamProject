@@ -6,7 +6,7 @@ import os
 
 load_dotenv()
 
-DAYS = 60
+DAYS = 365
 
 # Database connection from .env
 DB_HOST = os.getenv('DB_HOST', 'localhost')
