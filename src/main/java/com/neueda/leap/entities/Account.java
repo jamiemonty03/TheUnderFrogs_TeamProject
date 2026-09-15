@@ -3,8 +3,6 @@ package com.neueda.leap.models;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import com.neueda.leap.enums.AccountStatus;
-import com.neueda.leap.exceptions.AccountNotActiveException;
-import com.neueda.leap.exceptions.InsufficientFundsException;
 
 /**
  * Represents a trading account with cash balance and position holdings.
@@ -98,27 +96,6 @@ public class Account {
 
     public void setUpdatedBy(String updatedBy) {
         this.updatedBy = updatedBy;
-    }
-
-    public void credit(BigDecimal amount) throws AccountNotActiveException {
-        if (!isActive()) {
-            throw new AccountNotActiveException("Cannot credit an inactive account");
-        }
-        this.cashBalance = this.cashBalance.add(amount);
-        this.lastUpdated = LocalDateTime.now();
-        this.version++;
-    }
-
-    public void debit(BigDecimal amount) throws AccountNotActiveException, InsufficientFundsException {
-        if (!isActive()) {
-            throw new AccountNotActiveException("Cannot debit an inactive account");
-        }
-        if (this.cashBalance.compareTo(amount) < 0) {
-            throw new InsufficientFundsException("Insufficient funds. Balance: " + this.cashBalance + ", Requested: " + amount);
-        }
-        this.cashBalance = this.cashBalance.subtract(amount);
-        this.lastUpdated = LocalDateTime.now();
-        this.version++;
     }
 
     public boolean isActive() {
