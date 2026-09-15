@@ -2,6 +2,7 @@ package com.neueda.leap.models;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.neueda.leap.enums.AccountStatus;
 
 /**
  * Represents a trading account with cash balance and position holdings.
@@ -15,20 +16,11 @@ import java.time.LocalDateTime;
  * @see Position
  */
 public class Account {
-
-    /**
-     * Account status enumeration.
-     * ACTIVE: Account can execute trades
-     * INACTIVE: Account cannot trade but can still be viewed
-     * SUSPENDED: Account is frozen, no trades or withdrawals allowed
-     */
-    public enum Status { ACTIVE, INACTIVE, SUSPENDED }
-    
    
     private String accountId;
     private String holderName;
     private BigDecimal cashBalance;
-    private Status status;
+    private AccountStatus status;
     private int version;
     private LocalDateTime createdAt;
     private LocalDateTime lastUpdated;
@@ -36,7 +28,7 @@ public class Account {
 
     public Account() {}
 
-    public Account(String accountId, String holderName, BigDecimal cashBalance, Status status) {
+    public Account(String accountId, String holderName, BigDecimal cashBalance, AccountStatus status) {
         this.accountId = accountId;
         this.holderName = holderName;
         this.cashBalance = cashBalance;
@@ -70,11 +62,11 @@ public class Account {
         this.cashBalance = cashBalance;
     }
 
-    public Status getStatus() {
+    public AccountStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Status status) {
+    public void setStatus(AccountStatus status) {
         this.status = status;
     }
 

@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.DecimalMin;
+import com.neueda.leap.enums.OrderSide;
+import com.neueda.leap.enums.OrderStatus;
 
 /**
  * Represents a trade order (buy or sell) for a financial instrument.
@@ -22,22 +24,6 @@ import jakarta.validation.constraints.DecimalMin;
  */
 public class Order {
 
-    /**
-     * Order direction enumeration.
-     * BUY: Acquire position (debit account cash, create/increase position)
-     * SELL: Liquidate position (credit account cash, decrease position)
-     */
-    public enum Side { BUY, SELL }
-    
-    /**
-     * Order status enumeration.
-     * NEW: Order created, awaiting processing
-     * FILLED: Order successfully executed
-     * REJECTED: Order failed validation (insufficient funds, holdings, etc.)
-     * CANCELLED: Order cancelled by user
-     */
-    public enum Status { NEW, FILLED, REJECTED, CANCELLED }
-
     private String orderId;
     
     @NotNull(message = "AccountId is mandatory")
@@ -47,7 +33,7 @@ public class Order {
     private String symbol;
     
     @NotNull(message = "Order side (BUY/SELL) is mandatory")
-    private Side side;
+    private OrderSide side;
     
     @Positive(message = "Quantity must be positive")
     private int quantity;
@@ -61,7 +47,7 @@ public class Order {
     private String idempotencyKey;
     
     @NotNull(message = "Order status is mandatory")
-    private Status orderStatus;
+    private OrderStatus orderStatus;
     
     private int version;
     private LocalDateTime createdAt;
@@ -71,7 +57,7 @@ public class Order {
 
     public Order() {}
 
-    public Order(String orderId, String accountId, String symbol, Side side, int quantity, BigDecimal price, String idempotencyKey) {
+    public Order(String orderId, String accountId, String symbol, OrderSide side, int quantity, BigDecimal price, String idempotencyKey) {
         this.orderId = orderId;
         this.accountId = accountId;
         this.symbol = symbol;
@@ -79,7 +65,7 @@ public class Order {
         this.quantity = quantity;
         this.price = price;
         this.idempotencyKey = idempotencyKey;
-        this.orderStatus = Status.NEW; 
+        this.orderStatus = OrderStatus.NEW; 
         this.version = 0;
         this.createdAt = LocalDateTime.now();
         this.lastUpdated = LocalDateTime.now();
@@ -109,11 +95,11 @@ public class Order {
         this.symbol = symbol;
     }
 
-    public Side getSide() {
+    public OrderSide getSide() {
         return side;
     }
 
-    public void setSide(Side side) {
+    public void setSide(OrderSide side) {
         this.side = side;
     }
 
@@ -133,11 +119,11 @@ public class Order {
         this.price = price;
     }
 
-    public Status getOrderStatus() {
+    public OrderStatus getOrderStatus() {
         return orderStatus;
     }
 
-    public void setOrderStatus(Status orderStatus) {
+    public void setOrderStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
     }
 

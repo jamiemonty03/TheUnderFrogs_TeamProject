@@ -26,7 +26,7 @@ public class Instrument {
     private String name;
     
     /** Instrument classification (Equity, Bond, ETF) */
-    private String instrumentType;
+    private String assetClass;
     
     /** Base currency for pricing (e.g., "USD", "EUR") */
     private String currency;
@@ -51,10 +51,10 @@ public class Instrument {
 
     public Instrument() {}
 
-    public Instrument(String symbol, String name, String instrumentType, String currency, String exchange, boolean tradable) {
+    public Instrument(String symbol, String name, String assetClass, String currency, String exchange, boolean tradable) {
         this.symbol = symbol;
         this.name = name;
-        this.instrumentType = instrumentType;
+        this.assetClass = assetClass;
         this.currency = currency;
         this.exchange = exchange;
         this.tradable = tradable;
@@ -79,12 +79,12 @@ public class Instrument {
         this.name = name;
     }
 
-    public String getinstrumentType() {
-        return instrumentType;
+    public String getAssetClass() {
+        return assetClass;
     }
 
-    public void setinstrumentType(String instrumentType) {
-        this.instrumentType = instrumentType;
+    public void setAssetClass(String assetClass) {
+        this.assetClass = assetClass;
     }
 
     public String getCurrency() {
@@ -144,7 +144,7 @@ public class Instrument {
         return "Instrument{" +
                 "symbol='" + symbol + '\'' +
                 ", name='" + name + '\'' +
-                ", instrumentType='" + instrumentType + '\'' +
+                ", assetClass='" + assetClass + '\'' +
                 ", currency='" + currency + '\'' +
                 ", exchange='" + exchange + '\'' +
                 ", tradable=" + tradable +
