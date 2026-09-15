@@ -98,6 +98,10 @@ public class Account {
         this.updatedBy = updatedBy;
     }
 
+    public boolean isActive() {
+        return this.status == AccountStatus.ACTIVE;
+    }
+
     @Override
     public String toString() {
         return "Account{" +
