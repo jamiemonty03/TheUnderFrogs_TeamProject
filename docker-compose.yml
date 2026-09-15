@@ -30,7 +30,7 @@ services:
     depends_on:
       - postgres
     ports:
-      - "0.0.0.0:8082:8080"
+      - "0.0.0.0:8080:8080"
       # replace with a different port if needed
     volumes:
       - ./sql:/sql
