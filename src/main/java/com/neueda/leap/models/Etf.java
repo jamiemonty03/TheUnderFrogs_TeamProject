@@ -6,12 +6,12 @@ import java.time.LocalDateTime;
 /**
  * Represents an Exchange-Traded Fund (ETF) in the trading system.
  * 
- * An ETF is a type of asset representing a basket of securities (stocks, bonds, etc.)
- * that trades like a single stock on an exchange. Key characteristics:
- * - NAV (Net Asset Value): value of assets per fund share
- * - Expense ratio: annual management fee as percentage of assets
- * - Assets under management: total value managed by the fund
- * - Tracking error: deviation from index benchmark
+ * Complete ETF data including fund characteristics, performance, and valuation:
+ * - Fund information (category, family, legal structure)
+ * - Pricing metrics (NAV price, total/net assets)
+ * - Performance metrics (YTD return, 3-year, 5-year average returns)
+ * - Risk metrics (beta, tracking error, distribution yield)
+ * - Expense metrics (net expense ratio)
  * 
  * Inherits common asset properties from Asset superclass.
  * 
@@ -19,10 +19,18 @@ import java.time.LocalDateTime;
  */
 public class Etf extends Asset {
     
-    private BigDecimal nav;
-    private BigDecimal expenseRatio;
-    private BigDecimal assetsUnderManagement;
-    private BigDecimal trackingError;
+    private String category;
+    private String fundFamily;
+    private String legalType;
+    private BigDecimal netExpenseRatio;
+    private BigDecimal navPrice;
+    private BigDecimal totalAssets;
+    private BigDecimal netAssets;
+    private BigDecimal ytdReturn;
+    private BigDecimal threeYearAvgReturn;
+    private BigDecimal fiveYearAvgReturn;
+    private BigDecimal beta3Year;
+    private BigDecimal distributionYield;
 
     /**
      * No-arg constructor for framework use (ORM, JSON deserialization).
@@ -32,69 +40,74 @@ public class Etf extends Asset {
     }
 
     /**
-     * Constructor for creating an ETF with asset properties and ETF-specific details.
-     * @param symbol unique trading symbol (e.g., "SPY", "QQQ", "VTI")
-     * @param name fund name
-     * @param price current share price
-     * @param tradeDate date of trading
-     * @param nav net asset value per share
-     * @param expenseRatio annual management fee as percentage
-     * @param assetsUnderManagement total fund assets
-     * @param trackingError deviation from benchmark index
+     * Constructor for creating an ETF with all available attributes.
      */
     public Etf(String symbol, String name, BigDecimal price, LocalDateTime tradeDate,
-            BigDecimal nav, BigDecimal expenseRatio, BigDecimal assetsUnderManagement,
-            BigDecimal trackingError) {
+            String category, String fundFamily, String legalType, BigDecimal netExpenseRatio,
+            BigDecimal navPrice, BigDecimal totalAssets, BigDecimal netAssets,
+            BigDecimal ytdReturn, BigDecimal threeYearAvgReturn, BigDecimal fiveYearAvgReturn,
+            BigDecimal beta3Year, BigDecimal distributionYield) {
         super(symbol, name, price, tradeDate);
-        this.nav = nav;
-        this.expenseRatio = expenseRatio;
-        this.assetsUnderManagement = assetsUnderManagement;
-        this.trackingError = trackingError;
+        this.category = category;
+        this.fundFamily = fundFamily;
+        this.legalType = legalType;
+        this.netExpenseRatio = netExpenseRatio;
+        this.navPrice = navPrice;
+        this.totalAssets = totalAssets;
+        this.netAssets = netAssets;
+        this.ytdReturn = ytdReturn;
+        this.threeYearAvgReturn = threeYearAvgReturn;
+        this.fiveYearAvgReturn = fiveYearAvgReturn;
+        this.beta3Year = beta3Year;
+        this.distributionYield = distributionYield;
     }
 
-    public BigDecimal getNav() {
-        return nav;
-    }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
-    public void setNav(BigDecimal nav) {
-        this.nav = nav;
-    }
+    public String getFundFamily() { return fundFamily; }
+    public void setFundFamily(String fundFamily) { this.fundFamily = fundFamily; }
 
-    public BigDecimal getExpenseRatio() {
-        return expenseRatio;
-    }
+    public String getLegalType() { return legalType; }
+    public void setLegalType(String legalType) { this.legalType = legalType; }
 
-    public void setExpenseRatio(BigDecimal expenseRatio) {
-        this.expenseRatio = expenseRatio;
-    }
+    public BigDecimal getNetExpenseRatio() { return netExpenseRatio; }
+    public void setNetExpenseRatio(BigDecimal netExpenseRatio) { this.netExpenseRatio = netExpenseRatio; }
 
-    public BigDecimal getAssetsUnderManagement() {
-        return assetsUnderManagement;
-    }
+    public BigDecimal getNavPrice() { return navPrice; }
+    public void setNavPrice(BigDecimal navPrice) { this.navPrice = navPrice; }
 
-    public void setAssetsUnderManagement(BigDecimal assetsUnderManagement) {
-        this.assetsUnderManagement = assetsUnderManagement;
-    }
+    public BigDecimal getTotalAssets() { return totalAssets; }
+    public void setTotalAssets(BigDecimal totalAssets) { this.totalAssets = totalAssets; }
 
-    public BigDecimal getTrackingError() {
-        return trackingError;
-    }
+    public BigDecimal getNetAssets() { return netAssets; }
+    public void setNetAssets(BigDecimal netAssets) { this.netAssets = netAssets; }
 
-    public void setTrackingError(BigDecimal trackingError) {
-        this.trackingError = trackingError;
-    }
+    public BigDecimal getYtdReturn() { return ytdReturn; }
+    public void setYtdReturn(BigDecimal ytdReturn) { this.ytdReturn = ytdReturn; }
+
+    public BigDecimal getThreeYearAvgReturn() { return threeYearAvgReturn; }
+    public void setThreeYearAvgReturn(BigDecimal threeYearAvgReturn) { this.threeYearAvgReturn = threeYearAvgReturn; }
+
+    public BigDecimal getFiveYearAvgReturn() { return fiveYearAvgReturn; }
+    public void setFiveYearAvgReturn(BigDecimal fiveYearAvgReturn) { this.fiveYearAvgReturn = fiveYearAvgReturn; }
+
+    public BigDecimal getBeta3Year() { return beta3Year; }
+    public void setBeta3Year(BigDecimal beta3Year) { this.beta3Year = beta3Year; }
+
+    public BigDecimal getDistributionYield() { return distributionYield; }
+    public void setDistributionYield(BigDecimal distributionYield) { this.distributionYield = distributionYield; }
 
     @Override
     public String toString() {
         return "Etf{" +
                 "symbol='" + getSymbol() + '\'' +
-                ", name='" + getName() + '\'' +
-                ", price=" + getPrice() +
-                ", nav=" + nav +
-                ", expenseRatio=" + expenseRatio +
-                ", assetsUnderManagement=" + assetsUnderManagement +
-                ", trackingError=" + trackingError +
-                ", version=" + getVersion() +
+                ", category='" + category + '\'' +
+                ", fundFamily='" + fundFamily + '\'' +
+                ", navPrice=" + navPrice +
+                ", totalAssets=" + totalAssets +
+                ", ytdReturn=" + ytdReturn +
+                ", netExpenseRatio=" + netExpenseRatio +
                 '}';
     }
 }

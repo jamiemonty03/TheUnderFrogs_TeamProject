@@ -10,13 +10,15 @@ import java.time.LocalDateTime;
  * Tracks daily price movements and trading volume for technical analysis:
  * - Open, High, Low, Close (OHLC) prices for a trading day
  * - Trading volume in shares/units
- * - Audit trail (creation timestamp, last update, version tracking)
+ * - Creation timestamp (immutable, set once when record is created)
  * 
  * Used for:
  * - Price history lookup
  * - Technical analysis and charting
  * - Historical performance calculations
  * - ETL price data ingestion
+ * 
+ * Note: Price records are immutable historical data. Only createdAt is tracked.
  * 
  * @see Asset
  * @see Instrument
@@ -30,10 +32,7 @@ public class Price {
     private BigDecimal low;
     private BigDecimal close;
     private BigDecimal volume;
-    private int version;
     private LocalDateTime createdAt;
-    private LocalDateTime lastUpdated;
-    private String updatedBy;
 
     /**
      * No-arg constructor for framework use (ORM, JSON deserialization).
@@ -43,7 +42,7 @@ public class Price {
 
     /**
      * Constructor for creating price data with OHLCV values.
-     * Automatically sets createdAt to current time and version to 0.
+     * Automatically sets createdAt to current time.
      * 
      * @param symbol unique trading symbol (e.g., "AAPL")
      * @param tradeDate date of the trading day
@@ -69,9 +68,7 @@ public class Price {
         this.low = low;
         this.close = close;
         this.volume = volume;
-        this.version = 0;
         this.createdAt = LocalDateTime.now();
-        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getSymbol() {
@@ -130,14 +127,6 @@ public class Price {
         this.volume = volume;
     }
 
-    public int getVersion() {
-        return version;
-    }
-
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
     /**
      * Get creation timestamp.
      * Immutable - set once when price record is created.
@@ -145,40 +134,6 @@ public class Price {
      */
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-
-    /**
-     * Get last update timestamp.
-     * Updated whenever price data is modified (e.g., correction, status change).
-     * @return timestamp of last modification
-     */
-    public LocalDateTime getLastUpdated() {
-        return lastUpdated;
-    }
-
-    /**
-     * Set last update timestamp.
-     * Should be updated whenever this price record is modified.
-     * @param lastUpdated the new update timestamp
-     */
-    public void setLastUpdated(LocalDateTime lastUpdated) {
-        this.lastUpdated = lastUpdated;
-    }
-
-    /**
-     * Get the user or system that last updated this price record.
-     * @return identifier of last updater
-     */
-    public String getUpdatedBy() {
-        return updatedBy;
-    }
-
-    /**
-     * Set the user or system that last updated this price record.
-     * @param updatedBy identifier of the updater
-     */
-    public void setUpdatedBy(String updatedBy) {
-        this.updatedBy = updatedBy;
     }
 
     @Override
@@ -191,10 +146,7 @@ public class Price {
                 ", low=" + low +
                 ", close=" + close +
                 ", volume=" + volume +
-                ", version=" + version +
                 ", createdAt=" + createdAt +
-                ", lastUpdated=" + lastUpdated +
-                ", updatedBy='" + updatedBy + '\'' +
                 '}';
     }
 }
