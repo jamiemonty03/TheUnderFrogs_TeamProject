@@ -72,6 +72,7 @@ def fetch_yfinance_data(symbols, days=DAYS):
 def generate_prices(yf_data):
     """Convert yfinance data to prices table rows."""
     prices = []
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
     for symbol, df in yf_data.items():
         for date_index, row in df.iterrows():
@@ -83,7 +84,9 @@ def generate_prices(yf_data):
                 'low': round(float(row['Low'].item()), 4),
                 'close': round(float(row['Close'].item()), 4),
                 'volume': int(row['Volume'].item()),
-                'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'version': 0,
+                'created_at': now,
+                'last_updated': now,
                 'updated_by': 'SYSTEM'
             })
     
@@ -108,8 +111,8 @@ def insert_prices_to_db(prices):
         # Insert prices using parameterized query (prevents SQL injection)
         insert_query = """
             INSERT INTO raw_prices 
-            (symbol, date, open, high, low, close, volume, created_at, updated_by) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (symbol, date, open, high, low, close, volume, version, created_at, last_updated, updated_by) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         for price in prices:
@@ -121,7 +124,9 @@ def insert_prices_to_db(prices):
                 price['low'],
                 price['close'],
                 price['volume'],
+                price['version'],
                 price['created_at'],
+                price['last_updated'],
                 price['updated_by']
             ))
         
