@@ -84,6 +84,24 @@ def insert_clean_etf(cursor, etf):
             %(beta_3_year)s,
             %(distribution_yield)s
         )
+        
+        ON CONFLICT (symbol) DO UPDATE
+        SET 
+            category = EXCLUDED.category,
+            fund_family = EXCLUDED.fund_family,
+            legal_type = EXCLUDED.legal_type,
+            net_expense_ratio = EXCLUDED.net_expense_ratio,
+            nav_price = EXCLUDED.nav_price,
+            total_assets = EXCLUDED.total_assets,
+            net_assets = EXCLUDED.net_assets,
+            ytd_return = EXCLUDED.ytd_return,
+            three_year_avg_return = EXCLUDED.three_year_avg_return,
+            five_year_avg_return = EXCLUDED.five_year_avg_return,
+            beta_3_year = EXCLUDED.beta_3_year,
+            distribution_yield = EXCLUDED.distribution_yield,
+            last_updated = NOW(),
+            version = clean_etfs.version + 1
+        
     """, etf)
     
 def run_etl():

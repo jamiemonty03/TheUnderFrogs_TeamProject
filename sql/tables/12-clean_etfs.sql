@@ -30,7 +30,7 @@ CREATE TABLE clean_etfs (
 
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 
-    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
 
     updated_by VARCHAR(100) NOT NULL DEFAULT 'system',
 

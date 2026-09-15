@@ -69,10 +69,18 @@ def is_valid(row: tuple) -> bool:
 def insert_clean_price(cursor, row: tuple) -> None:
     
     cursor.execute("""
-        INSERT INTO clean_prices (symbol, date, open, high, low, close, volume)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO clean_prices (symbol, date, open, high, low, close, volume, version, created_at, last_updated, updated_by)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, 0, NOW(), NOW(), 'system')
         
-        ON CONFLICT (symbol, date) DO NOTHING
+        ON CONFLICT (symbol, date) DO UPDATE
+        SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume,
+            last_updated = NOW(),
+            version = clean_prices.version + 1
     """, row)
     
 def run_etl():
