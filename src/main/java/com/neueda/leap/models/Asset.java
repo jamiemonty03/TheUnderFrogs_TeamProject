@@ -27,18 +27,9 @@ public abstract class Asset {
     private LocalDateTime lastUpdated;
     private String updatedBy;
 
-    /**
-     * No-arg constructor for framework use (ORM, JSON deserialization).
-     */
+
     public Asset() {}
 
-    /**
-     * Constructor for creating asset with basic properties.
-     * @param symbol unique trading symbol
-     * @param name full name of the asset
-     * @param price current market price
-     * @param tradeDate date the asset is being traded
-     */
     public Asset(String symbol, String name, BigDecimal price, LocalDateTime tradeDate) {
         this.symbol = symbol;
         this.name = name;
