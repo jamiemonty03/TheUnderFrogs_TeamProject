@@ -34,7 +34,7 @@ public class PositionServiceTest {
     }
     
     @Test
-    public void testApplySell() {
+    public void testApplySell() throws InsufficientHoldingsException {
         // Sell 30 shares
         positionService.applySell(position, new BigDecimal("30"));
         
@@ -46,7 +46,7 @@ public class PositionServiceTest {
     }
     
     @Test
-    public void testSellMoreThanHolding() {
+    public void testSellMoreThanHolding() throws InsufficientHoldingsException {
         // Try to sell 150 shares (only have 100)
         assertThrows(InsufficientHoldingsException.class, () -> {
             positionService.applySell(position, new BigDecimal("150"));
