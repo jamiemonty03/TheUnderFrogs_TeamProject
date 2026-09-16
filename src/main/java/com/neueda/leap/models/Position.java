@@ -2,6 +2,7 @@ package com.neueda.leap.models;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Represents a holding of shares/units in a specific instrument.
@@ -78,20 +79,12 @@ public class Position {
         return version;
     }
 
-    public void setVersion(int version) {
-        this.version = version;
-    }
-
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
     public LocalDateTime getLastUpdated() {
         return lastUpdated;
-    }
-
-    public void setLastUpdated(LocalDateTime lastUpdated) {
-        this.lastUpdated = lastUpdated;
     }
 
     public String getUpdatedBy() {
@@ -104,6 +97,24 @@ public class Position {
 
     public BigDecimal getTotalCostBasis() {
         return quantity.multiply(averageCost);
+    }
+
+    public BigDecimal getMarketValue(BigDecimal currentPrice) {
+        return currentPrice.multiply(quantity);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Position position = (Position) obj;
+        return  Objects.equals(accountId, position.accountId) &&
+                Objects.equals(symbol, position.symbol);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(accountId, symbol);
     }
 
     @Override
