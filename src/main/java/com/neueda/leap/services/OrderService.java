@@ -9,6 +9,7 @@ import com.neueda.leap.exceptions.DuplicateOrderException;
 import com.neueda.leap.exceptions.InstrumentNotFoundException;
 import com.neueda.leap.exceptions.InsufficientFundsException;
 import com.neueda.leap.exceptions.InsufficientHoldingsException;
+import com.neueda.leap.exceptions.InvalidOrderException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
 import java.math.BigDecimal;
@@ -44,8 +45,8 @@ public class OrderService {
     public Order placeOrder(Account account, Instrument instrument, OrderSide side,
                            BigDecimal quantity, BigDecimal price, String idempotencyKey)
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
-                   InsufficientFundsException, InsufficientHoldingsException, 
-                   DuplicateOrderException {
+                   InsufficientFundsException, InsufficientHoldingsException,
+                   InvalidOrderException, DuplicateOrderException {
         
         validationService.validateOrder(account, instrument, side, quantity, price);
         
