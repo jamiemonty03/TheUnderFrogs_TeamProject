@@ -14,8 +14,10 @@ CREATE TABLE instruments_metrics (
     asset_class VARCHAR(50) NOT NULL,    
     currency CHAR(3) NOT NULL,           
     exchange VARCHAR(50),               
+    version INT DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_by VARCHAR(255) NOT NULL DEFAULT 'SYSTEM',
     
     CONSTRAINT valid_returns CHECK (ytd_return IS NULL OR (ytd_return >= -100 AND ytd_return <= 10000)),
     CONSTRAINT valid_drawdown CHECK (max_drawdown IS NULL OR (max_drawdown >= -100 AND max_drawdown <= 0))
