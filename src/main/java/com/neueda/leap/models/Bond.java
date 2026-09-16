@@ -23,7 +23,6 @@ import java.math.BigDecimal;
  */
 public class Bond extends Asset {
     
-    // Bond fund characteristics
     private String category;
     private String fundFamily;
     private String legalType;
@@ -32,28 +31,20 @@ public class Bond extends Asset {
     private BigDecimal totalAssets;
     private BigDecimal netAssets;
     
-    // Bond-specific metrics
     private BigDecimal yieldToMaturity;
     private BigDecimal couponRate;
     private BigDecimal duration;
     
-    // Performance metrics
     private BigDecimal ytdReturn;
     private BigDecimal threeYearAvgReturn;
     private BigDecimal fiveYearAvgReturn;
     private BigDecimal beta3Year;
     private BigDecimal distributionYield;
 
-    /**
-     * No-arg constructor for framework use (ORM, JSON deserialization).
-     */
     public Bond() {
         super();
     }
 
-    /**
-     * Constructor for creating a bond with all available attributes.
-     */
     public Bond(String symbol, String name, BigDecimal price, LocalDateTime tradeDate,
             String category, String fundFamily, String legalType, BigDecimal netExpenseRatio,
             BigDecimal navPrice, BigDecimal totalAssets, BigDecimal netAssets,
@@ -78,7 +69,6 @@ public class Bond extends Asset {
         this.distributionYield = distributionYield;
     }
 
-    // Fund characteristics getters/setters
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
@@ -100,7 +90,6 @@ public class Bond extends Asset {
     public BigDecimal getNetAssets() { return netAssets; }
     public void setNetAssets(BigDecimal netAssets) { this.netAssets = netAssets; }
 
-    // Bond-specific metrics getters/setters
     public BigDecimal getYieldToMaturity() { return yieldToMaturity; }
     public void setYieldToMaturity(BigDecimal yieldToMaturity) { this.yieldToMaturity = yieldToMaturity; }
 
@@ -110,7 +99,6 @@ public class Bond extends Asset {
     public BigDecimal getDuration() { return duration; }
     public void setDuration(BigDecimal duration) { this.duration = duration; }
 
-    // Performance metrics getters/setters
     public BigDecimal getYtdReturn() { return ytdReturn; }
     public void setYtdReturn(BigDecimal ytdReturn) { this.ytdReturn = ytdReturn; }
 

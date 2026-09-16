@@ -33,12 +33,10 @@ public class OrderService {
             throw new IllegalArgumentException("Idempotency key is required");
         }
         
-        // Check for duplicate idempotency key
         if (ordersByIdempotencyKey.containsKey(order.getIdempotencyKey())) {
             throw new DuplicateOrderException(order.getIdempotencyKey(), "idempotencyKey");
         }
         
-        // Store order with idempotency key
         ordersByIdempotencyKey.put(order.getIdempotencyKey(), order);
         return order;
     }
@@ -49,13 +47,10 @@ public class OrderService {
                    InsufficientFundsException, InsufficientHoldingsException, 
                    DuplicateOrderException {
         
-        // Validate all business rules
         validationService.validateOrder(account, instrument, side, quantity, price);
         
-        // Convert BigDecimal quantity to int for Order model
         int quantityInt = quantity.intValue();
         
-        // Create the order with validated data
         Order order = new Order();
         order.setAccountId(account.getAccountId());
         order.setSymbol(instrument.getSymbol());
@@ -64,7 +59,6 @@ public class OrderService {
         order.setPrice(price);
         order.setIdempotencyKey(idempotencyKey);
         
-        // Save order with idempotency check
         return createOrder(order);
     }
 

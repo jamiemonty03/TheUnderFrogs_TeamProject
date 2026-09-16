@@ -32,16 +32,10 @@ public class Etf extends Asset {
     private BigDecimal beta3Year;
     private BigDecimal distributionYield;
 
-    /**
-     * No-arg constructor for framework use (ORM, JSON deserialization).
-     */
     public Etf() {
         super();
     }
 
-    /**
-     * Constructor for creating an ETF with all available attributes.
-     */
     public Etf(String symbol, String name, BigDecimal price, LocalDateTime tradeDate,
             String category, String fundFamily, String legalType, BigDecimal netExpenseRatio,
             BigDecimal navPrice, BigDecimal totalAssets, BigDecimal netAssets,
