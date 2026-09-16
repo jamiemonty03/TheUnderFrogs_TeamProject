@@ -1,4 +1,4 @@
-package com.neueda.leap.dto.requests;
+package com.neueda.leap.dtos.requests;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

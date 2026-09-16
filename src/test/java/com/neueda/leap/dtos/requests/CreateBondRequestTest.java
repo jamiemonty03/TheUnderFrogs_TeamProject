@@ -1,4 +1,4 @@
-package com.neueda.leap.dto.requests;
+package com.neueda.leap.dtos.requests;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -10,7 +10,6 @@ import jakarta.validation.ValidatorFactory;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("CreateBondRequest Validation Tests")
