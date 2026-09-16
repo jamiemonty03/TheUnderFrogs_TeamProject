@@ -12,8 +12,8 @@ import com.neueda.leap.exceptions.InsufficientHoldingsException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
 import java.math.BigDecimal;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
+import java.util.Optional;
+import java.util.HashMap;
 import java.util.Optional;
 
 /**
@@ -27,7 +27,7 @@ import java.util.Optional;
 public class OrderService {
     
     private final OrderValidationService validationService;
-    private final Map<String, Order> ordersByIdempotencyKey = new ConcurrentHashMap<>();
+    private final Map<String, Order> ordersByIdempotencyKey = new HashMap<>();
 
     public OrderService(PositionRepository positionRepository) {
         if (positionRepository == null) {
