@@ -16,38 +16,28 @@ public class PositionServiceTest {
     @BeforeEach
     public void setUp() {
         positionService = new PositionService();
-        // Start with 100 shares at $50 average cost
         position = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
     }
     
     @Test
     public void testApplyBuy() {
-        // Buy 50 more shares at $60
         positionService.applyBuy(position, new BigDecimal("50"), new BigDecimal("60"));
         
-        // Should have 150 shares
         assertEquals(new BigDecimal("150"), position.getQuantity());
-        
-        // Average cost: (100*50 + 50*60) / 150 = 8000 / 150 = 53.33
         assertTrue(position.getAverageCost().compareTo(new BigDecimal("53.3")) > 0);
         assertTrue(position.getAverageCost().compareTo(new BigDecimal("53.4")) < 0);
     }
     
     @Test
     public void testApplySell() throws InsufficientHoldingsException {
-        // Sell 30 shares
         positionService.applySell(position, new BigDecimal("30"));
         
-        // Should have 70 shares left
         assertEquals(new BigDecimal("70"), position.getQuantity());
-        
-        // Average cost unchanged
         assertEquals(new BigDecimal("50"), position.getAverageCost());
     }
     
     @Test
     public void testSellMoreThanHolding() throws InsufficientHoldingsException {
-        // Try to sell 150 shares (only have 100)
         assertThrows(InsufficientHoldingsException.class, () -> {
             positionService.applySell(position, new BigDecimal("150"));
         });
@@ -65,5 +55,129 @@ public class PositionServiceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applySell(null, new BigDecimal("50"));
         });
+    }
+
+    @Test
+    public void testBuyWithZeroQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, BigDecimal.ZERO, new BigDecimal("60"));
+        });
+    }
+
+    @Test
+    public void testBuyWithNegativeQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, new BigDecimal("-50"), new BigDecimal("60"));
+        });
+    }
+
+    @Test
+    public void testBuyWithZeroPrice() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, new BigDecimal("50"), BigDecimal.ZERO);
+        });
+    }
+
+    @Test
+    public void testBuyWithNegativePrice() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, new BigDecimal("50"), new BigDecimal("-60"));
+        });
+    }
+
+    @Test
+    public void testBuyWithNullQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, null, new BigDecimal("60"));
+        });
+    }
+
+    @Test
+    public void testBuyWithNullPrice() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applyBuy(position, new BigDecimal("50"), null);
+        });
+    }
+
+    @Test
+    public void testSellWithZeroQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applySell(position, BigDecimal.ZERO);
+        });
+    }
+
+    @Test
+    public void testSellWithNegativeQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applySell(position, new BigDecimal("-30"));
+        });
+    }
+
+    @Test
+    public void testSellWithNullQuantity() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            positionService.applySell(position, null);
+        });
+    }
+
+    @Test
+    public void testSellExactQuantity() throws InsufficientHoldingsException {
+        positionService.applySell(position, new BigDecimal("100"));
+        assertEquals(BigDecimal.ZERO, position.getQuantity());
+    }
+
+    @Test
+    public void testEqualsWithSameAccountAndSymbol() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position pos2 = new Position("ACC001", "AAPL", new BigDecimal("200"), new BigDecimal("60"));
+        
+        assertTrue(pos1.equals(pos2));
+    }
+
+    @Test
+    public void testEqualsWithDifferentSymbol() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position pos2 = new Position("ACC001", "MSFT", new BigDecimal("100"), new BigDecimal("50"));
+        
+        assertFalse(pos1.equals(pos2));
+    }
+
+    @Test
+    public void testEqualsWithDifferentAccount() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position pos2 = new Position("ACC002", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        
+        assertFalse(pos1.equals(pos2));
+    }
+
+    @Test
+    public void testEqualsWithNull() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        
+        assertFalse(pos1.equals(null));
+    }
+
+    @Test
+    public void testEqualsSameObject() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        
+        assertTrue(pos1.equals(pos1));
+    }
+
+    @Test
+    public void testHashCodeConsistency() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position pos2 = new Position("ACC001", "AAPL", new BigDecimal("200"), new BigDecimal("60"));
+        
+        assertTrue(pos1.equals(pos2));
+        assertEquals(pos1.hashCode(), pos2.hashCode());
+    }
+
+    @Test
+    public void testHashCodeDifference() {
+        Position pos1 = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position pos2 = new Position("ACC001", "MSFT", new BigDecimal("100"), new BigDecimal("50"));
+        
+        assertNotEquals(pos1.hashCode(), pos2.hashCode());
     }
 }
