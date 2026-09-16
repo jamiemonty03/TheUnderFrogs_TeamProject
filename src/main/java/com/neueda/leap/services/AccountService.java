@@ -6,19 +6,6 @@ import com.neueda.leap.models.Account;
 import com.neueda.leap.exceptions.AccountNotActiveException;
 import com.neueda.leap.exceptions.InsufficientFundsException;
 
-/**
- * Service for managing account balance operations.
- * 
- * Handles all business logic related to:
- * - Crediting funds to accounts
- * - Debiting funds from accounts
- * - Validating account state during transactions
- * 
- * Ensures data consistency and enforces business rules:
- * - Only active accounts can perform transactions
- * - Debit operations must have sufficient balance
- * - All monetary calculations use BigDecimal for precision
- */
 public class AccountService {
 
     public void credit(Account account, BigDecimal amount) throws AccountNotActiveException {

@@ -13,17 +13,6 @@ import com.neueda.leap.exceptions.InsufficientHoldingsException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
 
-/**
- * Service for validating orders against business rules.
- * 
- * Enforces the following validation rules:
- * - BUY: Account balance >= (Quantity × Price)
- * - SELL: Holdings >= Quantity
- * - Instrument must be tradable
- * - Account must be ACTIVE
- * 
- * Throws appropriate exceptions if any rule is violated.
- */
 public class OrderValidationService {
     
     private final PositionRepository positionRepository;

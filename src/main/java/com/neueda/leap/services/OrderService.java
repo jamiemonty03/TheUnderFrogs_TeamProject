@@ -14,16 +14,8 @@ import com.neueda.leap.repositories.PositionRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.HashMap;
-import java.util.Optional;
+import java.util.Map;
 
-/**
- * Service for creating and managing orders with validation and idempotency support.
- * 
- * Responsibilities:
- * - Validate orders against business rules before creation
- * - Prevent duplicate order processing via idempotency keys
- * - Enforce trading constraints
- */
 public class OrderService {
     
     private final OrderValidationService validationService;
