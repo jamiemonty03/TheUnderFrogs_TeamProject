@@ -36,16 +36,12 @@ public class Stock extends Asset {
     private BigDecimal totalRevenue;
     private String website;
     
-    /**
-     * No-arg constructor for framework use (ORM, JSON deserialization).
-     */
+
     public Stock() {
         super();
     }
 
-    /**
-     * Constructor for creating a stock with all available attributes.
-     */
+
     public Stock(String symbol, String name, BigDecimal price, LocalDateTime tradeDate,
             String sector, String industry, String country, Integer fullTimeEmployees,
             BigDecimal beta, BigDecimal trailingPe, BigDecimal forwardPe, BigDecimal trailingEps,

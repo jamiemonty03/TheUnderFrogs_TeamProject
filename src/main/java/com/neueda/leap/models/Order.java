@@ -155,19 +155,10 @@ public class Order {
         this.updatedBy = updatedBy;
     }
 
-    /**
-     * Get the idempotency key for this order.
-     * Prevents duplicate order processing.
-     * @return the unique idempotency key
-     */
     public String getIdempotencyKey() {
         return idempotencyKey;
     }
 
-    /**
-     * Set the idempotency key for this order.
-     * @param idempotencyKey the unique idempotency key
-     */
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
     }

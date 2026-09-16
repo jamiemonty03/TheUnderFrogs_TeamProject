@@ -87,8 +87,6 @@ public class Position {
         return createdAt;
     }
 
-  
-
     public LocalDateTime getLastUpdated() {
         return lastUpdated;
     }
