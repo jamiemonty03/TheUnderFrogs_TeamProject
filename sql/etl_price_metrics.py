@@ -41,8 +41,8 @@ INSERT_PRICE_METRICS = sql.SQL("""
     INSERT INTO price_metrics 
     (ticker, trade_date, close_price, daily_return, 
      moving_avg_20, moving_avg_50, avg_volume_30d,
-     volatility_30d, volume_spike_ratio, momentum_score, created_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+     volatility_30d, volume_spike_ratio, momentum_score, version, created_at, last_updated, updated_by)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (ticker, trade_date) 
     DO UPDATE SET
         close_price = EXCLUDED.close_price,
@@ -53,7 +53,9 @@ INSERT_PRICE_METRICS = sql.SQL("""
         volatility_30d = EXCLUDED.volatility_30d,
         volume_spike_ratio = EXCLUDED.volume_spike_ratio,
         momentum_score = EXCLUDED.momentum_score,
-        created_at = EXCLUDED.created_at
+        version = price_metrics.version + 1,
+        last_updated = NOW(),
+        updated_by = 'ETL_PROCESS'
 """)
 
 DB_HOST = os.getenv('DB_HOST')
@@ -224,7 +226,10 @@ def transform_clean_to_metrics(df: pd.DataFrame) -> pd.DataFrame:
             group['close']
         )
         
+        metrics['version'] = 0
         metrics['created_at'] = datetime.now(timezone.utc)
+        metrics['last_updated'] = datetime.now(timezone.utc)
+        metrics['updated_by'] = 'ETL_PROCESS'
         
         metrics_data.append(metrics)
     
@@ -238,7 +243,7 @@ def validate_metrics(df: pd.DataFrame) -> bool:
     required_columns = [
         'ticker', 'trade_date', 'close_price', 'daily_return',
         'moving_avg_20', 'moving_avg_50', 'avg_volume_30d',
-        'volatility_30d', 'volume_spike_ratio', 'momentum_score', 'created_at'
+        'volatility_30d', 'volume_spike_ratio', 'momentum_score', 'version', 'created_at', 'last_updated', 'updated_by'
     ]
     
     missing_cols = set(required_columns) - set(df.columns)
@@ -299,7 +304,10 @@ def load_to_database(db: DatabaseConnection, df: pd.DataFrame) -> int:
                             float(row['volatility_30d']) if pd.notna(row['volatility_30d']) else None,
                             float(row['volume_spike_ratio']) if pd.notna(row['volume_spike_ratio']) else None,
                             float(row['momentum_score']) if pd.notna(row['momentum_score']) else None,
-                            row['created_at']
+                            int(row['version']),
+                            row['created_at'],
+                            row['last_updated'],
+                            row['updated_by']
                         )
                         for _, row in batch.iterrows()
                     ]

@@ -40,8 +40,8 @@ INSERT_INSTRUMENTS_METRICS = sql.SQL("""
     INSERT INTO instruments_metrics 
     (symbol, latest_price, latest_date, price_52w_high, price_52w_low,
      ytd_return, one_year_return, max_drawdown, last_price_update, 
-     days_since_update, asset_class, currency, exchange, created_at, updated_at)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+     days_since_update, asset_class, currency, exchange, version, created_at, last_updated, updated_by)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ON CONFLICT (symbol)
     DO UPDATE SET
         latest_price = EXCLUDED.latest_price,
@@ -56,7 +56,9 @@ INSERT_INSTRUMENTS_METRICS = sql.SQL("""
         asset_class = EXCLUDED.asset_class,
         currency = EXCLUDED.currency,
         exchange = EXCLUDED.exchange,
-        updated_at = EXCLUDED.updated_at
+        version = instruments_metrics.version + 1,
+        last_updated = NOW(),
+        updated_by = 'ETL_PROCESS'
 """)
 
 DB_HOST = os.getenv('DB_HOST')
@@ -213,8 +215,10 @@ def calculate_metrics(df: pd.DataFrame) -> pd.DataFrame:
             'asset_class': asset_class,
             'currency': currency,
             'exchange': exchange,
+            'version': 0,
             'created_at': datetime.now(timezone.utc),
-            'updated_at': datetime.now(timezone.utc)
+            'last_updated': datetime.now(timezone.utc),
+            'updated_by': 'ETL_PROCESS'
         })
     
     result_df = pd.DataFrame(metrics_list)
@@ -227,7 +231,7 @@ def validate_metrics(df: pd.DataFrame) -> bool:
     """Validate calculated metrics."""
     required_columns = [
         'symbol', 'latest_price', 'latest_date', 'price_52w_high', 'price_52w_low',
-        'asset_class', 'currency'
+        'asset_class', 'currency', 'version', 'created_at', 'last_updated', 'updated_by'
     ]
     
     missing_cols = set(required_columns) - set(df.columns)
@@ -281,8 +285,10 @@ def load_to_database(db: DatabaseConnection, df: pd.DataFrame) -> int:
                         row['asset_class'],
                         row['currency'],
                         row['exchange'],
+                        int(row['version']),
                         row['created_at'],
-                        row['updated_at']
+                        row['last_updated'],
+                        row['updated_by']
                     ))
                     records_loaded += 1
                 
