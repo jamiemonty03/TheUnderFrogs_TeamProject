@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS orders CASCADE;
 
 CREATE TABLE orders (
     order_id         CHAR(36) NOT NULL PRIMARY KEY,
+    idempotency_key  VARCHAR(100) NOT NULL UNIQUE,
     account_id       VARCHAR(32) NOT NULL REFERENCES accounts(account_id),
     symbol           VARCHAR(20)  NOT NULL REFERENCES instruments(symbol),
     side             VARCHAR(4) NOT NULL CHECK (side IN ('BUY', 'SELL')),
@@ -19,3 +20,4 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_account_id ON orders(account_id);
 CREATE INDEX idx_orders_symbol ON orders(symbol);
 CREATE INDEX idx_orders_order_status ON orders(order_status);
+CREATE INDEX idx_orders_idempotency_key ON orders(idempotency_key);
