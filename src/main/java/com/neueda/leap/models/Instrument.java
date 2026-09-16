@@ -19,34 +19,24 @@ import java.time.LocalDateTime;
  */
 public class Instrument {
     
-    /** Unique trading symbol (e.g., "AAPL", "MSFT", "SPY") - Primary key */
     private String symbol;
     
-    /** Full name of the instrument (e.g., "Apple Inc.") */
     private String name;
     
-    /** Instrument classification (Equity, Bond, ETF) */
     private String assetClass;
     
-    /** Base currency for pricing (e.g., "USD", "EUR") */
     private String currency;
     
-    /** Exchange where instrument trades (e.g., "NASDAQ", "NYSE") */
     private String exchange;
     
-    /** Whether this instrument can be traded (false = disabled from trading) */
     private boolean tradable;
     
-    /** Version counter for optimistic locking - incremented on each update */
     private int version;
     
-    /** Timestamp when instrument was added to system */
     private LocalDateTime createdAt;
     
-    /** Timestamp of last metadata update */
     private LocalDateTime lastUpdated;
     
-    /** User or system that last updated this instrument */
     private String updatedBy;
 
     public Instrument() {}

@@ -86,18 +86,15 @@ public class OrderValidationService {
             throw new IllegalArgumentException("Quantity must be positive");
         }
         
-        // Get position from repository
         Optional<Position> positionOpt = positionRepository.findByAccountAndSymbol(
             account.getAccountId(), 
             instrumentSymbol
         );
         
-        // If no position exists, holdings are zero
         BigDecimal holdingQuantity = positionOpt
             .map(Position::getQuantity)
             .orElse(BigDecimal.ZERO);
         
-        // Validate that holdings >= sell quantity
         if (holdingQuantity.compareTo(quantity) < 0) {
             throw new InsufficientHoldingsException(
                 "Insufficient holdings for SELL order. Required: " + quantity + 
@@ -111,13 +108,10 @@ public class OrderValidationService {
             throws AccountNotActiveException, InstrumentNotFoundException, 
                    TradingException, InsufficientFundsException, InsufficientHoldingsException {
         
-        // Rule 1: Validate account is ACTIVE
         validateAccount(account);
         
-        // Rule 2: Validate instrument is tradable
         validateInstrument(instrument);
         
-        // Rule 3 & 4: Validate based on order side
         if (side == OrderSide.BUY) {
             validateBuyOrder(account, quantity, price);
         } else if (side == OrderSide.SELL) {

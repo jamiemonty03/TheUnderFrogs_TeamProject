@@ -34,24 +34,9 @@ public class Price {
     private BigDecimal volume;
     private LocalDateTime createdAt;
 
-    /**
-     * No-arg constructor for framework use (ORM, JSON deserialization).
-     */
     public Price() {
     }
 
-    /**
-     * Constructor for creating price data with OHLCV values.
-     * Automatically sets createdAt to current time.
-     * 
-     * @param symbol unique trading symbol (e.g., "AAPL")
-     * @param tradeDate date of the trading day
-     * @param open opening price
-     * @param high highest price during the day
-     * @param low lowest price during the day
-     * @param close closing price
-     * @param volume total shares/units traded
-     */
     public Price(
             String symbol,
             LocalDate tradeDate,
@@ -127,11 +112,6 @@ public class Price {
         this.volume = volume;
     }
 
-    /**
-     * Get creation timestamp.
-     * Immutable - set once when price record is created.
-     * @return timestamp when this price record was created
-     */
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
