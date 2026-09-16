@@ -10,6 +10,7 @@ import com.neueda.leap.exceptions.AccountNotActiveException;
 import com.neueda.leap.exceptions.InstrumentNotFoundException;
 import com.neueda.leap.exceptions.InsufficientFundsException;
 import com.neueda.leap.exceptions.InsufficientHoldingsException;
+import com.neueda.leap.exceptions.InvalidOrderException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
 
@@ -24,9 +25,9 @@ public class OrderValidationService {
         this.positionRepository = positionRepository;
     }
 
-    public void validateAccount(Account account) throws AccountNotActiveException {
+    public void validateAccount(Account account) throws AccountNotActiveException, InvalidOrderException {
         if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
+            throw new InvalidOrderException("Account cannot be null");
         }
         if (!account.isActive()) {
             throw new AccountNotActiveException(
@@ -49,13 +50,13 @@ public class OrderValidationService {
         }
     }
 
-    public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal price) 
-            throws InsufficientFundsException {
+    public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal price)
+            throws InsufficientFundsException, InvalidOrderException {
         if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new InvalidOrderException("Quantity must be positive");
         }
         if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Price must be positive");
+            throw new InvalidOrderException("Price must be positive");
         }
         
         BigDecimal requiredBalance = quantity.multiply(price);
@@ -69,10 +70,10 @@ public class OrderValidationService {
         }
     }
 
-    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity) 
-            throws InsufficientHoldingsException {
+    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity)
+            throws InsufficientHoldingsException, InvalidOrderException {
         if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new InvalidOrderException("Quantity must be positive");
         }
         
         Optional<Position> positionOpt = positionRepository.findByAccountAndSymbol(
@@ -93,20 +94,21 @@ public class OrderValidationService {
     }
 
     public void validateOrder(Account account, Instrument instrument, OrderSide side,
-                             BigDecimal quantity, BigDecimal price) 
-            throws AccountNotActiveException, InstrumentNotFoundException, 
-                   TradingException, InsufficientFundsException, InsufficientHoldingsException {
-        
+                             BigDecimal quantity, BigDecimal price)
+            throws AccountNotActiveException, InstrumentNotFoundException,
+                   TradingException, InsufficientFundsException, InsufficientHoldingsException,
+                   InvalidOrderException {
+
         validateAccount(account);
-        
+
         validateInstrument(instrument);
-        
+
         if (side == OrderSide.BUY) {
             validateBuyOrder(account, quantity, price);
         } else if (side == OrderSide.SELL) {
             validateSellOrder(account, instrument.getSymbol(), quantity);
         } else {
-            throw new IllegalArgumentException("Invalid order side: " + side);
+            throw new InvalidOrderException("Invalid order side: " + side);
         }
     }
 }
