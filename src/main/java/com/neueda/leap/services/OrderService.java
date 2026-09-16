@@ -12,8 +12,8 @@ import com.neueda.leap.exceptions.InsufficientHoldingsException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
