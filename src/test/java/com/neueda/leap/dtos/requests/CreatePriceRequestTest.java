@@ -10,6 +10,7 @@ import jakarta.validation.ValidatorFactory;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Set;
+import com.neueda.leap.dto.requests.CreatePriceRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
