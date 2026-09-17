@@ -12,24 +12,36 @@ import com.neueda.leap.exceptions.InsufficientHoldingsException;
 import com.neueda.leap.exceptions.InvalidOrderException;
 import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.repositories.PositionRepository;
+import com.neueda.leap.repositories.OrderRepository;
+import com.neueda.leap.repositories.InMemoryOrderRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class OrderService {
     
     private final OrderValidationService validationService;
-    private final Map<String, Order> ordersByIdempotencyKey = new HashMap<>();
+    private final OrderRepository orderRepository;
+    private final Map<String, Order> ordersByIdempotencyKey = new ConcurrentHashMap<>();
 
     public OrderService(PositionRepository positionRepository) {
+        this(positionRepository, new InMemoryOrderRepository());
+    }
+
+    public OrderService(PositionRepository positionRepository, OrderRepository orderRepository) {
         if (positionRepository == null) {
             throw new IllegalArgumentException("PositionRepository cannot be null");
         }
+        if (orderRepository == null) {
+            throw new IllegalArgumentException("OrderRepository cannot be null");
+        }
         this.validationService = new OrderValidationService(positionRepository);
+        this.orderRepository = orderRepository;
     }
 
-    private Order createOrder(Order order) throws DuplicateOrderException {
+    private synchronized Order createOrder(Order order) throws DuplicateOrderException {
         if (order.getIdempotencyKey() == null || order.getIdempotencyKey().trim().isEmpty()) {
             throw new IllegalArgumentException("Idempotency key is required");
         }
@@ -38,8 +50,16 @@ public class OrderService {
             throw new DuplicateOrderException(order.getIdempotencyKey(), "idempotencyKey");
         }
         
-        ordersByIdempotencyKey.put(order.getIdempotencyKey(), order);
-        return order;
+        Order savedOrder = orderRepository.save(order);
+        ordersByIdempotencyKey.put(savedOrder.getIdempotencyKey(), savedOrder);
+        return savedOrder;
+    }
+
+    public Order saveOrder(Order order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
+        return orderRepository.save(order);
     }
 
     public Order placeOrder(Account account, Instrument instrument, OrderSide side,
@@ -50,15 +70,17 @@ public class OrderService {
         
         validationService.validateOrder(account, instrument, side, quantity, price);
         
-        int quantityInt = quantity.intValue();
-        
-        Order order = new Order();
-        order.setAccountId(account.getAccountId());
-        order.setSymbol(instrument.getSymbol());
-        order.setSide(side);
-        order.setQuantity(quantityInt);
-        order.setPrice(price);
-        order.setIdempotencyKey(idempotencyKey);
+        int quantityInt = quantity.intValueExact();
+
+        Order order = new Order(
+            UUID.randomUUID().toString(),
+            account.getAccountId(),
+            instrument.getSymbol(),
+            side,
+            quantityInt,
+            price,
+            idempotencyKey
+        );
         
         return createOrder(order);
     }

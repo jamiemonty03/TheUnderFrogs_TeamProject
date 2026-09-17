@@ -4,6 +4,7 @@ import com.neueda.leap.models.Position;
 import com.neueda.leap.exceptions.InsufficientHoldingsException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 
 
 
@@ -31,6 +32,8 @@ public class PositionService {
 
         position.setQuantity(newQuantity);
         position.setAverageCost(newAverageCost);
+        position.setVersion(position.getVersion() + 1);
+        position.setLastUpdated(LocalDateTime.now());
     }
 
     public void applySell(Position position, BigDecimal quantity) throws InsufficientHoldingsException {
@@ -50,6 +53,8 @@ public class PositionService {
 
         BigDecimal newQuantity = currentQuantity.subtract(quantity);
         position.setQuantity(newQuantity);
+        position.setVersion(position.getVersion() + 1);
+        position.setLastUpdated(LocalDateTime.now());
     }
 }
 
