@@ -11,7 +11,6 @@
 
 
 ## Entity Relationship Diagram
-Shows the database schema and relationships between the `accounts`, `instruments`, `orders`, and `positions` tables.
 
 ![ERD Diagram](docs/diagrams/ERD-Diagram.PNG)
 
