@@ -8,7 +8,7 @@ sequenceDiagram
     participant P as PositionManager
     participant PS as PositionService
     participant R as PositionRepository
-    participant X as OrderExecutionStrategy
+    participant OES as OrderExecutionStrategy
 
     C->>+O: processOrder(account, instrument, side, quantity, price, idempotencyKey)
     O->>+S: placeOrder(account, instrument, side, quantity, price, idempotencyKey)
@@ -36,45 +36,45 @@ sequenceDiagram
         S-->>-O: order
 
         alt side is BUY
-            O->>X: select BuyOrderStrategy
-            O->>+X: execute(order, account, instrument)
-            X->>+A: debit(account, price x quantity)
-            A-->>-X: cash debited
-            X->>+P: updatePositionAfterBuy(accountId, symbol, quantity, price)
+            O->>OES: select BuyOrderStrategy
+            O->>+OES: execute(order, account, instrument)
+            OES->>+A: debit(account, price x quantity)
+            A-->>-OES: cash debited
+            OES->>+P: updatePositionAfterBuy(accountId, symbol, quantity, price)
             P->>+R: find or create position
             R-->>-P: position
             P->>+PS: applyBuy(position, quantity, price)
             PS->>PS: add quantity and recalculate average cost
             PS-->>-P: updated position
-            P->>R: save(position)
+            P->>+R: save(position)
             R-->>-P: saved
-            P-->>-X: position updated
+            P-->>-OES: position updated
         else side is SELL
-            O->>X: select SellOrderStrategy
-            O->>+X: execute(order, account, instrument)
-            X->>+A: credit(account, price x quantity)
-            A-->>-X: cash credited
-            X->>+P: updatePositionAfterSell(accountId, symbol, quantity)
+            O->>OES: select SellOrderStrategy
+            O->>+OES: execute(order, account, instrument)
+            OES->>+A: credit(account, price x quantity)
+            A-->>-OES: cash credited
+            OES->>+P: updatePositionAfterSell(accountId, symbol, quantity)
             P->>+R: find position
             R-->>-P: current position
             P->>+PS: applySell(position, quantity)
             PS->>PS: subtract quantity
             PS-->>-P: updated position
             alt position quantity is zero
-                P->>R: delete(accountId, symbol)
-                R-->>P: deleted
+                P->>+R: delete(accountId, symbol)
+                R-->>-P: deleted
             else position quantity remains
-                P->>R: save(position)
-                R-->>P: saved
+                P->>+R: save(position)
+                R-->>-P: saved
             end
-            P-->>-X: position updated
+            P-->>-OES: position updated
         end
 
-        X->>X: mark order FILLED
-        X-->>-O: OrderResult(success)
+        OES->>OES: mark order FILLED
+        OES-->>-O: OrderResult(success)
         O->>S: saveOrder(order with final status)
         S-->>O: saved order
         O-->>-C: OrderResult
     end
 
-    Note over X,R: On execution failure, the strategy marks the order REJECTED and attempts to reverse the cash movement.
+    Note over OES,R: On execution failure, the strategy marks the order REJECTED and attempts to reverse the cash movement.
