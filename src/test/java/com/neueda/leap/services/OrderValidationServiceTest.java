@@ -11,20 +11,26 @@ import com.neueda.leap.exceptions.TradingException;
 import com.neueda.leap.models.Account;
 import com.neueda.leap.models.Instrument;
 import com.neueda.leap.models.Position;
-import com.neueda.leap.repositories.InMemoryPositionRepository;
 import com.neueda.leap.repositories.PositionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @DisplayName("OrderValidationService Tests")
 public class OrderValidationServiceTest {
 
     private OrderValidationService validationService;
+
+    @Mock
     private PositionRepository positionRepository;
 
     private Account activeAccount;
@@ -34,13 +40,17 @@ public class OrderValidationServiceTest {
 
     @BeforeEach
     void setUp() {
-        positionRepository = new InMemoryPositionRepository();
+        MockitoAnnotations.openMocks(this);
         validationService = new OrderValidationService(positionRepository);
 
         activeAccount = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
         inactiveAccount = new Account("ACC002", "Jane Roe", new BigDecimal("20000.00"), AccountStatus.SUSPENDED);
         tradableInstrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
         untradableInstrument = new Instrument("HALT", "Halted Corp.", "EQUITY", "USD", "NASDAQ", false);
+
+        // Default mock behavior: no positions found
+        when(positionRepository.findByAccountAndSymbol(anyString(), anyString()))
+            .thenReturn(Optional.empty());
     }
 
     @Test
@@ -55,7 +65,9 @@ public class OrderValidationServiceTest {
     @Test
     @DisplayName("Valid SELL order passes validation when holdings are sufficient")
     void validSellOrderPasses() throws TradingException {
-        positionRepository.save(new Position("ACC001", "AAPL", new BigDecimal("50"), new BigDecimal("120.00")));
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("50"), new BigDecimal("120.00"));
+        when(positionRepository.findByAccountAndSymbol("ACC001", "AAPL"))
+            .thenReturn(Optional.of(position));
 
         assertDoesNotThrow(() -> validationService.validateOrder(
             activeAccount, tradableInstrument, OrderSide.SELL,
@@ -142,7 +154,9 @@ public class OrderValidationServiceTest {
     @Test
     @DisplayName("SELL order rejected when holdings are insufficient")
     void rejectsInsufficientHoldingsOnSell() {
-        positionRepository.save(new Position("ACC001", "AAPL", new BigDecimal("5"), new BigDecimal("120.00")));
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("5"), new BigDecimal("120.00"));
+        when(positionRepository.findByAccountAndSymbol("ACC001", "AAPL"))
+            .thenReturn(Optional.of(position));
 
         assertThrows(InsufficientHoldingsException.class, () -> validationService.validateOrder(
             activeAccount, tradableInstrument, OrderSide.SELL,

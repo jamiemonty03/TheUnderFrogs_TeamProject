@@ -10,7 +10,7 @@ import jakarta.validation.ValidatorFactory;
 import com.neueda.leap.enums.OrderSide;
 import java.math.BigDecimal;
 import java.util.Set;
-import com.neueda.leap.dto.requests.PlaceOrderRequest;
+import com.neueda.leap.dtos.requests.PlaceOrderRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
