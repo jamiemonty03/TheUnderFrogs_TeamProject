@@ -12,7 +12,7 @@ public class AccountService {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
         }
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Credit amount must be positive");
         }
         
@@ -30,7 +30,7 @@ public class AccountService {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
         }
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Debit amount must be positive");
         }
         
