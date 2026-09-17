@@ -1,4 +1,4 @@
-package com.neueda.leap.dto.responses;
+package com.neueda.leap.dtos.responses;
 
 public record InstrumentResponse(
     String symbol,
