@@ -5,27 +5,38 @@ import com.neueda.leap.models.Account;
 import com.neueda.leap.models.Instrument;
 import com.neueda.leap.enums.OrderSide;
 import com.neueda.leap.enums.AccountStatus;
-import com.neueda.leap.repositories.InMemoryPositionRepository;
 import com.neueda.leap.repositories.PositionRepository;
 import com.neueda.leap.exceptions.InvalidOrderException;
 import com.neueda.leap.enums.OrderStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @DisplayName("OrderService Integration Tests")
 public class OrderServiceTest {
     
     private OrderService orderService;
+
+    @Mock
     private PositionRepository positionRepository;
 
     @BeforeEach
     void setUp() {
-        positionRepository = new InMemoryPositionRepository();
+        MockitoAnnotations.openMocks(this);
         orderService = new OrderService(positionRepository);
+        
+        // Default mock behavior: no positions found
+        when(positionRepository.findByAccountAndSymbol(anyString(), anyString()))
+            .thenReturn(Optional.empty());
     }
 
     @Test
