@@ -55,7 +55,9 @@ public class OrderProcessor {
         OrderExecutionStrategy strategy = 
             side == OrderSide.BUY ? buyStrategy : sellStrategy;
         
-        return strategy.execute(order, account, instrument);
+        OrderResult result = strategy.execute(order, account, instrument);
+        orderService.saveOrder(order);
+        return result;
     }
 
 }

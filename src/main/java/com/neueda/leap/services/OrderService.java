@@ -55,6 +55,13 @@ public class OrderService {
         return savedOrder;
     }
 
+    public Order saveOrder(Order order) {
+        if (order == null) {
+            throw new IllegalArgumentException("Order cannot be null");
+        }
+        return orderRepository.save(order);
+    }
+
     public Order placeOrder(Account account, Instrument instrument, OrderSide side,
                            BigDecimal quantity, BigDecimal price, String idempotencyKey)
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,

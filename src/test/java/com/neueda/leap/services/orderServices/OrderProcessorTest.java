@@ -37,6 +37,29 @@ public class OrderProcessorTest {
         processor.processOrder(account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1");
 
         verify(mockBuy).execute(buyOrder, account, instrument);
+        verify(orderService).saveOrder(buyOrder);
         verify(mockSell, never()).execute(any(), any(), any());
+    }
+
+    @Test
+    void testOrderProcessorDispatchesSellAndPersistsOrder() throws Exception {
+        OrderService orderService = mock(OrderService.class);
+        BuyOrderStrategy mockBuy = mock(BuyOrderStrategy.class);
+        SellOrderStrategy mockSell = mock(SellOrderStrategy.class);
+        OrderProcessor processor = new OrderProcessor(orderService, mockBuy, mockSell);
+        Account account = new Account("ACC-1", "Test", BigDecimal.TEN, AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        Order sellOrder = new Order("ORDER-2", "ACC-1", "AAPL", OrderSide.SELL, 1, BigDecimal.TEN, "key-2");
+
+        when(orderService.placeOrder(account, instrument, OrderSide.SELL, BigDecimal.ONE, BigDecimal.TEN, "key-2"))
+            .thenReturn(sellOrder);
+        when(mockSell.execute(sellOrder, account, instrument))
+            .thenReturn(new OrderResult(true, "filled", null));
+
+        processor.processOrder(account, instrument, OrderSide.SELL, BigDecimal.ONE, BigDecimal.TEN, "key-2");
+
+        verify(mockSell).execute(sellOrder, account, instrument);
+        verify(orderService).saveOrder(sellOrder);
+        verify(mockBuy, never()).execute(any(), any(), any());
     }
 }
