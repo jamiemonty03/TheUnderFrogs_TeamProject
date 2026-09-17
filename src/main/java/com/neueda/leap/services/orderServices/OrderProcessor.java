@@ -52,8 +52,11 @@ public class OrderProcessor {
         
         Order order = orderService.placeOrder(account, instrument, side, quantity, price, idempotencyKey);
         
-        OrderExecutionStrategy strategy = 
-            side == OrderSide.BUY ? buyStrategy : sellStrategy;
+        OrderExecutionStrategy strategy = switch (side) {
+            case BUY -> buyStrategy;
+            case SELL -> sellStrategy;
+            case null -> throw new InvalidOrderException("Order side cannot be null");
+        };
         
         OrderResult result = strategy.execute(order, account, instrument);
         orderService.saveOrder(order);

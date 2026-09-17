@@ -5,6 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 
@@ -12,10 +14,16 @@ import org.junit.jupiter.api.Test;
 
 import com.neueda.leap.enums.AccountStatus;
 import com.neueda.leap.enums.OrderSide;
+import com.neueda.leap.enums.OrderStatus;
 import com.neueda.leap.models.Account;
 import com.neueda.leap.models.Instrument;
 import com.neueda.leap.models.Order;
+import com.neueda.leap.models.Position;
+import com.neueda.leap.repositories.InMemoryPositionRepository;
+import com.neueda.leap.services.AccountService;
 import com.neueda.leap.services.OrderService;
+import com.neueda.leap.services.PositionManager;
+import com.neueda.leap.services.PositionService;
 
 public class OrderProcessorTest {
 
@@ -61,5 +69,58 @@ public class OrderProcessorTest {
         verify(mockSell).execute(sellOrder, account, instrument);
         verify(orderService).saveOrder(sellOrder);
         verify(mockBuy, never()).execute(any(), any(), any());
+    }
+
+    @Test
+    void buyOrderUpdatesAccountAndCanBeRetrievedAfterExecution() throws Exception {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        OrderService orderService = new OrderService(positionRepository);
+        PositionManager positionManager = new PositionManager(positionRepository, new PositionService());
+        OrderProcessor processor = new OrderProcessor(
+            orderService,
+            new BuyOrderStrategy(new AccountService(), positionManager),
+            new SellOrderStrategy(new AccountService(), positionManager)
+        );
+        Account account = new Account("ACC-BUY", "Buyer", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+
+        OrderResult result = processor.processOrder(
+            account, instrument, OrderSide.BUY,
+            new BigDecimal("2"), new BigDecimal("100.00"), "buy-persistence-key"
+        );
+
+        Order savedOrder = orderService.getOrderByIdempotencyKey("buy-persistence-key").orElseThrow();
+        assertTrue(result.isSuccess());
+        assertEquals(new BigDecimal("800.00"), account.getCashBalance());
+        assertEquals(OrderStatus.FILLED, savedOrder.getOrderStatus());
+        assertEquals(2, positionManager.getTotalQuantity("ACC-BUY", "AAPL"));
+    }
+
+    @Test
+    void sellOrderUpdatesAccountAndCanBeRetrievedAfterExecution() throws Exception {
+        InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
+        positionRepository.save(new Position(
+            "ACC-SELL", "AAPL", new BigDecimal("10"), new BigDecimal("90.00")
+        ));
+        OrderService orderService = new OrderService(positionRepository);
+        PositionManager positionManager = new PositionManager(positionRepository, new PositionService());
+        OrderProcessor processor = new OrderProcessor(
+            orderService,
+            new BuyOrderStrategy(new AccountService(), positionManager),
+            new SellOrderStrategy(new AccountService(), positionManager)
+        );
+        Account account = new Account("ACC-SELL", "Seller", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+
+        OrderResult result = processor.processOrder(
+            account, instrument, OrderSide.SELL,
+            new BigDecimal("2"), new BigDecimal("100.00"), "sell-persistence-key"
+        );
+
+        Order savedOrder = orderService.getOrderByIdempotencyKey("sell-persistence-key").orElseThrow();
+        assertTrue(result.isSuccess());
+        assertEquals(new BigDecimal("1200.00"), account.getCashBalance());
+        assertEquals(OrderStatus.FILLED, savedOrder.getOrderStatus());
+        assertEquals(8, positionManager.getTotalQuantity("ACC-SELL", "AAPL"));
     }
 }
