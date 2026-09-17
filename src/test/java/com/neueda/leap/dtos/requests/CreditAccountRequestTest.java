@@ -9,7 +9,6 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.math.BigDecimal;
 import java.util.Set;
-import com.neueda.leap.dto.requests.CreditAccountRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 

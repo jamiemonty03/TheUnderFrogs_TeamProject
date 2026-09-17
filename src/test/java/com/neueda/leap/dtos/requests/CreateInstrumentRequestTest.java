@@ -8,7 +8,6 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.Set;
-import com.neueda.leap.dto.requests.CreateInstrumentRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
