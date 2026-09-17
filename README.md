@@ -11,9 +11,8 @@
 
 
 ## Entity Relationship Diagram
-Shows the database schema and relationships between the `accounts`, `instruments`, `orders`, and `positions` tables.
 
-![ERD Diagram](images/ERD-Diagram.PNG)
+![ERD Diagram](docs/diagrams/ERD-Diagram.PNG)
 
 ## Docker Setup
 The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
