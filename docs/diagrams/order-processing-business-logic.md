@@ -17,7 +17,6 @@ sequenceDiagram
     participant OrderService
     participant OrderValidationService
     participant AccountService
-    participant PositionManager
     participant PositionService
     participant PositionRepository
     participant OrderExecutionStrategy
@@ -57,36 +56,32 @@ sequenceDiagram
             OrderProcessor->>+OrderExecutionStrategy: execute(order, account, instrument)
             OrderExecutionStrategy->>+AccountService: debit(account, price x quantity)
             AccountService-->>-OrderExecutionStrategy: balance updated
-            OrderExecutionStrategy->>+PositionManager: updatePositionAfterBuy(accountId, symbol, quantity, price)
-            PositionManager->>PositionRepository: find or create position
-            PositionRepository-->>PositionManager: position
-            PositionManager->>+PositionService: applyBuy(position, quantity, price)
-            PositionService->>PositionService: add quantity and recalculate average cost
-            PositionService-->>-PositionManager: updated position
-            PositionManager->>PositionRepository: save(position)
-            PositionRepository-->>PositionManager: saved
-            PositionManager-->>-OrderExecutionStrategy: position updated
+            OrderExecutionStrategy->>+PositionService: updatePositionAfterBuy(accountId, symbol, quantity, price)
+            PositionService->>PositionRepository: find or create position
+            PositionRepository-->>PositionService: position
+            PositionService->>PositionService: applyBuy (add quantity, recalculate average cost)
+            PositionService->>PositionRepository: save(position)
+            PositionRepository-->>PositionService: saved
+            PositionService-->>-OrderExecutionStrategy: position updated
         else side is SELL
             OrderProcessor->>OrderExecutionStrategy: select SellOrderStrategy
             OrderProcessor->>+OrderExecutionStrategy: execute(order, account, instrument)
             OrderExecutionStrategy->>+AccountService: credit(account, price x quantity)
             AccountService-->>-OrderExecutionStrategy: balance updated
-            OrderExecutionStrategy->>+PositionManager: updatePositionAfterSell(accountId, symbol, quantity)
-            PositionManager->>PositionRepository: find position
-            PositionRepository-->>PositionManager: current position
-            PositionManager->>+PositionService: applySell(position, quantity)
-            PositionService->>PositionService: subtract quantity
-            PositionService-->>-PositionManager: updated position
+            OrderExecutionStrategy->>+PositionService: updatePositionAfterSell(accountId, symbol, quantity)
+            PositionService->>PositionRepository: find position
+            PositionRepository-->>PositionService: current position
+            PositionService->>PositionService: applySell (subtract quantity)
 
             alt position quantity reaches zero
-                PositionManager->>PositionRepository: delete(accountId, symbol)
-                PositionRepository-->>PositionManager: deleted
+                PositionService->>PositionRepository: delete(accountId, symbol)
+                PositionRepository-->>PositionService: deleted
             else position quantity remains
-                PositionManager->>PositionRepository: save(position)
-                PositionRepository-->>PositionManager: saved
+                PositionService->>PositionRepository: save(position)
+                PositionRepository-->>PositionService: saved
             end
 
-            PositionManager-->>-OrderExecutionStrategy: position updated
+            PositionService-->>-OrderExecutionStrategy: position updated
         end
 
         OrderExecutionStrategy->>OrderExecutionStrategy: mark order FILLED

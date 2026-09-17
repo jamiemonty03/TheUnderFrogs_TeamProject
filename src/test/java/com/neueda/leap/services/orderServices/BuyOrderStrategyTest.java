@@ -19,21 +19,21 @@ import com.neueda.leap.models.Account;
 import com.neueda.leap.models.Instrument;
 import com.neueda.leap.models.Order;
 import com.neueda.leap.services.AccountService;
-import com.neueda.leap.services.PositionManager;
+import com.neueda.leap.services.PositionService;
 
 class BuyOrderStrategyTest {
 
     private Account account;
     private Instrument instrument;
-    private PositionManager positionManager;
+    private PositionService positionService;
     private BuyOrderStrategy strategy;
 
     @BeforeEach
     void setUp() {
         account = new Account("ACC-1", "Test", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
         instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
-        positionManager = mock(PositionManager.class);
-        strategy = new BuyOrderStrategy(new AccountService(), positionManager);
+        positionService = mock(PositionService.class);
+        strategy = new BuyOrderStrategy(new AccountService(), positionService);
     }
 
     @Test
@@ -46,7 +46,7 @@ class BuyOrderStrategyTest {
         assertTrue(result.isSuccess());
         assertEquals(OrderStatus.FILLED, order.getOrderStatus());
         assertEquals(new BigDecimal("500.00"), account.getCashBalance());
-        verify(positionManager).updatePositionAfterBuy("ACC-1", "AAPL", 5, new BigDecimal("100.00"));
+        verify(positionService).updatePositionAfterBuy("ACC-1", "AAPL", 5, new BigDecimal("100.00"));
     }
 
     @Test
@@ -54,7 +54,7 @@ class BuyOrderStrategyTest {
         Order order = new Order("ORDER-2", "ACC-1", "AAPL", OrderSide.BUY, 5,
             new BigDecimal("100.00"), "key-2");
         doThrow(new IllegalStateException("position store unavailable"))
-            .when(positionManager).updatePositionAfterBuy("ACC-1", "AAPL", 5, new BigDecimal("100.00"));
+            .when(positionService).updatePositionAfterBuy("ACC-1", "AAPL", 5, new BigDecimal("100.00"));
 
         OrderResult result = strategy.execute(order, account, instrument);
 

@@ -22,7 +22,6 @@ import com.neueda.leap.models.Position;
 import com.neueda.leap.repositories.InMemoryPositionRepository;
 import com.neueda.leap.services.AccountService;
 import com.neueda.leap.services.OrderService;
-import com.neueda.leap.services.PositionManager;
 import com.neueda.leap.services.PositionService;
 
 public class OrderProcessorTest {
@@ -75,11 +74,11 @@ public class OrderProcessorTest {
     void buyOrderUpdatesAccountAndCanBeRetrievedAfterExecution() throws Exception {
         InMemoryPositionRepository positionRepository = new InMemoryPositionRepository();
         OrderService orderService = new OrderService(positionRepository);
-        PositionManager positionManager = new PositionManager(positionRepository, new PositionService());
+        PositionService positionService = new PositionService(positionRepository);
         OrderProcessor processor = new OrderProcessor(
             orderService,
-            new BuyOrderStrategy(new AccountService(), positionManager),
-            new SellOrderStrategy(new AccountService(), positionManager)
+            new BuyOrderStrategy(new AccountService(), positionService),
+            new SellOrderStrategy(new AccountService(), positionService)
         );
         Account account = new Account("ACC-BUY", "Buyer", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
         Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
@@ -93,7 +92,7 @@ public class OrderProcessorTest {
         assertTrue(result.isSuccess());
         assertEquals(new BigDecimal("800.00"), account.getCashBalance());
         assertEquals(OrderStatus.FILLED, savedOrder.getOrderStatus());
-        assertEquals(2, positionManager.getTotalQuantity("ACC-BUY", "AAPL"));
+        assertEquals(2, positionService.getTotalQuantity("ACC-BUY", "AAPL"));
     }
 
     @Test
@@ -103,11 +102,11 @@ public class OrderProcessorTest {
             "ACC-SELL", "AAPL", new BigDecimal("10"), new BigDecimal("90.00")
         ));
         OrderService orderService = new OrderService(positionRepository);
-        PositionManager positionManager = new PositionManager(positionRepository, new PositionService());
+        PositionService positionService = new PositionService(positionRepository);
         OrderProcessor processor = new OrderProcessor(
             orderService,
-            new BuyOrderStrategy(new AccountService(), positionManager),
-            new SellOrderStrategy(new AccountService(), positionManager)
+            new BuyOrderStrategy(new AccountService(), positionService),
+            new SellOrderStrategy(new AccountService(), positionService)
         );
         Account account = new Account("ACC-SELL", "Seller", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
         Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
@@ -121,6 +120,6 @@ public class OrderProcessorTest {
         assertTrue(result.isSuccess());
         assertEquals(new BigDecimal("1200.00"), account.getCashBalance());
         assertEquals(OrderStatus.FILLED, savedOrder.getOrderStatus());
-        assertEquals(8, positionManager.getTotalQuantity("ACC-SELL", "AAPL"));
+        assertEquals(8, positionService.getTotalQuantity("ACC-SELL", "AAPL"));
     }
 }
