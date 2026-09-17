@@ -52,12 +52,8 @@ public class OrderValidationService {
 
     public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal price)
             throws InsufficientFundsException, InvalidOrderException {
-        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidOrderException("Quantity must be positive");
-        }
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidOrderException("Price must be positive");
-        }
+        validateQuantity(quantity);
+        validatePrice(price);
         
         BigDecimal requiredBalance = quantity.multiply(price);
         BigDecimal availableBalance = account.getCashBalance();
@@ -70,11 +66,10 @@ public class OrderValidationService {
         }
     }
 
-    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity)
+    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity, BigDecimal price)
             throws InsufficientHoldingsException, InvalidOrderException {
-        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidOrderException("Quantity must be positive");
-        }
+        validateQuantity(quantity);
+        validatePrice(price);
         
         Optional<Position> positionOpt = positionRepository.findByAccountAndSymbol(
             account.getAccountId(), 
@@ -93,6 +88,24 @@ public class OrderValidationService {
         }
     }
 
+    private void validateQuantity(BigDecimal quantity) throws InvalidOrderException {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOrderException("Quantity must be positive");
+        }
+        if (quantity.stripTrailingZeros().scale() > 0) {
+            throw new InvalidOrderException("Quantity must be a whole number of shares");
+        }
+        if (quantity.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) > 0) {
+            throw new InvalidOrderException("Quantity exceeds the maximum supported value");
+        }
+    }
+
+    private void validatePrice(BigDecimal price) throws InvalidOrderException {
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOrderException("Price must be positive");
+        }
+    }
+
     public void validateOrder(Account account, Instrument instrument, OrderSide side,
                              BigDecimal quantity, BigDecimal price)
             throws AccountNotActiveException, InstrumentNotFoundException,
@@ -106,7 +119,7 @@ public class OrderValidationService {
         if (side == OrderSide.BUY) {
             validateBuyOrder(account, quantity, price);
         } else if (side == OrderSide.SELL) {
-            validateSellOrder(account, instrument.getSymbol(), quantity);
+            validateSellOrder(account, instrument.getSymbol(), quantity, price);
         } else {
             throw new InvalidOrderException("Invalid order side: " + side);
         }
