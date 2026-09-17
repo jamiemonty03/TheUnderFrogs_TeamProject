@@ -1,4 +1,4 @@
-package com.neueda.leap.dto.responses;
+package com.neueda.leap.dtos.responses;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
