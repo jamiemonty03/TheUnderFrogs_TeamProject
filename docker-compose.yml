@@ -22,20 +22,20 @@ services:
     ports:
       - "8081:8080"
 
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.notebook
-    container_name: underfrog-dashboard
-    depends_on:
-      - postgres
-    ports:
-      - "0.0.0.0:8080:8080"
-      # replace with a different port if needed
-    volumes:
-      - ./sql:/sql
-      - ./.env:/sql/.env
-    command: python /sql/dashboard_app.py
+  # dashboard:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.notebook
+  #   container_name: underfrog-dashboard
+  #   depends_on:
+  #     - postgres
+  #   ports:
+  #     - "0.0.0.0:8083:8080"
+  #     # replace with a different port if needed
+  #   volumes:
+  #     - ./sql:/sql
+  #     - ./.env:/sql/.env
+  #   command: python /sql/dashboard_app.py
   
   
 
