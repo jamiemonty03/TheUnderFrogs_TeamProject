@@ -31,12 +31,9 @@ classDiagram
         +debit(Account, BigDecimal)
     }
 
-    class PositionManager:::positionLogic {
+    class PositionService:::positionLogic {
         +updatePositionAfterBuy(...)
         +updatePositionAfterSell(...)
-    }
-
-    class PositionService:::positionCalculation {
         +applyBuy(...)
         +applySell(...)
     }
@@ -75,13 +72,11 @@ classDiagram
     OrderValidationService --> Instrument : validates tradability
 
     OrderExecutionStrategy --> AccountService : changes cash
-    OrderExecutionStrategy --> PositionManager : changes position
+    OrderExecutionStrategy --> PositionService : changes position
     OrderExecutionStrategy --> OrderResult : returns
 
     AccountService --> Account : updates cash balance
 
-    PositionManager --> PositionService : applies calculations
-    PositionManager --> Position : manages
     PositionService --> Position : changes quantity and cost
 
     Order --> Account : belongs to
