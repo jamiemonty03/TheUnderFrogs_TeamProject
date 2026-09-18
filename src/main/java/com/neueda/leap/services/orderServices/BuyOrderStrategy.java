@@ -9,7 +9,7 @@ import com.neueda.leap.models.Account;
 import com.neueda.leap.models.Instrument;
 import com.neueda.leap.models.Order;
 import com.neueda.leap.services.AccountService;
-import com.neueda.leap.services.PositionManager;
+import com.neueda.leap.services.PositionService;
 
 /**
  * Strategy for executing BUY orders.
@@ -27,13 +27,13 @@ import com.neueda.leap.services.PositionManager;
 public class BuyOrderStrategy implements OrderExecutionStrategy {
     
     private final AccountService accountService;
-    private final PositionManager positionManager;
+    private final PositionService positionService;
 
     public BuyOrderStrategy(
             AccountService accountService,
-            PositionManager positionManager) {
+            PositionService positionService) {
         this.accountService = accountService;
-        this.positionManager = positionManager;
+        this.positionService = positionService;
     }
 
     @Override
@@ -44,7 +44,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
             accountService.debit(account, totalCost);
             cashDebited = true;
 
-            positionManager.updatePositionAfterBuy(account.getAccountId(), order.getSymbol(), 
+            positionService.updatePositionAfterBuy(account.getAccountId(), order.getSymbol(), 
                 order.getQuantity(), order.getPrice());
             
 

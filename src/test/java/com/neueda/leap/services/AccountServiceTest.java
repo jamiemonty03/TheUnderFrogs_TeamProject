@@ -5,6 +5,7 @@ import com.neueda.leap.enums.AccountStatus;
 import com.neueda.leap.exceptions.AccountNotActiveException;
 import com.neueda.leap.exceptions.InsufficientFundsException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,6 +23,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Valid amount increases cash balance and increments version")
     public void testCreditValidAmount() throws AccountNotActiveException {
         accountService.credit(account, new BigDecimal("1000"));
         
@@ -30,6 +32,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Multiple credit operations accumulate balance correctly")
     public void testCreditMultipleTimes() throws AccountNotActiveException {
         accountService.credit(account, new BigDecimal("500"));
         accountService.credit(account, new BigDecimal("300"));
@@ -39,6 +42,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when account is null")
     public void testCreditWithNullAccount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.credit(null, new BigDecimal("1000"));
@@ -46,6 +50,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when amount is null")
     public void testCreditWithNullAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.credit(account, null);
@@ -53,6 +58,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when amount is negative")
     public void testCreditWithNegativeAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.credit(account, new BigDecimal("-1000"));
@@ -60,6 +66,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when amount is zero")
     public void testCreditWithZeroAmount() throws AccountNotActiveException {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.credit(account, BigDecimal.ZERO);
@@ -67,6 +74,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when account is SUSPENDED")
     public void testCreditWithInactiveAccount() {
         account.setStatus(AccountStatus.SUSPENDED);
         
@@ -76,6 +84,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit: Throws exception when account is INACTIVE")
     public void testCreditWithClosedAccount() {
         account.setStatus(AccountStatus.INACTIVE);
         
@@ -85,6 +94,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Valid amount decreases cash balance and increments version")
     public void testDebitValidAmount() throws AccountNotActiveException, InsufficientFundsException {
         accountService.debit(account, new BigDecimal("1000"));
         
@@ -93,6 +103,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Multiple debit operations decrease balance correctly")
     public void testDebitMultipleTimes() throws AccountNotActiveException, InsufficientFundsException {
         accountService.debit(account, new BigDecimal("500"));
         accountService.debit(account, new BigDecimal("300"));
@@ -102,6 +113,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Can debit exact balance amount")
     public void testDebitExactBalance() throws AccountNotActiveException, InsufficientFundsException {
         accountService.debit(account, new BigDecimal("5000"));
         
@@ -109,6 +121,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when amount exceeds balance")
     public void testDebitMoreThanBalance() {
         assertThrows(InsufficientFundsException.class, () -> {
             accountService.debit(account, new BigDecimal("6000"));
@@ -116,6 +129,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when account is null")
     public void testDebitWithNullAccount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.debit(null, new BigDecimal("1000"));
@@ -123,6 +137,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when amount is null")
     public void testDebitWithNullAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.debit(account, null);
@@ -130,6 +145,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when amount is negative")
     public void testDebitWithNegativeAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.debit(account, new BigDecimal("-1000"));
@@ -137,6 +153,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when amount is zero")
     public void testDebitWithZeroAmount() throws AccountNotActiveException, InsufficientFundsException {
         assertThrows(IllegalArgumentException.class, () -> {
             accountService.debit(account, BigDecimal.ZERO);
@@ -144,6 +161,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when account is SUSPENDED")
     public void testDebitWithInactiveAccount() {
         account.setStatus(AccountStatus.SUSPENDED);
         
@@ -153,6 +171,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("debit: Throws exception when account is INACTIVE")
     public void testDebitWithClosedAccount() {
         account.setStatus(AccountStatus.INACTIVE);
         
@@ -162,6 +181,7 @@ public class AccountServiceTest {
     }
     
     @Test
+    @DisplayName("credit/debit sequence: Multiple operations maintain correct balance and version")
     public void testCreditAndDebitSequence() throws AccountNotActiveException, InsufficientFundsException {
         accountService.credit(account, new BigDecimal("2000"));
         accountService.debit(account, new BigDecimal("3000"));
