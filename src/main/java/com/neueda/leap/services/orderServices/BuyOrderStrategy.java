@@ -40,8 +40,6 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
     public OrderResult execute(Order order, Account account, Instrument instrument) {
         boolean cashDebited = false;
         try {
-            BigDecimal accountBalanceSnapshot = account.getCashBalance();
-            
             BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
             accountService.debit(account, totalCost);
             cashDebited = true;
@@ -51,43 +49,35 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
             
 
             order.setOrderStatus(OrderStatus.FILLED);
-            order.setVersion(order.getVersion() + 1);
             order.setLastUpdated(LocalDateTime.now());
 
             String successMessage = String.format(
-                "BUY order %s FILLED: %d shares of %s @ $%.2f = $%.2f. Account balance: $%.2f → $%.2f",
+                "BUY order %s FILLED: %d shares of %s @ $%.2f = $%.2f",
                 order.getOrderId(),
                 order.getQuantity(),
                 order.getSymbol(),
                 order.getPrice(),
-                totalCost,
-                accountBalanceSnapshot,
-                account.getCashBalance()
+                totalCost
             );
             return new OrderResult(true, successMessage, null);
             
         } catch (Exception e) {
-            try {
-                if (cashDebited) {
+            if (cashDebited) {
+                try {
+                    
                     BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
                     accountService.credit(account, totalCost);
+                } catch (Exception rollbackError) {
+                    System.out.println("Rollback failed: " + rollbackError.getMessage());
                 }
-                order.setOrderStatus(OrderStatus.REJECTED);
-                order.setVersion(order.getVersion() + 1);
-                order.setLastUpdated(LocalDateTime.now());
-                
-                String failureMessage = "BUY order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
-                return new OrderResult(false, failureMessage, null);
-                
-            } catch (Exception rollbackError) {
-                String failureMessage = String.format(
-                    "BUY order %s execution FAILED and rollback FAILED: %s. Rollback error: %s",
-                    order.getOrderId(),
-                    e.getMessage(),
-                    rollbackError.getMessage()
-                );
-                return new OrderResult(false, failureMessage, null);
             }
+
+            order.setOrderStatus(OrderStatus.REJECTED);
+            order.setLastUpdated(LocalDateTime.now());
+
+            String failureMessage = "BUY order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
+            System.out.println(failureMessage);
+            return new OrderResult(false, failureMessage, null);
         }
     }
 }
