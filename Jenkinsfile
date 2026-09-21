@@ -20,6 +20,17 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Unit Tests') {
+            steps {
+                sh 'mvn -B -f app/pom.xml test'
+            }
+            post {
+                always {
+                    junit 'app/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
         stage('Build Image') {
             steps {
                 sh 'mvn -B -f app/pom.xml clean package -DskipTests'
