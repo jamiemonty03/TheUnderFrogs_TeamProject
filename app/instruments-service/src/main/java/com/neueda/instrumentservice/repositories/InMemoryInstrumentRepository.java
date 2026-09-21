@@ -11,12 +11,6 @@ public class InMemoryInstrumentRepository implements InstrumentRepository {
 
     @Override
     public Instrument save(Instrument instrument) {
-        if (instrument == null) {
-            throw new IllegalArgumentException("Instrument cannot be null");
-        }
-        if (instrument.getSymbol() == null || instrument.getSymbol().trim().isEmpty()) {
-            throw new IllegalArgumentException("Symbol cannot be null or empty");
-        }
         
         instruments.put(instrument.getSymbol(), instrument);
         return instrument;
