@@ -31,6 +31,21 @@ public abstract class Asset {
     public Asset() {}
 
     public Asset(String symbol, String name, BigDecimal price, LocalDateTime tradeDate) {
+        if (symbol == null || symbol.trim().isEmpty()) {
+        throw new IllegalArgumentException("Symbol cannot be null or blank");
+        }
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or blank");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("Price cannot be null");
+        }
+        if (price.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Price cannot be negative");
+        }
+        if (tradeDate == null) {
+            throw new IllegalArgumentException("Trade date cannot be null");
+        }
         this.symbol = symbol;
         this.name = name;
         this.price = price;

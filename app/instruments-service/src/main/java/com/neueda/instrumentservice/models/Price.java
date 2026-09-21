@@ -46,6 +46,16 @@ public class Price {
             BigDecimal close,
             BigDecimal volume) {
 
+        if (symbol == null || symbol.trim().isEmpty()) {
+        throw new IllegalArgumentException("Symbol cannot be null or blank");
+        }
+        if (tradeDate == null) {
+            throw new IllegalArgumentException("Trade date cannot be null");
+        }
+        if (open == null || high == null || low == null || close == null || volume == null) {
+            throw new IllegalArgumentException("OHLCV prices and volume cannot be null");
+        }
+        
         this.symbol = symbol;
         this.tradeDate = tradeDate;
         this.open = open;
