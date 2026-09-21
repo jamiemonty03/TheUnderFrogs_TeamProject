@@ -37,7 +37,7 @@ check_prerequisites() {
 }
 
 if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-    echo "Usage: ./setup-pipeline.sh [option]"
+    echo "Usage: ./db/scripts/setup-pipeline.sh [option]"
     echo ""
     echo "Options:"
     echo "  full        Build, create tables, and populate (default)"
@@ -58,7 +58,7 @@ check_prerequisites
 if [ "$MODE" = "full" ] || [ "$MODE" = "skip-build" ]; then
     if [ "$MODE" = "full" ]; then
         echo -e "${YELLOW}Building Java application...${NC}"
-        mvn clean package -Dmaven.test.skip=true || error_exit "Maven build failed"
+        mvn -f app/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed"
         echo -e "${GREEN}✓ Build complete${NC}\n"
     fi
 
@@ -124,9 +124,22 @@ PYTHON_SCRIPTS=(
 
 for script_info in "${PYTHON_SCRIPTS[@]}"; do
     IFS='|' read -r script_path label <<< "$script_info"
-    docker exec underfrog-dashboard python /sql/"$script_path" || error_exit "Failed to run $label ($script_path)"
+    docker exec underfrog-python python /db/etl/"$script_path" || error_exit "Failed to run $label ($script_path)"
     echo -e "${GREEN}✓ $label${NC}"
 done
+
+echo ""
+echo -e "${YELLOW}Seeding dummy data...${NC}"
+
+[ -f "db/seed/dummy-data.sql" ] || error_exit "db/seed/dummy-data.sql not found"
+ACCOUNT_COUNT=$(docker exec underfrog-postgres psql -U postgres -d underfrog -Atc "SELECT COUNT(*) FROM accounts;") || error_exit "Failed to check existing accounts"
+
+if [ "$ACCOUNT_COUNT" -gt 0 ]; then
+    echo -e "${YELLOW}⚠ accounts already has $ACCOUNT_COUNT rows, skipping seed${NC}"
+else
+    docker exec -i underfrog-postgres psql -U postgres -d underfrog -v ON_ERROR_STOP=1 --single-transaction < db/seed/dummy-data.sql || error_exit "Failed to load db/seed/dummy-data.sql"
+    echo -e "${GREEN}✓ Dummy data loaded${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}========================================="

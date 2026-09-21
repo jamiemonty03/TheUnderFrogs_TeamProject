@@ -1,10 +1,10 @@
 FROM python:3.14
 
-WORKDIR /sql
+WORKDIR /db
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY sql/ .
+COPY . .
 
 EXPOSE 8888

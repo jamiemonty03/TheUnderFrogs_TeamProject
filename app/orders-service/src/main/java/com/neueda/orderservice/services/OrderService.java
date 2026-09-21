@@ -42,14 +42,9 @@ public class OrderService {
     }
 
     private synchronized Order createOrder(Order order) throws DuplicateOrderException {
-        if (order.getIdempotencyKey() == null || order.getIdempotencyKey().trim().isEmpty()) {
-            throw new IllegalArgumentException("Idempotency key is required");
-        }
-        
         if (ordersByIdempotencyKey.containsKey(order.getIdempotencyKey())) {
             throw new DuplicateOrderException(order.getIdempotencyKey(), "idempotencyKey");
         }
-        
         Order savedOrder = orderRepository.save(order);
         ordersByIdempotencyKey.put(savedOrder.getIdempotencyKey(), savedOrder);
         return savedOrder;

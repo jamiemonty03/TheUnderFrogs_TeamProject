@@ -27,6 +27,22 @@ public class Instrument {
     public Instrument() {}
 
     public Instrument(String symbol, String name, String assetClass, String currency, String exchange, boolean tradable) {
+        if (symbol == null || symbol.trim().isEmpty()) {
+        throw new IllegalArgumentException("Symbol cannot be null or blank");
+        }
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be null or blank");
+        }
+        if (assetClass == null || assetClass.trim().isEmpty()) {
+            throw new IllegalArgumentException("Asset class cannot be null or blank");
+        }
+        if (currency == null || currency.trim().isEmpty()) {
+            throw new IllegalArgumentException("Currency cannot be null or blank");
+        }
+        if (exchange == null || exchange.trim().isEmpty()) {
+            throw new IllegalArgumentException("Exchange cannot be null or blank");
+        }
+        
         this.symbol = symbol;
         this.name = name;
         this.assetClass = assetClass;
