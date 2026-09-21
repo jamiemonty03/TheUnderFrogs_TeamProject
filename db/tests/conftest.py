@@ -7,7 +7,7 @@ import pytest
 
 SQL_DIR = Path(__file__).resolve().parent.parent / "etl"
 
-#docker exec underfrog-dashboard python -m pytest /db/tests -v
+#docker exec underfrog-python python -m pytest /db/tests -v
 
 def _load_module(filename):
     """Load a sql/ script as a module.

@@ -124,7 +124,7 @@ PYTHON_SCRIPTS=(
 
 for script_info in "${PYTHON_SCRIPTS[@]}"; do
     IFS='|' read -r script_path label <<< "$script_info"
-    docker exec underfrog-dashboard python /db/etl/"$script_path" || error_exit "Failed to run $label ($script_path)"
+    docker exec underfrog-python python /db/etl/"$script_path" || error_exit "Failed to run $label ($script_path)"
     echo -e "${GREEN}✓ $label${NC}"
 done
 
