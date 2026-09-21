@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: instruments-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+server:
+  address: 0.0.0.0
+  port: 8080
+  servlet:
+    context-path: /api/instruments
