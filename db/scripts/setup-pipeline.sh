@@ -129,6 +129,19 @@ for script_info in "${PYTHON_SCRIPTS[@]}"; do
 done
 
 echo ""
+echo -e "${YELLOW}Seeding dummy data...${NC}"
+
+[ -f "db/seed/dummy-data.sql" ] || error_exit "db/seed/dummy-data.sql not found"
+ACCOUNT_COUNT=$(docker exec underfrog-postgres psql -U postgres -d underfrog -Atc "SELECT COUNT(*) FROM accounts;") || error_exit "Failed to check existing accounts"
+
+if [ "$ACCOUNT_COUNT" -gt 0 ]; then
+    echo -e "${YELLOW}⚠ accounts already has $ACCOUNT_COUNT rows, skipping seed${NC}"
+else
+    docker exec -i underfrog-postgres psql -U postgres -d underfrog -v ON_ERROR_STOP=1 --single-transaction < db/seed/dummy-data.sql || error_exit "Failed to load db/seed/dummy-data.sql"
+    echo -e "${GREEN}✓ Dummy data loaded${NC}"
+fi
+
+echo ""
 echo -e "${GREEN}========================================="
 echo "✓ Setup completed successfully!"
 echo "=========================================${NC}"
