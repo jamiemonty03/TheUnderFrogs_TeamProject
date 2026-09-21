@@ -7,7 +7,7 @@ import sys
 import os
 
 # Add sql directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'etl'))
 
 from etl_instruments_metrics import (
     DatabaseConnection,

@@ -37,7 +37,7 @@ check_prerequisites() {
 }
 
 if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
-    echo "Usage: ./setup-pipeline.sh [option]"
+    echo "Usage: ./db/scripts/setup-pipeline.sh [option]"
     echo ""
     echo "Options:"
     echo "  full        Build, create tables, and populate (default)"
@@ -58,7 +58,7 @@ check_prerequisites
 if [ "$MODE" = "full" ] || [ "$MODE" = "skip-build" ]; then
     if [ "$MODE" = "full" ]; then
         echo -e "${YELLOW}Building Java application...${NC}"
-        mvn clean package -Dmaven.test.skip=true || error_exit "Maven build failed"
+        mvn -f app/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed"
         echo -e "${GREEN}✓ Build complete${NC}\n"
     fi
 
@@ -124,7 +124,7 @@ PYTHON_SCRIPTS=(
 
 for script_info in "${PYTHON_SCRIPTS[@]}"; do
     IFS='|' read -r script_path label <<< "$script_info"
-    docker exec underfrog-dashboard python /sql/"$script_path" || error_exit "Failed to run $label ($script_path)"
+    docker exec underfrog-python python /db/etl/"$script_path" || error_exit "Failed to run $label ($script_path)"
     echo -e "${GREEN}✓ $label${NC}"
 done
 

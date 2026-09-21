@@ -23,15 +23,15 @@ pipeline {
         stage('Build Image') {
             steps {
                 sh 'mvn -B -f app/pom.xml clean package -DskipTests'
-                sh 'docker build -t team-skeleton:latest .'
+                sh 'docker build -t team-skeleton:latest ./app'
             }
         }
         
         stage('Database Validation Test') {
             steps {
                 sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks underfrog-python || true'
-                sh 'chmod +x ./scripts/data_validation_test.sh'
-                sh './scripts/data_validation_test.sh'
+                sh 'chmod +x ./db/scripts/data_validation_test.sh'
+                sh './db/scripts/data_validation_test.sh'
             }
             post {
                 always {

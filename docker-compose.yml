@@ -10,11 +10,11 @@ services:
       - "0.0.0.0:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/tables:/docker-entrypoint-initdb.d
+      - ./db/schema:/docker-entrypoint-initdb.d
 
   app:
     build:
-      context: .
+      context: ./app
       dockerfile: Dockerfile
     container_name: underfrog-app
     depends_on:
@@ -22,20 +22,20 @@ services:
     ports:
       - "8081:8080"
 
-  dashboard:
+  python:
     build:
-      context: .
-      dockerfile: Dockerfile.notebook
-    container_name: underfrog-dashboard
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: underfrog-python
     depends_on:
       - postgres
     ports:
       - "0.0.0.0:8080:8080"
       # replace with a different port if needed
     volumes:
-      - ./sql:/sql
-      - ./.env:/sql/.env
-    command: python /sql/dashboard_app.py
+      - ./db:/db
+      - ./.env:/db/.env
+    command: python /db/dashboard/dashboard_app.py
   
   
 
