@@ -58,6 +58,31 @@ public class Order {
     public Order() {}
 
     public Order(String orderId, String accountId, String symbol, OrderSide side, int quantity, BigDecimal price, String idempotencyKey) {
+        if (accountId == null) {
+        throw new IllegalArgumentException("AccountId is mandatory");
+        }
+        if (symbol == null || symbol.trim().isEmpty()) {
+            throw new IllegalArgumentException("Symbol is mandatory");
+        }
+        if (side == null) {
+            throw new IllegalArgumentException("Order side (BUY/SELL) is mandatory");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+        if (price == null) {
+            throw new IllegalArgumentException("Price is mandatory");
+        }
+        if (price.compareTo(new BigDecimal("0.01")) < 0) {
+            throw new IllegalArgumentException("Price must be greater than 0");
+        }
+        if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("Idempotency key is mandatory and cannot be blank");
+        }
+        if (orderId == null || orderId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Order ID is mandatory and cannot be blank");
+        }
+        
         this.orderId = orderId;
         this.accountId = accountId;
         this.symbol = symbol;

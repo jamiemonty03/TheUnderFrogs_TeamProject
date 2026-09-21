@@ -29,6 +29,18 @@ public class Account {
     public Account() {}
 
     public Account(String accountId, String holderName, BigDecimal cashBalance, AccountStatus status) {
+        if (accountId == null || accountId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Account ID cannot be null or blank");
+        }
+        if (holderName == null || holderName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Holder name cannot be null or blank");
+        }
+        if (cashBalance == null) {
+            throw new IllegalArgumentException("Cash balance cannot be null");
+        }
+        if (status == null) {
+            throw new IllegalArgumentException("Account status cannot be null");
+        }
         this.accountId = accountId;
         this.holderName = holderName;
         this.cashBalance = cashBalance;

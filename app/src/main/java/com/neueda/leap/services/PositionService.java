@@ -24,7 +24,6 @@ public class PositionService {
     }
 
     public Position getOrCreatePosition(String accountId, String symbol) {
-        validateAccountAndSymbol(accountId, symbol);
 
         Optional<Position> existing = positionRepository.findByAccountAndSymbol(accountId, symbol);
         if (existing.isPresent()) {
@@ -118,15 +117,6 @@ public class PositionService {
             positionRepository.delete(accountId, symbol);
         } else {
             positionRepository.save(position);
-        }
-    }
-
-    private void validateAccountAndSymbol(String accountId, String symbol) {
-        if (accountId == null || accountId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Account ID cannot be null or blank");
-        }
-        if (symbol == null || symbol.trim().isEmpty()) {
-            throw new IllegalArgumentException("Symbol cannot be null or blank");
         }
     }
 
