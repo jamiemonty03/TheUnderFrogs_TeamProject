@@ -12,7 +12,7 @@
 
 ## Entity Relationship Diagram
 
-![ERD Diagram](docs/diagrams/ERD-Diagram.PNG)
+![ERD Diagram](app/docs/diagrams/ERD-Diagram.PNG)
 
 ## Docker Setup
 The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
