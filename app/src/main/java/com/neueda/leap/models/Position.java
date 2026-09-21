@@ -34,6 +34,19 @@ public class Position {
     public Position() {}
 
     public Position(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
+        if (accountId == null || accountId.trim().isEmpty()) {
+        throw new IllegalArgumentException("Account ID cannot be null or blank");
+        }
+        if (symbol == null || symbol.trim().isEmpty()) {
+            throw new IllegalArgumentException("Symbol cannot be null or blank");
+        }
+        if (quantity == null) {
+            throw new IllegalArgumentException("Quantity cannot be null");
+        }
+        if (averageCost == null) {
+            throw new IllegalArgumentException("Average cost cannot be null");
+        }
+        
         this.accountId = accountId;
         this.symbol = symbol;
         this.quantity = quantity;
