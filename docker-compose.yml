@@ -12,15 +12,61 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/tables:/docker-entrypoint-initdb.d
 
-  app:
+  accounts-service:
     build:
-      context: .
+      context: ./app/accounts-service
       dockerfile: Dockerfile
-    container_name: underfrog-app
+    container_name: accounts-service
     depends_on:
       - postgres
     ports:
       - "8081:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  instruments-service:
+    build:
+      context: ./app/instruments-service
+      dockerfile: Dockerfile
+    container_name: instruments-service
+    depends_on:
+      - postgres
+    ports:
+      - "8082:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  orders-service:
+    build:
+      context: ./app/orders-service
+      dockerfile: Dockerfile
+    container_name: orders-service
+    depends_on:
+      - postgres
+    ports:
+      - "8083:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  positions-service:
+    build:
+      context: ./app/positions-service
+      dockerfile: Dockerfile
+    container_name: positions-service
+    depends_on:
+      - postgres
+    ports:
+      - "8084:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
 
   dashboard:
     build:
