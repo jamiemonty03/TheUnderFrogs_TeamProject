@@ -22,21 +22,20 @@ pipeline {
         }
         stage('Build Image') {
             steps {
-                sh 'mvn -B -f app/pom.xml clean package -DskipTests'
-                sh 'docker build -t team-skeleton:latest ./app'
+                sh 'for s in accounts instruments orders positions; do mvn -B -f app/$s-service/pom.xml clean package -Dmaven.test.skip=true || exit 1; done'
             }
         }
         
         stage('Database Validation Test') {
             steps {
-                sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks underfrog-python || true'
+                sh 'docker rm -f accounts-db instruments-db orders-db positions-db underfrog-python || true'
                 sh 'chmod +x ./db/scripts/data_validation_test.sh'
                 sh './db/scripts/data_validation_test.sh'
             }
             post {
                 always {
                     sh 'docker-compose down --remove-orphans --volumes || true'
-                    sh 'docker rm -f underfrog-postgres underfrog-app underfrog-notebooks underfrog-python || true'
+                    sh 'docker rm -f accounts-db instruments-db orders-db positions-db underfrog-python || true'
                 }
             }
         }

@@ -3,15 +3,19 @@ import pandas as pd
 import psycopg
 from dotenv import load_dotenv
 import os
+from urllib.parse import urlparse
 
 load_dotenv()
 
 # Database connection from .env
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('POSTGRES_DB', 'underfrog')
-DB_USER = os.getenv('POSTGRES_USER', 'postgres')
-DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+# Connection settings come from the service's SPRING_DATASOURCE_* variables;
+# SPRING_DATASOURCE_URL looks like jdbc:postgresql://<host>:<port>/<database>
+_datasource = urlparse(os.getenv('SPRING_DATASOURCE_URL', 'jdbc:postgresql://localhost:5432/instruments_db').removeprefix('jdbc:'))
+DB_HOST = _datasource.hostname
+DB_PORT = str(_datasource.port or 5432)
+DB_NAME = _datasource.path.lstrip('/')
+DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME', 'postgres')
+DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
 
 
 STOCKS = ["AAPL", "MSFT", "JPM", "TSLA", "GOOGL", "AMZN", "NVDA", "XOM", "JNJ", "KO"]
