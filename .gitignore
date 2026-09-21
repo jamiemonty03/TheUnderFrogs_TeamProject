@@ -1,6 +1,5 @@
 target/
 starter/
 .env
-.env.example
 __pycache__/
 build.log
