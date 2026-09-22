@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 import sys
 import logging
 from contextlib import contextmanager
@@ -61,14 +62,15 @@ INSERT_INSTRUMENTS_METRICS = sql.SQL("""
         updated_by = 'ETL_PROCESS'
 """)
 
-DB_HOST = os.getenv('DB_HOST')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('POSTGRES_DB')
-DB_USER = os.getenv('POSTGRES_USER')
-DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+_datasource = urlparse(os.getenv('SPRING_DATASOURCE_URL', '').removeprefix('jdbc:'))
+DB_HOST = _datasource.hostname
+DB_PORT = str(_datasource.port or 5432)
+DB_NAME = _datasource.path.lstrip('/')
+DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME')
+DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
 
 if not all([DB_HOST, DB_NAME, DB_USER]):
-    logger.error("Missing required environment variables: DB_HOST, POSTGRES_DB, POSTGRES_USER")
+    logger.error("Missing required environment variables: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME")
     sys.exit(1)
 
 

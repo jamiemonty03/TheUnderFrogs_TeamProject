@@ -56,9 +56,8 @@ class TestDatabaseConnection:
         mock_connect.return_value = mock_conn
         
         with patch.dict(os.environ, {
-            'DB_HOST': 'localhost',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_USER': 'testuser'
+            'SPRING_DATASOURCE_URL': 'jdbc:postgresql://localhost:5432/testdb',
+            'SPRING_DATASOURCE_USERNAME': 'testuser'
         }):
             db = DatabaseConnection()
             conn = db._connect_with_retry()
@@ -73,9 +72,8 @@ class TestDatabaseConnection:
         mock_connect.side_effect = PsycopgError("Connection failed")
         
         with patch.dict(os.environ, {
-            'DB_HOST': 'localhost',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_USER': 'testuser'
+            'SPRING_DATASOURCE_URL': 'jdbc:postgresql://localhost:5432/testdb',
+            'SPRING_DATASOURCE_USERNAME': 'testuser'
         }):
             db = DatabaseConnection(max_retries=2)
             

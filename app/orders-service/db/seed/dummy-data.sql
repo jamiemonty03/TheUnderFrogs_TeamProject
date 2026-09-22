@@ -1,16 +1,4 @@
--- Dummy data for accounts, instruments, orders, and positions tables
-
-INSERT INTO accounts (account_id, holder_name, cash_balance, status, version, created_at, last_updated, updated_by) VALUES
-('ACC0001', 'Alice Johnson',  10500.75, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0002', 'Bob Smith',       2300.00, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0003', 'Carla Diaz',     54000.20, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0004', 'David Lee',        150.50, 'SUSPENDED',0, NOW(), NOW(), 'SYSTEM'),
-('ACC0005', 'Emma Wilson',    98000.00, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0006', 'Frank Moore',     4200.10, 'CLOSED',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0007', 'Grace Kim',      12750.30, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0008', 'Henry Chen',       800.00, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0009', 'Isla Brown',     33000.00, 'ACTIVE',   0, NOW(), NOW(), 'SYSTEM'),
-('ACC0010', 'Jack Turner',     6100.45, 'SUSPENDED',0, NOW(), NOW(), 'SYSTEM');
+-- Dummy data for orders
 
 INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price, order_status, version, created_at, last_updated, updated_by) VALUES
 -- ACC0001 (Alice Johnson)
@@ -51,32 +39,3 @@ INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantit
 ('c7d8e9fa-b1c2-41d3-e4f5-a6b7c8d9eaf0', '0f9e8d7c-6b5a-3948-2737-16a5f4e3d2c1', 'ACC0010', 'JNJ',   'BUY',  50, 158.40, 'REJECTED',  0, NOW(), NOW(), 'SYSTEM'),
 ('d8e9fabb-c2d3-43e4-f5a6-b7c8d9eaf0b1', '20b1a0af-7c6b-42c2-a09f-8e7d6c5b4a39', 'ACC0010', 'LQD',   'BUY',  15,  98.20, 'FILLED',    0, NOW(), NOW(), 'SYSTEM'),
 ('e9fabbcc-d3e4-45f5-a6b7-c8d9eaf0b1c2', '31c2b1a0-8d7c-43d3-b1a0-9f8e7d6c5b4a', 'ACC0010', 'IWM',   'BUY',   8, 198.50, 'FILLED',    0, NOW(), NOW(), 'SYSTEM');
-
-INSERT INTO positions (account_id, symbol, quantity, average_cost, version, created_at, last_updated, updated_by) VALUES
--- ACC0001 (Alice Johnson)
-('ACC0001', 'AAPL',  10.0000, 190.25, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0001', 'SPY',    5.0000, 445.00, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0002 (Bob Smith)
-('ACC0002', 'MSFT',   5.0000, 410.10, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0002', 'JPM',    8.0000, 156.75, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0003 (Carla Diaz)
-('ACC0003', 'AMZN',   6.0000, 182.40, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0004 (David Lee)
-('ACC0004', 'TSLA',   4.0000, 250.35, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0005 (Emma Wilson)
-('ACC0005', 'TSLA',  15.0000, 245.75, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0005', 'NVDA',   7.0000, 875.50, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0005', 'SPY',    3.0000, 443.50, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0006 (Frank Moore)
-('ACC0006', 'KO',    10.0000,  61.80, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0007 (Grace Kim)
-('ACC0007', 'EFA',   20.0000,  78.40, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0008 (Henry Chen)
-('ACC0008', 'TLT',   50.0000,  95.40, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0008', 'AGG',   25.0000,  85.60, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0009 (Isla Brown)
-('ACC0009', 'DIA',    2.0000, 385.90, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0009', 'GOOGL',  3.0000, 158.75, 0, NOW(), NOW(), 'SYSTEM'),
--- ACC0010 (Jack Turner)
-('ACC0010', 'LQD',   15.0000,  98.20, 0, NOW(), NOW(), 'SYSTEM'),
-('ACC0010', 'IWM',    8.0000, 198.50, 0, NOW(), NOW(), 'SYSTEM');

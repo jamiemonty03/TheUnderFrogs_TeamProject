@@ -1,89 +1,170 @@
+# Each service's app/<service>/.env is the single source of truth for its database:
+#   SPRING_DATASOURCE_URL (host + database name), SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
+# The service reads them directly; the matching Postgres container derives POSTGRES_USER,
+# POSTGRES_PASSWORD and POSTGRES_DB from the same values (see the entrypoint below).
+# Create the files first:  for s in accounts instruments orders positions; do cp app/$s-service/.env.example app/$s-service/.env; done
 services:
-  postgres:
+  accounts-db:
     image: postgres:15-alpine
-    container_name: underfrog-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    container_name: accounts-db
+    env_file: ./app/accounts-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        exec docker-entrypoint.sh postgres
     ports:
-      - "0.0.0.0:5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./db/schema:/docker-entrypoint-initdb.d
+      - accounts_db_data:/var/lib/postgresql/data
+      - ./app/accounts-service/db/schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   accounts-service:
     build:
       context: ./app/accounts-service
       dockerfile: Dockerfile
     container_name: accounts-service
+    env_file: ./app/accounts-service/.env
     depends_on:
-      - postgres
+      accounts-db:
+        condition: service_healthy
     ports:
       - "8081:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  instruments-db:
+    image: postgres:15-alpine
+    container_name: instruments-db
+    env_file: ./app/instruments-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - instruments_db_data:/var/lib/postgresql/data
+      - ./app/instruments-service/db/schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   instruments-service:
     build:
       context: ./app/instruments-service
       dockerfile: Dockerfile
     container_name: instruments-service
+    env_file: ./app/instruments-service/.env
     depends_on:
-      - postgres
+      instruments-db:
+        condition: service_healthy
     ports:
       - "8082:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  orders-db:
+    image: postgres:15-alpine
+    container_name: orders-db
+    env_file: ./app/orders-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+      - ./app/orders-service/db/schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   orders-service:
     build:
       context: ./app/orders-service
       dockerfile: Dockerfile
     container_name: orders-service
+    env_file: ./app/orders-service/.env
     depends_on:
-      - postgres
+      orders-db:
+        condition: service_healthy
     ports:
       - "8083:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+  positions-db:
+    image: postgres:15-alpine
+    container_name: positions-db
+    env_file: ./app/positions-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - positions_db_data:/var/lib/postgresql/data
+      - ./app/positions-service/db/schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   positions-service:
     build:
       context: ./app/positions-service
       dockerfile: Dockerfile
     container_name: positions-service
+    env_file: ./app/positions-service/.env
     depends_on:
-      - postgres
+      positions-db:
+        condition: service_healthy
     ports:
       - "8084:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
 
   python:
     build:
       context: ./db
       dockerfile: Dockerfile
     container_name: underfrog-python
+    env_file: ./app/instruments-service/.env
     depends_on:
-      - postgres
+      instruments-db:
+        condition: service_healthy
     ports:
       - "0.0.0.0:8082:8080"
       # replace with a different port if needed
     volumes:
       - ./db:/db
-      - ./.env:/db/.env
+      - ./app/instruments-service/db/etl:/db/etl
+      - ./app/instruments-service/db/schema:/db/schema:ro
+    # ETL + dashboard read SPRING_DATASOURCE_* (from the instruments-service .env) to reach instruments-db
     command: python /db/dashboard/dashboard_app.py
-  
-  
 
 volumes:
-  postgres_data:
+  accounts_db_data:
+  instruments_db_data:
+  orders_db_data:
+  positions_db_data:

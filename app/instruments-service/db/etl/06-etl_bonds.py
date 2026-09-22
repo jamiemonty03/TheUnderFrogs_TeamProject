@@ -1,15 +1,19 @@
 import psycopg
 from dotenv import load_dotenv
 import os
+from urllib.parse import urlparse
 from psycopg.rows import dict_row
 
 load_dotenv()
 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('POSTGRES_DB', 'underfrog')
-DB_USER = os.getenv('POSTGRES_USER', 'postgres')
-DB_PASSWORD = os.getenv('POSTGRES_PASSWORD', '')
+# Connection settings come from the service's SPRING_DATASOURCE_* variables;
+# SPRING_DATASOURCE_URL looks like jdbc:postgresql://<host>:<port>/<database>
+_datasource = urlparse(os.getenv('SPRING_DATASOURCE_URL', 'jdbc:postgresql://localhost:5432/instruments_db').removeprefix('jdbc:'))
+DB_HOST = _datasource.hostname
+DB_PORT = str(_datasource.port or 5432)
+DB_NAME = _datasource.path.lstrip('/')
+DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME', 'postgres')
+DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
 
 def get_db_connection():
     try:
@@ -24,38 +28,31 @@ def get_db_connection():
     except psycopg.Error as e:
         print(f"Database connection failed: {e}")
         return None
-
-def get_raw_etfs(cursor):
+    
+def get_raw_bonds(cursor):
     
     cursor.execute("""
-        SELECT *
-        FROM raw_etfs
+        SELECT * FROM raw_bonds;
     """)
     
     return cursor.fetchall()
 
-def is_valid(etf):
-    if etf["nav_price"] <=0:
+def is_valid(bond):
+    if bond["nav_price"] <= 0:
         return False
-    
-    if etf["total_assets"] <= 0:
+    if bond["total_assets"] < 0:
         return False
-
-    if etf["net_assets"] is not None and etf["net_assets"] <= 0:
+    if bond["net_assets"] is not None and bond["net_assets"] < 0:
         return False
-
-    if etf["net_expense_ratio"] is not None and etf["net_expense_ratio"] < 0:
+    if bond["distribution_yield"] is not None and bond["distribution_yield"] < 0:
         return False
-
-    if etf["distribution_yield"] is not None and etf["distribution_yield"] < 0:
+    if bond["net_expense_ratio"] is not None and bond["net_expense_ratio"] < 0:
         return False
-
     return True
 
-def insert_clean_etf(cursor, etf):
-    
+def insert_clean_bond(cursor, bond):
     cursor.execute("""
-        INSERT INTO clean_etfs (
+        INSERT INTO clean_bonds (
             symbol,
             category,
             fund_family,
@@ -86,7 +83,7 @@ def insert_clean_etf(cursor, etf):
         )
         
         ON CONFLICT (symbol) DO UPDATE
-        SET 
+        SET
             category = EXCLUDED.category,
             fund_family = EXCLUDED.fund_family,
             legal_type = EXCLUDED.legal_type,
@@ -100,35 +97,33 @@ def insert_clean_etf(cursor, etf):
             beta_3_year = EXCLUDED.beta_3_year,
             distribution_yield = EXCLUDED.distribution_yield,
             last_updated = NOW(),
-            version = clean_etfs.version + 1
+            version = clean_bonds.version + 1
         
-    """, etf)
+    """, bond)
     
 def run_etl():
     conn = get_db_connection()
-    
+       
     cursor = conn.cursor(row_factory=dict_row)
-    
-    raw_etfs = get_raw_etfs(cursor)
-    
+        
+    bonds = get_raw_bonds(cursor)
+        
     inserted = 0
     rejected = 0
     
-    for etf in raw_etfs:
-        if is_valid(etf):
-            insert_clean_etf(cursor, etf)
+    for bond in bonds:
+        if is_valid(bond):
+            insert_clean_bond(cursor, bond)
             inserted += 1
+        
         else:
             rejected += 1
-            
 
     conn.commit()
     cursor.close()
     conn.close()
 
-    print(f"Inserted: {inserted}")
-    print(f"Rejected: {rejected}")
-    
-    
+    print(f"Inserted: {inserted}, Rejected: {rejected}")
+
 if __name__ == "__main__":
     run_etl()

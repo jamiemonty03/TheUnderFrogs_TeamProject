@@ -27,7 +27,7 @@ POSTGRES_PASSWORD=<your-password>
 ```
 docker-compose up -d
 ```
-This creates two containers, `underfrog-postgres` and `underfrog-app`, and a named volume `postgres_data` (persisted as `<project>_postgres_data`) for the database files. The schema in `sql/tables.sql` is run automatically on first init via `/docker-entrypoint-initdb.d`.
+Each service runs in its own container with its own Postgres container: `accounts-db`, `instruments-db`, `orders-db`, `positions-db` (host ports 5433-5436, localhost only), each with its own named volume. Each database is initialised on first start from that service's `app/<service>/db/schema/` folder. The python ETL/dashboard container (`underfrog-python`) talks to `instruments-db`.
 
 3) Check the containers are up:
 ```
@@ -41,7 +41,7 @@ docker stop <container_name>
 
 4) Connect to the database inside the container:
 ```
-docker exec -it underfrog-postgres psql -U postgres -d underfrog
+docker exec -it accounts-db psql -U postgres -d accounts_db   # or instruments-db / orders-db / positions-db
 ```
 
 5) Tear down (add `-v` to also delete the data volume):
