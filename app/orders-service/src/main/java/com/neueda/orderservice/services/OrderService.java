@@ -14,18 +14,22 @@ import com.neueda.orderservice.exceptions.TradingException;
 import com.neueda.orderservice.repositories.PositionRepository;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.repositories.InMemoryOrderRepository;
+import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Autowired;
 
+@Service
 public class OrderService {
     
     private final OrderValidationService validationService;
     private final OrderRepository orderRepository;
     private final Map<String, Order> ordersByIdempotencyKey = new ConcurrentHashMap<>();
 
+    @Autowired
     public OrderService(PositionRepository positionRepository) {
         this(positionRepository, new InMemoryOrderRepository());
     }
