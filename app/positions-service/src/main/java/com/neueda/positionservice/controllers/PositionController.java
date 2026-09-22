@@ -4,6 +4,7 @@ import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.services.PositionService;
 import com.neueda.positionservice.dtos.responses.PositionResponse;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -28,7 +29,7 @@ public class PositionController {
     }
     
     @PostMapping
-    public Position createPosition(@RequestBody Position position) {
+    public Position createPosition(@Valid @RequestBody Position position) {
         return positionService.savePosition(position);
     }
     

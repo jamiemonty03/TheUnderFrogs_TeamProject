@@ -3,11 +3,20 @@ package com.neueda.positionservice.models;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class Position {
+    @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
+    
+    @NotBlank(message = "Symbol cannot be null or blank")
     private String symbol;
+    
+    @NotNull(message = "Quantity cannot be null")
     private BigDecimal quantity;
+    
+    @NotNull(message = "Average cost cannot be null")
     private BigDecimal averageCost;
     private int version;
     private LocalDateTime createdAt;
