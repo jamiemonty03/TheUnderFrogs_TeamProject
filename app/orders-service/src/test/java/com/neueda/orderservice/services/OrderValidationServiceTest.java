@@ -45,11 +45,10 @@ public class OrderValidationServiceTest {
 
         activeAccount = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
         inactiveAccount = new Account("ACC002", "Jane Roe", new BigDecimal("20000.00"), AccountStatus.SUSPENDED);
-        tradableInstrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
-        untradableInstrument = new Instrument("HALT", "Halted Corp.", "EQUITY", "USD", "NASDAQ", false);
+        tradableInstrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
+        untradableInstrument = new Instrument("HALT", "Halted Corp.", new BigDecimal("10.00"), false);
 
-        // Default mock behavior: no positions found
-        when(positionRepository.findByAccountAndSymbol(anyString(), anyString()))
+        when(positionRepository.findByAccountIdAndSymbol(anyString(), anyString()))
             .thenReturn(Optional.empty());
     }
 
@@ -66,7 +65,7 @@ public class OrderValidationServiceTest {
     @DisplayName("Valid SELL order passes validation when holdings are sufficient")
     void validSellOrderPasses() throws TradingException {
         Position position = new Position("ACC001", "AAPL", new BigDecimal("50"), new BigDecimal("120.00"));
-        when(positionRepository.findByAccountAndSymbol("ACC001", "AAPL"))
+        when(positionRepository.findByAccountIdAndSymbol("ACC001", "AAPL"))
             .thenReturn(Optional.of(position));
 
         assertDoesNotThrow(() -> validationService.validateOrder(
@@ -155,7 +154,7 @@ public class OrderValidationServiceTest {
     @DisplayName("SELL order rejected when holdings are insufficient")
     void rejectsInsufficientHoldingsOnSell() {
         Position position = new Position("ACC001", "AAPL", new BigDecimal("5"), new BigDecimal("120.00"));
-        when(positionRepository.findByAccountAndSymbol("ACC001", "AAPL"))
+        when(positionRepository.findByAccountIdAndSymbol("ACC001", "AAPL"))
             .thenReturn(Optional.of(position));
 
         assertThrows(InsufficientHoldingsException.class, () -> validationService.validateOrder(

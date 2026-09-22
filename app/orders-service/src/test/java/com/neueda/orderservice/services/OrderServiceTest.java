@@ -34,8 +34,7 @@ public class OrderServiceTest {
         MockitoAnnotations.openMocks(this);
         orderService = new OrderService(positionRepository);
         
-        // Default mock behavior: no positions found
-        when(positionRepository.findByAccountAndSymbol(anyString(), anyString()))
+        when(positionRepository.findByAccountIdAndSymbol(anyString(), anyString()))
             .thenReturn(Optional.empty());
     }
 
@@ -43,7 +42,7 @@ public class OrderServiceTest {
     @DisplayName("Valid order placement creates order successfully")
     void testPlaceOrderSuccess() throws Exception {
         Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
 
         Order order = orderService.placeOrder(
             account,
@@ -68,7 +67,7 @@ public class OrderServiceTest {
     @DisplayName("Multiple orders can be placed with different idempotency keys")
     void testPlaceOrderIdempotency() throws Exception {
         Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
 
         Order order1 = orderService.placeOrder(
             account,
@@ -98,7 +97,7 @@ public class OrderServiceTest {
     @DisplayName("Fractional share quantities are rejected")
     void rejectsFractionalQuantities() {
         Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
 
         assertThrows(InvalidOrderException.class, () -> orderService.placeOrder(
             account, instrument, OrderSide.BUY, new BigDecimal("1.5"),
@@ -110,7 +109,7 @@ public class OrderServiceTest {
     @DisplayName("Sell orders require a positive price")
     void rejectsZeroPricedSellOrders() {
         Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
 
         assertThrows(InvalidOrderException.class, () -> orderService.placeOrder(
             account, instrument, OrderSide.SELL, new BigDecimal("1"),
