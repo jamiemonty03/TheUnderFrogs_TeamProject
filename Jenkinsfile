@@ -47,6 +47,31 @@ pipeline {
             }
         }
         
+        stage('Static Analysis') {
+            parallel {
+                stage('Analyse Accounts Service') {
+                    steps {
+                        sh 'mvn -B -f app/accounts-service/pom.xml checkstyle:check'
+                    }
+                }
+                stage('Analyse Instruments Service') {
+                    steps {
+                        sh 'mvn -B -f app/instruments-service/pom.xml checkstyle:check'
+                    }
+                }
+                stage('Analyse Orders Service') {
+                    steps {
+                        sh 'mvn -B -f app/orders-service/pom.xml checkstyle:check'
+                    }
+                }
+                stage('Analyse Positions Service') {
+                    steps {
+                        sh 'mvn -B -f app/positions-service/pom.xml checkstyle:check'
+                    }
+                }
+            }
+        }
+        
         stage('Unit Tests') {
             parallel {
                 stage('Test Accounts Service') {
