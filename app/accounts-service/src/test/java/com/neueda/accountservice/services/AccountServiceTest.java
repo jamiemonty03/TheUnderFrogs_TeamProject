@@ -1,59 +1,205 @@
 package com.neueda.accountservice.services;
 
 import com.neueda.accountservice.models.Account;
+import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
+import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Optional;
 
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AccountService Unit Tests")
 public class AccountServiceTest {
+    
+    @Mock
+    private AccountRepository accountRepository;
     
     private AccountService accountService;
     private Account account;
     
     @BeforeEach
     public void setUp() {
-        accountService = new AccountService();
+        accountService = new AccountService(accountRepository);
         account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        account.setVersion(1);
+        account.setCreatedAt(LocalDateTime.now());
+        account.setLastUpdated(LocalDateTime.now());
     }
     
+    // ==================== CREATE ACCOUNT TESTS ====================
+    
     @Test
-    @DisplayName("credit: Valid amount increases cash balance and increments version")
-    public void testCreditValidAmount() throws AccountNotActiveException {
-        accountService.credit(account, new BigDecimal("1000"));
+    @DisplayName("createAccount: Successfully creates a new account with default timestamps")
+    public void testCreateAccountSuccess() {
+        Account newAccount = new Account("ACC002", "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
+        doAnswer(invocation -> {
+            Account acc = invocation.getArgument(0);
+            assertNotNull(acc.getCreatedAt());
+            assertNotNull(acc.getLastUpdated());
+            assertEquals(1, acc.getVersion());
+            return null;
+        }).when(accountRepository).save(any(Account.class));
         
-        assertEquals(new BigDecimal("6000"), account.getCashBalance());
-        assertEquals(1, account.getVersion());
-    }
-    
-    @Test
-    @DisplayName("credit: Multiple credit operations accumulate balance correctly")
-    public void testCreditMultipleTimes() throws AccountNotActiveException {
-        accountService.credit(account, new BigDecimal("500"));
-        accountService.credit(account, new BigDecimal("300"));
+        Account result = accountService.createAccount(newAccount);
         
-        assertEquals(new BigDecimal("5800"), account.getCashBalance());
-        assertEquals(2, account.getVersion());
+        assertNotNull(result.getCreatedAt());
+        assertNotNull(result.getLastUpdated());
+        assertEquals(1, result.getVersion());
+        verify(accountRepository).save(any(Account.class));
     }
     
     @Test
-    @DisplayName("credit: Throws exception when account is null")
-    public void testCreditWithNullAccount() {
+    @DisplayName("createAccount: Throws exception when account is null")
+    public void testCreateAccountWithNull() {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.credit(null, new BigDecimal("1000"));
+            accountService.createAccount(null);
         });
+        
+        verify(accountRepository, never()).save(any());
+    }
+    
+    // ==================== GET ACCOUNT TESTS ====================
+    
+    @Test
+    @DisplayName("getAccountById: Successfully retrieves account by ID")
+    public void testGetAccountByIdSuccess() throws AccountNotFoundException {
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        
+        Account result = accountService.getAccountById("ACC001");
+        
+        assertEquals("ACC001", result.getAccountId());
+        assertEquals("John Doe", result.getHolderName());
+        verify(accountRepository).findById("ACC001");
+    }
+    
+    @Test
+    @DisplayName("getAccountById: Throws exception when account not found")
+    public void testGetAccountByIdNotFound() {
+        when(accountRepository.findById("INVALID")).thenReturn(Optional.empty());
+        
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.getAccountById("INVALID");
+        });
+        
+        verify(accountRepository).findById("INVALID");
+    }
+    
+    @Test
+    @DisplayName("getAccountById: Throws exception when account ID is null")
+    public void testGetAccountByIdWithNull() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            accountService.getAccountById(null);
+        });
+        
+        verify(accountRepository, never()).findById(any());
+    }
+    
+    @Test
+    @DisplayName("getAccountById: Throws exception when account ID is empty")
+    public void testGetAccountByIdWithEmpty() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            accountService.getAccountById("   ");
+        });
+        
+        verify(accountRepository, never()).findById(any());
+    }
+    
+    // ==================== UPDATE ACCOUNT TESTS ====================
+    
+    @Test
+    @DisplayName("updateAccount: Successfully updates account details")
+    public void testUpdateAccountSuccess() throws AccountNotFoundException {
+        Account updateData = new Account("ACC001", "Jane Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
+        updateData.setHolderName("Jane Updated");
+        
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        doAnswer(invocation -> {
+            Account acc = invocation.getArgument(0);
+            assertEquals(2, acc.getVersion());
+            return null;
+        }).when(accountRepository).update(any(Account.class));
+        
+        Account result = accountService.updateAccount("ACC001", updateData);
+        
+        assertEquals("Jane Updated", result.getHolderName());
+        assertEquals(2, result.getVersion());
+        verify(accountRepository).findById("ACC001");
+        verify(accountRepository).update(any(Account.class));
+    }
+    
+    @Test
+    @DisplayName("updateAccount: Throws exception when account not found")
+    public void testUpdateAccountNotFound() {
+        when(accountRepository.findById("INVALID")).thenReturn(Optional.empty());
+        
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.updateAccount("INVALID", account);
+        });
+    }
+    
+    // ==================== DELETE ACCOUNT TESTS ====================
+    
+    @Test
+    @DisplayName("deleteAccount: Successfully deletes an account")
+    public void testDeleteAccountSuccess() throws AccountNotFoundException {
+        when(accountRepository.exists("ACC001")).thenReturn(true);
+        
+        accountService.deleteAccount("ACC001");
+        
+        verify(accountRepository).exists("ACC001");
+        verify(accountRepository).delete("ACC001");
+    }
+    
+    @Test
+    @DisplayName("deleteAccount: Throws exception when account not found")
+    public void testDeleteAccountNotFound() {
+        when(accountRepository.exists("INVALID")).thenReturn(false);
+        
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.deleteAccount("INVALID");
+        });
+        
+        verify(accountRepository, never()).delete(any());
+    }
+    
+    // ==================== CREDIT TESTS ====================
+    
+    @Test
+    @DisplayName("credit: Successfully credits valid amount to active account")
+    public void testCreditValidAmount() throws AccountNotFoundException, AccountNotActiveException {
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        doAnswer(invocation -> {
+            Account acc = invocation.getArgument(0);
+            assertEquals(new BigDecimal("6000"), acc.getCashBalance());
+            assertEquals(2, acc.getVersion());
+            return null;
+        }).when(accountRepository).update(any(Account.class));
+        
+        Account result = accountService.credit("ACC001", new BigDecimal("1000"));
+        
+        assertEquals(new BigDecimal("6000"), result.getCashBalance());
+        assertEquals(2, result.getVersion());
+        verify(accountRepository).findById("ACC001");
+        verify(accountRepository).update(any(Account.class));
     }
     
     @Test
     @DisplayName("credit: Throws exception when amount is null")
     public void testCreditWithNullAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.credit(account, null);
+            accountService.credit("ACC001", null);
         });
     }
     
@@ -61,133 +207,131 @@ public class AccountServiceTest {
     @DisplayName("credit: Throws exception when amount is negative")
     public void testCreditWithNegativeAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.credit(account, new BigDecimal("-1000"));
+            accountService.credit("ACC001", new BigDecimal("-1000"));
         });
     }
     
     @Test
     @DisplayName("credit: Throws exception when amount is zero")
-    public void testCreditWithZeroAmount() throws AccountNotActiveException {
+    public void testCreditWithZeroAmount() {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.credit(account, BigDecimal.ZERO);
+            accountService.credit("ACC001", BigDecimal.ZERO);
         });
     }
     
     @Test
-    @DisplayName("credit: Throws exception when account is SUSPENDED")
+    @DisplayName("credit: Throws exception when account is not active")
     public void testCreditWithInactiveAccount() {
         account.setStatus(AccountStatus.SUSPENDED);
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
         
         assertThrows(AccountNotActiveException.class, () -> {
-            accountService.credit(account, new BigDecimal("1000"));
+            accountService.credit("ACC001", new BigDecimal("1000"));
+        });
+        
+        verify(accountRepository, never()).update(any());
+    }
+    
+    @Test
+    @DisplayName("credit: Throws exception when account not found")
+    public void testCreditAccountNotFound() {
+        when(accountRepository.findById("INVALID")).thenReturn(Optional.empty());
+        
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.credit("INVALID", new BigDecimal("1000"));
         });
     }
     
-    @Test
-    @DisplayName("credit: Throws exception when account is INACTIVE")
-    public void testCreditWithClosedAccount() {
-        account.setStatus(AccountStatus.INACTIVE);
-        
-        assertThrows(AccountNotActiveException.class, () -> {
-            accountService.credit(account, new BigDecimal("1000"));
-        });
-    }
+    // ==================== DEBIT TESTS ====================
     
     @Test
-    @DisplayName("debit: Valid amount decreases cash balance and increments version")
-    public void testDebitValidAmount() throws AccountNotActiveException, InsufficientFundsException {
-        accountService.debit(account, new BigDecimal("1000"));
+    @DisplayName("debit: Successfully debits valid amount from active account")
+    public void testDebitValidAmount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        doAnswer(invocation -> {
+            Account acc = invocation.getArgument(0);
+            assertEquals(new BigDecimal("4000"), acc.getCashBalance());
+            assertEquals(2, acc.getVersion());
+            return null;
+        }).when(accountRepository).update(any(Account.class));
         
-        assertEquals(new BigDecimal("4000"), account.getCashBalance());
-        assertEquals(1, account.getVersion());
-    }
-    
-    @Test
-    @DisplayName("debit: Multiple debit operations decrease balance correctly")
-    public void testDebitMultipleTimes() throws AccountNotActiveException, InsufficientFundsException {
-        accountService.debit(account, new BigDecimal("500"));
-        accountService.debit(account, new BigDecimal("300"));
+        Account result = accountService.debit("ACC001", new BigDecimal("1000"));
         
-        assertEquals(new BigDecimal("4200"), account.getCashBalance());
-        assertEquals(2, account.getVersion());
+        assertEquals(new BigDecimal("4000"), result.getCashBalance());
+        assertEquals(2, result.getVersion());
+        verify(accountRepository).findById("ACC001");
+        verify(accountRepository).update(any(Account.class));
     }
     
     @Test
     @DisplayName("debit: Can debit exact balance amount")
-    public void testDebitExactBalance() throws AccountNotActiveException, InsufficientFundsException {
-        accountService.debit(account, new BigDecimal("5000"));
+    public void testDebitExactBalance() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        doAnswer(invocation -> {
+            Account acc = invocation.getArgument(0);
+            assertEquals(BigDecimal.ZERO, acc.getCashBalance());
+            return null;
+        }).when(accountRepository).update(any(Account.class));
         
-        assertEquals(BigDecimal.ZERO, account.getCashBalance());
+        Account result = accountService.debit("ACC001", new BigDecimal("5000"));
+        
+        assertEquals(BigDecimal.ZERO, result.getCashBalance());
     }
     
     @Test
     @DisplayName("debit: Throws exception when amount exceeds balance")
-    public void testDebitMoreThanBalance() {
+    public void testDebitMoreThanBalance() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
+        
         assertThrows(InsufficientFundsException.class, () -> {
-            accountService.debit(account, new BigDecimal("6000"));
-        });
-    }
-    
-    @Test
-    @DisplayName("debit: Throws exception when account is null")
-    public void testDebitWithNullAccount() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            accountService.debit(null, new BigDecimal("1000"));
+            accountService.debit("ACC001", new BigDecimal("6000"));
         });
     }
     
     @Test
     @DisplayName("debit: Throws exception when amount is null")
-    public void testDebitWithNullAmount() {
+    public void testDebitWithNullAmount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.debit(account, null);
+            accountService.debit("ACC001", null);
         });
     }
     
     @Test
     @DisplayName("debit: Throws exception when amount is negative")
-    public void testDebitWithNegativeAmount() {
+    public void testDebitWithNegativeAmount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.debit(account, new BigDecimal("-1000"));
+            accountService.debit("ACC001", new BigDecimal("-1000"));
         });
     }
     
     @Test
     @DisplayName("debit: Throws exception when amount is zero")
-    public void testDebitWithZeroAmount() throws AccountNotActiveException, InsufficientFundsException {
+    public void testDebitWithZeroAmount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
         assertThrows(IllegalArgumentException.class, () -> {
-            accountService.debit(account, BigDecimal.ZERO);
+            accountService.debit("ACC001", BigDecimal.ZERO);
         });
     }
     
     @Test
-    @DisplayName("debit: Throws exception when account is SUSPENDED")
-    public void testDebitWithInactiveAccount() {
-        account.setStatus(AccountStatus.SUSPENDED);
-        
-        assertThrows(AccountNotActiveException.class, () -> {
-            accountService.debit(account, new BigDecimal("1000"));
-        });
-    }
-    
-    @Test
-    @DisplayName("debit: Throws exception when account is INACTIVE")
-    public void testDebitWithClosedAccount() {
+    @DisplayName("debit: Throws exception when account is not active")
+    public void testDebitWithInactiveAccount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
         account.setStatus(AccountStatus.INACTIVE);
+        when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
         
         assertThrows(AccountNotActiveException.class, () -> {
-            accountService.debit(account, new BigDecimal("1000"));
+            accountService.debit("ACC001", new BigDecimal("1000"));
         });
+        
+        verify(accountRepository, never()).update(any());
     }
     
     @Test
-    @DisplayName("credit/debit sequence: Multiple operations maintain correct balance and version")
-    public void testCreditAndDebitSequence() throws AccountNotActiveException, InsufficientFundsException {
-        accountService.credit(account, new BigDecimal("2000"));
-        accountService.debit(account, new BigDecimal("3000"));
-        accountService.credit(account, new BigDecimal("1500"));
+    @DisplayName("debit: Throws exception when account not found")
+    public void testDebitAccountNotFound() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        when(accountRepository.findById("INVALID")).thenReturn(Optional.empty());
         
-        assertEquals(new BigDecimal("5500"), account.getCashBalance());
-        assertEquals(3, account.getVersion());
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.debit("INVALID", new BigDecimal("1000"));
+        });
     }
 }

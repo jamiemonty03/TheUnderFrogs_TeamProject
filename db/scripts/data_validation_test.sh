@@ -9,7 +9,7 @@ echo "Starting data validation test..."
 DB_TARGETS=(
     "accounts|accounts-db|accounts"
     "instruments|instruments-db|instruments"
-    "orders|orders-db|orders"
+    "orders|orders-db|orders client_trades"
     "positions|positions-db|positions"
 )
 DB_CONTAINERS="accounts-db instruments-db orders-db positions-db"

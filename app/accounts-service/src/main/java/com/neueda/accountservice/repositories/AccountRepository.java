@@ -1,12 +1,14 @@
 package com.neueda.accountservice.repositories;
 
 import java.util.Optional;
+import org.apache.ibatis.annotations.Mapper;
 import com.neueda.accountservice.models.Account;
-import com.neueda.accountservice.exceptions.AccountNotFoundException;
 
+@Mapper
 public interface AccountRepository {
-    Account save(Account account);
+    void save(Account account);
     Optional<Account> findById(String accountId);
-    boolean delete(String accountId);
+    void delete(String accountId);
     boolean exists(String accountId);
+    void update(Account account);
 }
