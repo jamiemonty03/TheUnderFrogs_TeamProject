@@ -1,10 +1,12 @@
+-- account_id and symbol are owned by accounts-service / instruments-service; no cross-database FKs
+
 DROP TABLE IF EXISTS orders CASCADE;
 
 CREATE TABLE orders (
     order_id         CHAR(36) NOT NULL PRIMARY KEY,
     idempotency_key  VARCHAR(100) NOT NULL UNIQUE,
-    account_id       VARCHAR(32) NOT NULL REFERENCES accounts(account_id),
-    symbol           VARCHAR(20)  NOT NULL REFERENCES instruments(symbol),
+    account_id       VARCHAR(32) NOT NULL,
+    symbol           VARCHAR(20)  NOT NULL,
     side             VARCHAR(4) NOT NULL CHECK (side IN ('BUY', 'SELL')),
     quantity         INT NOT NULL CHECK (quantity > 0),
     price            NUMERIC(18,2) NOT NULL CHECK (price > 0),

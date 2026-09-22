@@ -4,58 +4,74 @@ set -e  # Exit on error
 
 echo "Starting data validation test..."
 
+# Each microservice owns its own database container: "service|container|required tables"
+# Credentials and the database name come from app/<service>-service/.env (SPRING_DATASOURCE_*)
+DB_TARGETS=(
+    "accounts|accounts-db|accounts"
+    "instruments|instruments-db|instruments"
+    "orders|orders-db|orders"
+    "positions|positions-db|positions"
+)
+DB_CONTAINERS="accounts-db instruments-db orders-db positions-db"
+
+# The .env files are gitignored. In CI, create any missing ones from .env.example,
+# filling in the password from POSTGRES_PASSWORD (Jenkins credential).
+for target in "${DB_TARGETS[@]}"; do
+    IFS='|' read -r service container tables <<< "$target"
+    env_file="app/${service}-service/.env"
+    if [ ! -f "$env_file" ]; then
+        echo "Creating $env_file from .env.example"
+        sed "s/ENTER_PASSWORD_HERE/${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set to create $env_file}/" "app/${service}-service/.env.example" > "$env_file"
+    fi
+done
+
 # Clean up any leftover containers aggressively
 docker-compose down --remove-orphans --volumes || true
 sleep 2  # Give Docker time to fully clean up
-docker rm -f underfrog-postgres underfrog-app underfrog-python || true
+docker rm -f $DB_CONTAINERS underfrog-python || true
 docker network prune -f || true  # Clean up orphaned networks
 sleep 2  # Another pause before starting fresh
 
-# Start services
-echo "Starting Docker containers..."
-docker-compose up -d
+# Only the databases are needed to validate the schemas
+echo "Starting database containers..."
+docker-compose up -d $DB_CONTAINERS
 
-# Wait for PostgreSQL to be ready
-
-echo "Waiting for PostgreSQL to be ready..."
-for i in {1..30}; do
-    if docker exec underfrog-postgres pg_isready -U "${POSTGRES_USER}" > /dev/null 2>&1; then
-        echo "✓ Database is ready"
-        break
-    fi
-    
-    if [ $i -eq 30 ]; then
-        echo "✗ Database failed to start after 60 seconds"
-        exit 1
-    fi
-    
-    echo "  Attempt $i/30: Waiting for database..."
-    sleep 2
-done
-
-# Check for errors in PostgreSQL logs
-echo "Checking for PostgreSQL init errors..."
-docker exec underfrog-postgres cat /var/log/postgresql/postgresql.log 2>/dev/null | grep -i error || echo "No errors found"
-
-# Validate data presence
-echo "Validating tables..."
-docker exec underfrog-postgres psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -c "
-SELECT table_name FROM information_schema.tables 
-WHERE table_schema = 'public' 
-ORDER BY table_name;
-" > /tmp/db_validation.log
-
-# Check that all required tables exist
-REQUIRED_TABLES=("accounts" "instruments" "orders" "positions")
 MISSING_TABLES=()
 
-for table in "${REQUIRED_TABLES[@]}"; do
-    if grep -q "$table" /tmp/db_validation.log; then
-        echo "✓ Table '$table' exists"
-    else
-        echo "✗ Table '$table' missing"
-        MISSING_TABLES+=("$table")
-    fi
+for target in "${DB_TARGETS[@]}"; do
+    IFS='|' read -r service container tables <<< "$target"
+
+    echo "Waiting for $container to be ready..."
+    for i in {1..30}; do
+        if docker exec "$container" sh -c 'pg_isready -U "$SPRING_DATASOURCE_USERNAME" -d "${SPRING_DATASOURCE_URL##*/}"' > /dev/null 2>&1; then
+            echo "✓ $container is ready"
+            break
+        fi
+
+        if [ $i -eq 30 ]; then
+            echo "✗ $container failed to start after 60 seconds"
+            exit 1
+        fi
+
+        echo "  Attempt $i/30: Waiting for $container..."
+        sleep 2
+    done
+
+    echo "Validating tables in $container..."
+    docker exec "$container" sh -c 'psql -U "$SPRING_DATASOURCE_USERNAME" -d "${SPRING_DATASOURCE_URL##*/}" -Atc "
+    SELECT table_name FROM information_schema.tables
+    WHERE table_schema = '"'"'public'"'"'
+    ORDER BY table_name;
+    "' > /tmp/db_validation.log
+
+    for table in $tables; do
+        if grep -qx "$table" /tmp/db_validation.log; then
+            echo "✓ Table '$table' exists in $container"
+        else
+            echo "✗ Table '$table' missing in $container"
+            MISSING_TABLES+=("$container.$table")
+        fi
+    done
 done
 
 # Report results
@@ -64,7 +80,5 @@ if [ ${#MISSING_TABLES[@]} -eq 0 ]; then
     exit 0
 else
     echo "✗ Missing tables: ${MISSING_TABLES[*]}"
-    echo "Database tables:"
-    cat /tmp/db_validation.log
     exit 1
 fi

@@ -17,6 +17,15 @@ error_exit() {
     exit 1
 }
 
+# Run psql inside a service's database container using that service's .env credentials
+# (SPRING_DATASOURCE_*). Usage: db_psql <container> [-i] [psql args...]
+db_psql() {
+    local container="$1"; shift
+    local flags=""
+    if [ "$1" = "-i" ]; then flags="-i"; shift; fi
+    docker exec $flags "$container" sh -c 'psql -U "$SPRING_DATASOURCE_USERNAME" -d "${SPRING_DATASOURCE_URL##*/}" "$@"' _ "$@"
+}
+
 # Check prerequisites
 check_prerequisites() {
     echo -e "${YELLOW}Checking prerequisites...${NC}"
@@ -33,6 +42,9 @@ check_prerequisites() {
     fi
     
     [ -f "docker-compose.yml" ] || error_exit "docker-compose.yml not found in current directory"
+    for svc in accounts instruments orders positions; do
+        [ -f "app/$svc-service/.env" ] || error_exit "app/$svc-service/.env missing (copy it from .env.example and set the password)"
+    done
     echo -e "${GREEN}✓ docker-compose.yml found${NC}\n"
 }
 
@@ -40,7 +52,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     echo "Usage: ./db/scripts/setup-pipeline.sh [option]"
     echo ""
     echo "Options:"
-    echo "  full        Build, create tables, and populate (default)"
+    echo "  full        Build jars, create tables, and populate (default)"
     echo "  skip-build  Skip Maven build, just create tables and populate"
     echo "  populate    Only run population scripts (no table creation)"
     exit 0
@@ -57,8 +69,10 @@ check_prerequisites
 
 if [ "$MODE" = "full" ] || [ "$MODE" = "skip-build" ]; then
     if [ "$MODE" = "full" ]; then
-        echo -e "${YELLOW}Building Java application...${NC}"
-        mvn -f app/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed"
+        echo -e "${YELLOW}Building Java services...${NC}"
+        for svc in accounts instruments orders positions; do
+            mvn -q -B -f app/$svc-service/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed for $svc-service"
+        done
         echo -e "${GREEN}✓ Build complete${NC}\n"
     fi
 
@@ -67,40 +81,29 @@ if [ "$MODE" = "full" ] || [ "$MODE" = "skip-build" ]; then
     docker-compose up -d || error_exit "Failed to start Docker containers"
     echo -e "${GREEN}✓ Containers started${NC}\n"
 
-    echo -e "${YELLOW}Waiting for database...${NC}"
-    DB_READY=false
-    for i in {1..30}; do
-        if docker exec underfrog-postgres pg_isready -U postgres > /dev/null 2>&1; then
-            echo -e "${GREEN}✓ Database ready${NC}\n"
-            DB_READY=true
-            break
-        fi
-        sleep 2
+    echo -e "${YELLOW}Waiting for databases...${NC}"
+    for container in accounts-db instruments-db orders-db positions-db; do
+        DB_READY=false
+        for i in {1..30}; do
+            if docker exec "$container" sh -c 'pg_isready -U "$SPRING_DATASOURCE_USERNAME"' > /dev/null 2>&1; then
+                echo -e "${GREEN}✓ $container ready${NC}"
+                DB_READY=true
+                break
+            fi
+            sleep 2
+        done
+
+        [ "$DB_READY" = true ] || error_exit "$container failed to start after 60 seconds"
     done
-    
-    [ "$DB_READY" = true ] || error_exit "Database failed to start after 60 seconds"
+    echo ""
 
     echo -e "${YELLOW}Creating tables...${NC}"
     
-    # Array of SQL files to execute
-    SQL_FILES=(
-        "01-accounts.sql"
-        "02-instruments.sql"
-        "03-orders.sql"
-        "04-positions.sql"
-        "05-raw_prices.sql"
-        "06-clean_prices.sql"
-        "07-price_metrics.sql"
-        "08-raw_stocks.sql"
-        "09-raw_etfs.sql"
-        "10-raw_bonds.sql"
-        "11-clean_stocks.sql"
-        "12-clean_etfs.sql"
-        "13-clean_bonds.sql"
-    )
-    
-    for sql_file in "${SQL_FILES[@]}"; do
-        docker exec underfrog-postgres psql -U postgres -d underfrog -f /docker-entrypoint-initdb.d/"$sql_file" || error_exit "Failed to create table from $sql_file"
+    # Each service owns its own database container; run that service's schema files
+    for container in accounts-db instruments-db orders-db positions-db; do
+        for sql_file in $(docker exec "$container" ls /docker-entrypoint-initdb.d | sort); do
+            db_psql "$container" -f /docker-entrypoint-initdb.d/"$sql_file" || error_exit "Failed to create table from $container:$sql_file"
+        done
     done
     
     echo -e "${GREEN}✓ Tables created${NC}\n"
@@ -131,15 +134,22 @@ done
 echo ""
 echo -e "${YELLOW}Seeding dummy data...${NC}"
 
-[ -f "db/seed/dummy-data.sql" ] || error_exit "db/seed/dummy-data.sql not found"
-ACCOUNT_COUNT=$(docker exec underfrog-postgres psql -U postgres -d underfrog -Atc "SELECT COUNT(*) FROM accounts;") || error_exit "Failed to check existing accounts"
+seed_db() {
+    local container="$1" table="$2" seed_file="$3"
+    [ -f "$seed_file" ] || error_exit "$seed_file not found"
+    local count
+    count=$(db_psql "$container" -Atc "SELECT COUNT(*) FROM $table;") || error_exit "Failed to check existing $table"
+    if [ "$count" -gt 0 ]; then
+        echo -e "${YELLOW}⚠ $table already has $count rows, skipping seed${NC}"
+    else
+        db_psql "$container" -i -v ON_ERROR_STOP=1 --single-transaction < "$seed_file" || error_exit "Failed to load $seed_file"
+        echo -e "${GREEN}✓ $table seeded${NC}"
+    fi
+}
 
-if [ "$ACCOUNT_COUNT" -gt 0 ]; then
-    echo -e "${YELLOW}⚠ accounts already has $ACCOUNT_COUNT rows, skipping seed${NC}"
-else
-    docker exec -i underfrog-postgres psql -U postgres -d underfrog -v ON_ERROR_STOP=1 --single-transaction < db/seed/dummy-data.sql || error_exit "Failed to load db/seed/dummy-data.sql"
-    echo -e "${GREEN}✓ Dummy data loaded${NC}"
-fi
+seed_db accounts-db  accounts  app/accounts-service/db/seed/dummy-data.sql
+seed_db orders-db    orders    app/orders-service/db/seed/dummy-data.sql
+seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
 
 echo ""
 echo -e "${GREEN}========================================="

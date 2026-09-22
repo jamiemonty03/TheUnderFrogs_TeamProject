@@ -9,11 +9,9 @@ class TestDatabaseConnection:
     def test_get_db_connection_success(self, etl_stocks_module):
         """Test successful database connection"""
         with patch.dict('os.environ', {
-            'DB_HOST': 'localhost',
-            'DB_PORT': '5432',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_USER': 'user',
-            'POSTGRES_PASSWORD': 'pass'
+            'SPRING_DATASOURCE_URL': 'jdbc:postgresql://localhost:5432/testdb',
+            'SPRING_DATASOURCE_USERNAME': 'user',
+            'SPRING_DATASOURCE_PASSWORD': 'pass'
         }):
             with patch.object(etl_stocks_module, 'psycopg') as mock_psycopg:
                 mock_conn = MagicMock()
@@ -24,11 +22,9 @@ class TestDatabaseConnection:
     def test_get_db_connection_failure(self, etl_stocks_module):
         """Test database connection failure returns None"""
         with patch.dict('os.environ', {
-            'DB_HOST': 'localhost',
-            'DB_PORT': '5432',
-            'POSTGRES_DB': 'testdb',
-            'POSTGRES_USER': 'user',
-            'POSTGRES_PASSWORD': 'pass'
+            'SPRING_DATASOURCE_URL': 'jdbc:postgresql://localhost:5432/testdb',
+            'SPRING_DATASOURCE_USERNAME': 'user',
+            'SPRING_DATASOURCE_PASSWORD': 'pass'
         }):
             with patch.object(etl_stocks_module, 'psycopg') as mock_psycopg:
                 mock_psycopg.Error = Exception
