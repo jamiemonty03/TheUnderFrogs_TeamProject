@@ -32,4 +32,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse("VAL-422", ex.getMessage()));
     }
+
+    @ExceptionHandler(TradingException.class)
+    public ResponseEntity<ErrorResponse> handleTradingException(TradingException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("TRD-400", ex.getMessage()));
+    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SYS-500", ex.getMessage()));
+    }
 }
