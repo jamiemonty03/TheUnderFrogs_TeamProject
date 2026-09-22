@@ -71,6 +71,58 @@ public class StockTest {
     }
 
     @Test
+    @DisplayName("getters: Every Stock-specific getter returns the value passed to the constructor")
+    public void testAllGettersReturnConstructorValues() {
+        Stock stock = newStock();
+
+        assertEquals(new BigDecimal("25.0"), stock.getForwardPe());
+        assertEquals(new BigDecimal("5.5"), stock.getTrailingEps());
+        assertEquals(new BigDecimal("0.92"), stock.getDividendRate());
+        assertEquals(new BigDecimal("0.15"), stock.getPayoutRatio());
+        assertEquals(new BigDecimal("35.2"), stock.getPriceToBook());
+        assertEquals(new BigDecimal("1.45"), stock.getReturnOnEquity());
+        assertEquals(new BigDecimal("2500000000000"), stock.getMarketCap());
+        assertEquals(new BigDecimal("15500000000"), stock.getSharesOutstanding());
+        assertEquals(new BigDecimal("383000000000"), stock.getTotalRevenue());
+    }
+
+    @Test
+    @DisplayName("setters: Every Stock-specific setter updates the value returned by its getter")
+    public void testAllSettersMutateFields() {
+        Stock stock = new Stock();
+
+        stock.setIndustry("Software");
+        stock.setCountry("USA");
+        stock.setFullTimeEmployees(200000);
+        stock.setBeta(new BigDecimal("1.10"));
+        stock.setTrailingPe(new BigDecimal("30.0"));
+        stock.setForwardPe(new BigDecimal("27.0"));
+        stock.setTrailingEps(new BigDecimal("6.0"));
+        stock.setDividendRate(new BigDecimal("1.00"));
+        stock.setPayoutRatio(new BigDecimal("0.20"));
+        stock.setPriceToBook(new BigDecimal("40.0"));
+        stock.setReturnOnEquity(new BigDecimal("1.50"));
+        stock.setSharesOutstanding(new BigDecimal("16000000000"));
+        stock.setTotalRevenue(new BigDecimal("400000000000"));
+        stock.setWebsite("https://example.com");
+
+        assertEquals("Software", stock.getIndustry());
+        assertEquals("USA", stock.getCountry());
+        assertEquals(200000, stock.getFullTimeEmployees());
+        assertEquals(new BigDecimal("1.10"), stock.getBeta());
+        assertEquals(new BigDecimal("30.0"), stock.getTrailingPe());
+        assertEquals(new BigDecimal("27.0"), stock.getForwardPe());
+        assertEquals(new BigDecimal("6.0"), stock.getTrailingEps());
+        assertEquals(new BigDecimal("1.00"), stock.getDividendRate());
+        assertEquals(new BigDecimal("0.20"), stock.getPayoutRatio());
+        assertEquals(new BigDecimal("40.0"), stock.getPriceToBook());
+        assertEquals(new BigDecimal("1.50"), stock.getReturnOnEquity());
+        assertEquals(new BigDecimal("16000000000"), stock.getSharesOutstanding());
+        assertEquals(new BigDecimal("400000000000"), stock.getTotalRevenue());
+        assertEquals("https://example.com", stock.getWebsite());
+    }
+
+    @Test
     @DisplayName("toString: Identifies itself as a Stock and includes key fields")
     public void testToStringIncludesStockFields() {
         Stock stock = newStock();

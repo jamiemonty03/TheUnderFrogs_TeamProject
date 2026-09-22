@@ -125,4 +125,36 @@ public class InstrumentTest {
         assertEquals(4, instrument.getVersion());
         assertEquals("system", instrument.getUpdatedBy());
     }
+
+    @Test
+    @DisplayName("setters: Remaining setters update the value returned by their getter")
+    public void testRemainingSettersUpdateState() {
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+
+        instrument.setSymbol("MSFT");
+        instrument.setName("Microsoft Corp.");
+        instrument.setAssetClass("BOND");
+        instrument.setCurrency("EUR");
+        instrument.setExchange("NYSE");
+        instrument.setLastUpdated(java.time.LocalDateTime.of(2026, 1, 1, 0, 0));
+
+        assertEquals("MSFT", instrument.getSymbol());
+        assertEquals("Microsoft Corp.", instrument.getName());
+        assertEquals("BOND", instrument.getAssetClass());
+        assertEquals("EUR", instrument.getCurrency());
+        assertEquals("NYSE", instrument.getExchange());
+        assertEquals(java.time.LocalDateTime.of(2026, 1, 1, 0, 0), instrument.getLastUpdated());
+    }
+
+    @Test
+    @DisplayName("toString: Includes symbol and key identifying fields")
+    public void testToStringIncludesInstrumentFields() {
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
+
+        String result = instrument.toString();
+
+        assertTrue(result.startsWith("Instrument{"));
+        assertTrue(result.contains("symbol='AAPL'"));
+        assertTrue(result.contains("assetClass='EQUITY'"));
+    }
 }

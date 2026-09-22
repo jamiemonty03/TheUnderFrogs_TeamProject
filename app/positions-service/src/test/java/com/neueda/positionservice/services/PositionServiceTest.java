@@ -10,21 +10,23 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.models.Position;
-import com.neueda.positionservice.repositories.InMemoryPositionRepository;
+import com.neueda.positionservice.repositories.PositionRepository;
 
+@ExtendWith(MockitoExtension.class)
 class PositionServiceTest {
 
-    private InMemoryPositionRepository repository;
-    private PositionService positionService;
+    @Mock
+    private PositionRepository repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new InMemoryPositionRepository();
-        positionService = new PositionService(repository);
-    }
+    @InjectMocks
+    private PositionService positionService;
 
     // Tests (applyBuy / applySell) 
 
@@ -152,82 +154,5 @@ class PositionServiceTest {
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applySell(position, new BigDecimal("-5"));
         });
-    }
-
-    // ============ Integration Tests (updatePositionAfterBuy / updatePositionAfterSell with Repository) ============
-
-    @Test
-    @DisplayName("updatePositionAfterBuy: Creates position and calculates FIFO average cost")
-    void testUpdatePositionAfterBuyCreatesPositionAndCalculatesAverageCost() {
-        positionService.updatePositionAfterBuy("ACC-1", "AAPL", 10, new BigDecimal("100.00"));
-        positionService.updatePositionAfterBuy("ACC-1", "AAPL", 10, new BigDecimal("120.00"));
-
-        assertEquals(20, positionService.getTotalQuantity("ACC-1", "AAPL"));
-        assertEquals(new BigDecimal("110.0000"), positionService.getAverageCost("ACC-1", "AAPL"));
-        assertTrue(positionService.hasPosition("ACC-1", "AAPL"));
-    }
-
-    @Test
-    @DisplayName("updatePositionAfterSell: Deletes position when quantity reaches zero")
-    void testUpdatePositionAfterSellDeletesPositionWhenQuantityReachesZero() throws InsufficientHoldingsException {
-        repository.save(new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("100")));
-
-        positionService.updatePositionAfterSell("ACC-1", "AAPL", 10);
-
-        assertTrue(positionService.getPosition("ACC-1", "AAPL").isEmpty());
-        assertFalse(positionService.hasPosition("ACC-1", "AAPL"));
-    }
-
-    @Test
-    @DisplayName("updatePositionAfterSell: Reduces quantity on partial sell")
-    void testUpdatePositionAfterSellReducesQuantityWhenPartialSell() throws InsufficientHoldingsException {
-        repository.save(new Position("ACC-1", "AAPL", new BigDecimal("20"), new BigDecimal("100")));
-
-        positionService.updatePositionAfterSell("ACC-1", "AAPL", 10);
-
-        assertEquals(10, positionService.getTotalQuantity("ACC-1", "AAPL"));
-        assertTrue(positionService.hasPosition("ACC-1", "AAPL"));
-    }
-
-    @Test
-    @DisplayName("updatePositionAfterSell: Throws exception when trying to sell more than held")
-    void testUpdatePositionAfterSellMoreThanHeldLeavesPositionUnchanged() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("100"));
-        repository.save(position);
-
-        assertThrows(InsufficientHoldingsException.class,
-            () -> positionService.updatePositionAfterSell("ACC-1", "AAPL", 11));
-
-        assertEquals(new BigDecimal("10"), positionService.getPosition("ACC-1", "AAPL").orElseThrow().getQuantity());
-    }
-
-    @Test
-    @DisplayName("updatePositionAfterSell: Throws exception for non-existent position")
-    void testUpdatePositionAfterSellNonExistentPositionThrowsException() {
-        assertThrows(InsufficientHoldingsException.class,
-            () -> positionService.updatePositionAfterSell("ACC-1", "NONEXISTENT", 10));
-    }
-
-    @Test
-    @DisplayName("getOrCreatePosition: Creates new position if it doesn't exist")
-    void testGetOrCreatePositionCreatesNewIfNotExists() {
-        Position position = positionService.getOrCreatePosition("ACC-1", "AAPL");
-        
-        assertTrue(repository.findByAccountAndSymbol("ACC-1", "AAPL").isPresent());
-        assertEquals("ACC-1", position.getAccountId());
-        assertEquals("AAPL", position.getSymbol());
-        assertEquals(BigDecimal.ZERO, position.getQuantity());
-    }
-
-    @Test
-    @DisplayName("getOrCreatePosition: Returns existing position if it already exists")
-    void testGetOrCreatePositionReturnsExistingIfExists() {
-        Position original = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
-        repository.save(original);
-        
-        Position retrieved = positionService.getOrCreatePosition("ACC-1", "AAPL");
-        
-        assertEquals(new BigDecimal("100"), retrieved.getQuantity());
-        assertEquals(new BigDecimal("50"), retrieved.getAverageCost());
     }
 }

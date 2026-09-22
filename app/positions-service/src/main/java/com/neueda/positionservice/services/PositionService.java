@@ -1,5 +1,6 @@
 package com.neueda.positionservice.services;
-
+import org.springframework.stereotype.Service;
+import java.util.List;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.repositories.PositionRepository;
@@ -9,6 +10,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+@Service
 public class PositionService {
 
     private static final int DECIMAL_PLACES = 4;
@@ -23,6 +25,27 @@ public class PositionService {
         this.positionRepository = positionRepository;
     }
 
+     public List<Position> getPositionsByAccountId(String accountId) {
+        return positionRepository.findByAccountId(accountId);
+    }
+
+    public Optional<Position> getPosition(String accountId, String symbol) {
+        return positionRepository.findByAccountAndSymbol(accountId, symbol);
+    }
+
+    public Position savePosition(Position position) {
+        if (positionRepository.exists(position.getAccountId(), position.getSymbol())) {
+            positionRepository.update(position);
+        } else {
+            positionRepository.save(position);
+        }
+        return position;
+    }
+ 
+    public boolean deletePosition(String accountId, String symbol) {
+        return positionRepository.delete(accountId, symbol);
+    }
+
     public Position getOrCreatePosition(String accountId, String symbol) {
 
         Optional<Position> existing = positionRepository.findByAccountAndSymbol(accountId, symbol);
@@ -31,11 +54,8 @@ public class PositionService {
         }
 
         Position newPosition = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
-        return positionRepository.save(newPosition);
-    }
-
-    public Optional<Position> getPosition(String accountId, String symbol) {
-        return positionRepository.findByAccountAndSymbol(accountId, symbol);
+        positionRepository.save(newPosition);
+        return newPosition;
     }
 
     public boolean hasPosition(String accountId, String symbol) {

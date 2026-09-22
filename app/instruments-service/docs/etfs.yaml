@@ -1,0 +1,200 @@
+openapi: 3.0.0
+info:
+  title: ETFs API
+  description: ETF fundamentals, joined with instrument reference data and latest price
+  version: 1.0.0
+  contact:
+    name: Neueda LEAP Team
+    url: https://github.com/neueda/leap
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://instruments-service.example.com
+    description: Production Server
+  - url: http://localhost:8082/api/instruments
+    description: Local Development Server
+
+tags:
+  - name: ETFs
+    description: ETF fundamentals
+
+paths:
+  /etfs:
+    get:
+      tags:
+        - ETFs
+      summary: List all ETFs
+      description: Returns every ETF's fundamentals, joined with instrument reference data and latest price
+      operationId: getEtfs
+      responses:
+        '200':
+          description: ETFs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EtfResponse'
+
+  /etfs/{symbol}:
+    get:
+      tags:
+        - ETFs
+      summary: Retrieve an ETF's fundamentals by symbol
+      operationId: getEtf
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "SPY"
+      responses:
+        '200':
+          description: ETF retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EtfResponse'
+              examples:
+                success:
+                  summary: ETF found
+                  value:
+                    symbol: "SPY"
+                    name: "State Street SPDR S&P 500 ETF T"
+                    price: 770.82
+                    tradeDate: "2026-09-21T00:00:00"
+                    createdAt: "2026-09-21T16:02:58.408844"
+                    lastUpdated: "2026-09-21T16:02:58.408844"
+                    category: "Large Blend"
+                    fundFamily: "State Street Investment Management"
+                    legalType: "Exchange Traded Fund"
+                    netExpenseRatio: 0.0945
+                    navPrice: 762.0114
+                    totalAssets: 811937038336.0
+                    netAssets: 811937040000.0
+                    ytdReturn: 13.07293
+                    threeYearAvgReturn: 0.21198
+                    fiveYearAvgReturn: 0.13035
+                    beta3Year: 1.0
+                    distributionYield: 0.0098
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    errorCode: "INS-404"
+                    message: "Instrument not found"
+
+components:
+  schemas:
+    EtfResponse:
+      type: object
+      description: ETF fundamentals, joined with instrument reference data and latest price
+      properties:
+        symbol:
+          type: string
+          example: "SPY"
+        name:
+          type: string
+          example: "State Street SPDR S&P 500 ETF T"
+        price:
+          type: number
+          format: decimal
+          nullable: true
+          example: 770.82
+        tradeDate:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-09-21T00:00:00"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.408844"
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.408844"
+        category:
+          type: string
+          example: "Large Blend"
+        fundFamily:
+          type: string
+          example: "State Street Investment Management"
+        legalType:
+          type: string
+          nullable: true
+          example: "Exchange Traded Fund"
+        netExpenseRatio:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.0945
+        navPrice:
+          type: number
+          format: decimal
+          example: 762.0114
+        totalAssets:
+          type: number
+          format: decimal
+          example: 811937038336.0
+        netAssets:
+          type: number
+          format: decimal
+          nullable: true
+          example: 811937040000.0
+        ytdReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: 13.07293
+        threeYearAvgReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.21198
+        fiveYearAvgReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.13035
+        beta3Year:
+          type: number
+          format: decimal
+          nullable: true
+          example: 1.0
+        distributionYield:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.0098
+      required:
+        - symbol
+        - name
+        - category
+        - fundFamily
+        - navPrice
+        - totalAssets
+
+    ErrorResponse:
+      type: object
+      description: Error response object
+      properties:
+        errorCode:
+          type: string
+          description: Unique error code identifier
+          example: "INS-404"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Instrument not found"
+      required:
+        - errorCode
+        - message
