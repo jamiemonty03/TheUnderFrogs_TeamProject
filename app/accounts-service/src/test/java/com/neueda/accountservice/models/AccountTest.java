@@ -1,0 +1,137 @@
+package com.neueda.accountservice.models;
+
+import com.neueda.accountservice.enums.AccountStatus;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class AccountTest {
+
+    @Test
+    @DisplayName("constructor: Valid arguments create an account with zero version and ACTIVE-checkable status")
+    public void testConstructorValidArguments() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+
+        assertEquals("ACC001", account.getAccountId());
+        assertEquals("John Doe", account.getHolderName());
+        assertEquals(new BigDecimal("5000"), account.getCashBalance());
+        assertEquals(AccountStatus.ACTIVE, account.getStatus());
+        assertEquals(0, account.getVersion());
+        assertNotNull(account.getCreatedAt());
+        assertNotNull(account.getLastUpdated());
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when accountId is null")
+    public void testConstructorNullAccountId() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account(null, "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when accountId is blank")
+    public void testConstructorBlankAccountId() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account("   ", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when holderName is null")
+    public void testConstructorNullHolderName() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account("ACC001", null, new BigDecimal("5000"), AccountStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when holderName is blank")
+    public void testConstructorBlankHolderName() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account("ACC001", "   ", new BigDecimal("5000"), AccountStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when cashBalance is null")
+    public void testConstructorNullCashBalance() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account("ACC001", "John Doe", null, AccountStatus.ACTIVE));
+    }
+
+    @Test
+    @DisplayName("constructor: Throws exception when status is null")
+    public void testConstructorNullStatus() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new Account("ACC001", "John Doe", new BigDecimal("5000"), null));
+    }
+
+    @Test
+    @DisplayName("constructor: Accepts a negative cash balance without validation (no lower bound enforced)")
+    public void testConstructorAllowsNegativeCashBalance() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("-100"), AccountStatus.ACTIVE);
+
+        assertEquals(new BigDecimal("-100"), account.getCashBalance());
+    }
+
+    @Test
+    @DisplayName("isActive: Returns true only when status is ACTIVE")
+    public void testIsActiveWhenActive() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+
+        assertTrue(account.isActive());
+    }
+
+    @Test
+    @DisplayName("isActive: Returns false when status is SUSPENDED")
+    public void testIsActiveWhenSuspended() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.SUSPENDED);
+
+        assertFalse(account.isActive());
+    }
+
+    @Test
+    @DisplayName("isActive: Returns false when status is INACTIVE")
+    public void testIsActiveWhenInactive() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.INACTIVE);
+
+        assertFalse(account.isActive());
+    }
+
+    @Test
+    @DisplayName("isActive: Reflects status changes made after construction via setStatus")
+    public void testIsActiveTracksStatusChanges() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        assertTrue(account.isActive());
+
+        account.setStatus(AccountStatus.SUSPENDED);
+
+        assertFalse(account.isActive());
+    }
+
+    @Test
+    @DisplayName("no-arg constructor: Leaves fields unset, unlike the validating constructor")
+    public void testNoArgConstructorLeavesFieldsNull() {
+        Account account = new Account();
+
+        assertNull(account.getAccountId());
+        assertNull(account.getHolderName());
+        assertNull(account.getCashBalance());
+        assertNull(account.getStatus());
+        assertEquals(0, account.getVersion());
+    }
+
+    @Test
+    @DisplayName("setters: Mutating fields after construction updates getters accordingly")
+    public void testSettersUpdateState() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+
+        account.setCashBalance(new BigDecimal("7500"));
+        account.setVersion(3);
+        account.setUpdatedBy("system");
+
+        assertEquals(new BigDecimal("7500"), account.getCashBalance());
+        assertEquals(3, account.getVersion());
+        assertEquals("system", account.getUpdatedBy());
+    }
+}
