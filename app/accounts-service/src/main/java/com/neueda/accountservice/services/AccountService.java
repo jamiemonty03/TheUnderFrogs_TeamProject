@@ -21,13 +21,11 @@ public class AccountService {
         this.accountRepository = accountRepository;
     }
 
-    // CREATE: Save a new account
     public Account createAccount(Account account) {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
         }
         
-        // Set timestamps if not already set
         if (account.getCreatedAt() == null) {
             account.setCreatedAt(LocalDateTime.now());
         }
@@ -42,7 +40,6 @@ public class AccountService {
         return account;
     }
 
-    // READ: Get account by ID
     public Account getAccountById(String accountId) throws AccountNotFoundException {
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("Account ID cannot be null or empty");
@@ -51,14 +48,6 @@ public class AccountService {
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountId));
     }
 
-    // READ: Get all accounts (if repository supports it)
-    public List<Account> getAllAccounts() {
-        // This would need to be added to AccountRepository if needed
-        // For now, returning empty list as placeholder
-        return List.of();
-    }
-
-    // UPDATE: Update an existing account
     public Account updateAccount(String accountId, Account updatedAccount) throws AccountNotFoundException {
         Account existing = getAccountById(accountId);
         
@@ -76,7 +65,6 @@ public class AccountService {
         return existing;
     }
 
-    // DELETE: Delete an account by ID
     public void deleteAccount(String accountId) throws AccountNotFoundException {
         if (!accountRepository.exists(accountId)) {
             throw new AccountNotFoundException("Account not found: " + accountId);
@@ -84,7 +72,6 @@ public class AccountService {
         accountRepository.delete(accountId);
     }
 
-    // BUSINESS LOGIC: Credit account
     public Account credit(String accountId, BigDecimal amount) throws AccountNotActiveException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Credit amount must be positive");
@@ -104,7 +91,6 @@ public class AccountService {
         return account;
     }
 
-    // BUSINESS LOGIC: Debit account
     public Account debit(String accountId, BigDecimal amount) 
             throws AccountNotActiveException, InsufficientFundsException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
