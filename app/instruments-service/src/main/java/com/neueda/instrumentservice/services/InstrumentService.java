@@ -28,6 +28,13 @@ public class InstrumentService {
         return toResponse(instrument);
     }
 
+    public void deleteInstrument(String symbol) throws InstrumentNotFoundException {
+        if (!instrumentRepository.exists(symbol)) {
+            throw new InstrumentNotFoundException(symbol);
+        }
+        instrumentRepository.delete(symbol);
+    }
+
     private static InstrumentResponse toResponse(Instrument instrument) {
         return new InstrumentResponse(
                 instrument.getSymbol(),

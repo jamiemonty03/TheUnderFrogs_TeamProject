@@ -2,6 +2,7 @@ package com.neueda.instrumentservice.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,5 +62,21 @@ public class InstrumentControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("INS-404"))
                 .andExpect(jsonPath("$.message").value("Instrument not found"));
+    }
+
+    @Test
+    void deleteInstrument_returns204WhenDeleted() throws Exception {
+        mockMvc.perform(delete("/instruments/AAPL"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteInstrument_returns404WhenNotFound() throws Exception {
+        org.mockito.Mockito.doThrow(new InstrumentNotFoundException("ZZZZ"))
+                .when(instrumentService).deleteInstrument("ZZZZ");
+
+        mockMvc.perform(delete("/instruments/ZZZZ"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("INS-404"));
     }
 }

@@ -1,11 +1,9 @@
 package com.neueda.instrumentservice.controllers;
 
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.services.InstrumentService;
@@ -29,5 +27,11 @@ public class InstrumentController {
     public ResponseEntity<InstrumentResponse> getInstrument(@PathVariable String symbol)
             throws InstrumentNotFoundException {
         return ResponseEntity.ok(instrumentService.getInstrumentBySymbol(symbol));
+    }
+
+    @DeleteMapping("/{symbol}")
+    public ResponseEntity<Void> deleteInstrument(@PathVariable String symbol) throws InstrumentNotFoundException {
+        instrumentService.deleteInstrument(symbol);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

@@ -3,6 +3,10 @@ package com.neueda.instrumentservice.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -72,5 +76,25 @@ public class InstrumentServiceTest {
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> instrumentService.getInstrumentBySymbol("ZZZZ"));
+    }
+
+    @Test
+    @DisplayName("deleteInstrument: Deletes when the instrument exists")
+    public void testDeleteInstrumentFound() throws InstrumentNotFoundException {
+        when(instrumentRepository.exists("AAPL")).thenReturn(true);
+
+        instrumentService.deleteInstrument("AAPL");
+
+        verify(instrumentRepository, times(1)).delete("AAPL");
+    }
+
+    @Test
+    @DisplayName("deleteInstrument: Throws InstrumentNotFoundException and does not delete when missing")
+    public void testDeleteInstrumentNotFound() {
+        when(instrumentRepository.exists("ZZZZ")).thenReturn(false);
+
+        assertThrows(InstrumentNotFoundException.class,
+                () -> instrumentService.deleteInstrument("ZZZZ"));
+        verify(instrumentRepository, never()).delete(any());
     }
 }
