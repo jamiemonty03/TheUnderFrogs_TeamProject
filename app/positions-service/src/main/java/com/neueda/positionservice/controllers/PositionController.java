@@ -29,7 +29,6 @@ public class PositionController {
     
     @PostMapping
     public Position createPosition(@RequestBody Position position) {
-        System.out.println("DEBUG: POST /api/positions called with position: " + position);
         return positionService.savePosition(position);
     }
     

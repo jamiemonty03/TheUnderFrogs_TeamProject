@@ -4,7 +4,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.mybatis.spring.annotation.MapperScan;
 
 @SpringBootApplication()
-@MapperScan("com.neueda.positionservice.mappers")
+@MapperScan("com.neueda.positionservice.repositories")
 public class PositionServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(PositionServiceApplication.class, args);

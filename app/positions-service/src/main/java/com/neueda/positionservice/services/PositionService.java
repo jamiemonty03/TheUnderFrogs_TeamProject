@@ -34,7 +34,12 @@ public class PositionService {
     }
 
     public Position savePosition(Position position) {
-        return positionRepository.save(position);
+        if (positionRepository.exists(position.getAccountId(), position.getSymbol())) {
+            positionRepository.update(position);
+        } else {
+            positionRepository.save(position);
+        }
+        return position;
     }
  
     public boolean deletePosition(String accountId, String symbol) {
@@ -49,7 +54,8 @@ public class PositionService {
         }
 
         Position newPosition = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
-        return positionRepository.save(newPosition);
+        positionRepository.save(newPosition);
+        return newPosition;
     }
 
     public boolean hasPosition(String accountId, String symbol) {
