@@ -1,8 +1,9 @@
 pipeline {
     agent any
     environment {
-         //Variables are securely managed via Jenkins Credentials security settings 
-        POSTGRES_DB = credentials('postgres-db')
+        // Credentials: shared user/password for all microservice databases
+        // Each service has its own DB (accounts_db, instruments_db, orders_db, positions_db)
+        // defined in app/{service}-service/.env files
         POSTGRES_USER = credentials('postgres-user')
         POSTGRES_PASSWORD = credentials('postgres-password') 
     }
@@ -20,15 +21,59 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Build Image') {
-            steps {
-                sh 'for s in accounts instruments orders positions; do mvn -B -f app/$s-service/pom.xml clean package -Dmaven.test.skip=true || exit 1; done'
+        
+        stage('Build Services') {
+            parallel {
+                stage('Build Accounts Service') {
+                    steps {
+                        sh 'mvn -B -f app/accounts-service/pom.xml clean package -Dmaven.test.skip=true'
+                    }
+                }
+                stage('Build Instruments Service') {
+                    steps {
+                        sh 'mvn -B -f app/instruments-service/pom.xml clean package -Dmaven.test.skip=true'
+                    }
+                }
+                stage('Build Orders Service') {
+                    steps {
+                        sh 'mvn -B -f app/orders-service/pom.xml clean package -Dmaven.test.skip=true'
+                    }
+                }
+                stage('Build Positions Service') {
+                    steps {
+                        sh 'mvn -B -f app/positions-service/pom.xml clean package -Dmaven.test.skip=true'
+                    }
+                }
+            }
+        }
+        
+        stage('Unit Tests') {
+            parallel {
+                stage('Test Accounts Service') {
+                    steps {
+                        sh 'mvn -B -f app/accounts-service/pom.xml test'
+                    }
+                }
+                stage('Test Instruments Service') {
+                    steps {
+                        sh 'mvn -B -f app/instruments-service/pom.xml test'
+                    }
+                }
+                stage('Test Orders Service') {
+                    steps {
+                        sh 'mvn -B -f app/orders-service/pom.xml test'
+                    }
+                }
+                stage('Test Positions Service') {
+                    steps {
+                        sh 'mvn -B -f app/positions-service/pom.xml test'
+                    }
+                }
             }
         }
         
         stage('Database Validation Test') {
             steps {
-                sh 'docker rm -f accounts-db instruments-db orders-db positions-db underfrog-python || true'
                 sh 'chmod +x ./db/scripts/data_validation_test.sh'
                 sh './db/scripts/data_validation_test.sh'
             }
