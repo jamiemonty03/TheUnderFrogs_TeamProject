@@ -18,16 +18,12 @@
 The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
 
 1) Create a `.env` file in the project root (this is gitignored, so it won't be committed):
-```
-POSTGRES_DB=underfrog
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<your-password>
-```
+
 2) Start the stack:
 ```
 docker-compose up -d
 ```
-Each service runs in its own container with its own Postgres container: `accounts-db`, `instruments-db`, `orders-db`, `positions-db` (host ports 5433-5436, localhost only), each with its own named volume. Each database is initialised on first start from that service's `app/<service>/db/schema/` folder. The python ETL/dashboard container (`underfrog-python`) talks to `instruments-db`.
+Each service runs in its own container with its own Postgres container: `accounts-db`, `instruments-db`, `orders-db`, `positions-db` (host ports 5433-5436, localhost only), each with its own named volume. Each database is initialised on first start from that service's `app/<service>/db/schema/` folder. Historical trade data is stored in `orders-db` as `client_trades`. The python ETL/dashboard container (`underfrog-python`) talks to `instruments-db`.
 
 3) Check the containers are up:
 ```
