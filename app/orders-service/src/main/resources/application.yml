@@ -10,6 +10,6 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
 server:
   address: 0.0.0.0
-  port: 8080
+  port: 8081
   servlet:
     context-path: /api/orders
