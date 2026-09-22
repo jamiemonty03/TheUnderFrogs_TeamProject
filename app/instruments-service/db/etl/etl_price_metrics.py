@@ -279,7 +279,7 @@ def validate_metrics(df: pd.DataFrame) -> bool:
 def load_to_database(db: DatabaseConnection, df: pd.DataFrame) -> int:
     try:
         # Read and execute table creation SQL
-        sql_file_path = os.path.join(os.path.dirname(__file__), '..', 'schema', '07-price_metrics.sql')
+        sql_file_path = os.path.join(os.path.dirname(__file__), '..', 'schema', '05-price_metrics.sql')
         with open(sql_file_path, 'r') as f:
             sql_content = f.read()
         
