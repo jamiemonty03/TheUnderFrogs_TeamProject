@@ -6,8 +6,12 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.services.AccountService;
+import com.neueda.accountservice.exceptions.AccountNotFoundException;
+import com.neueda.accountservice.exceptions.AccountNotActiveException;
+import com.neueda.accountservice.exceptions.InsufficientFundsException;
 
 @RestController
 @RequestMapping("/accounts")
@@ -20,13 +24,13 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@RequestBody Account account) {
+    public ResponseEntity<Account> createAccount(@Valid @RequestBody Account account) {
         Account created = accountService.createAccount(account);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<Account> getAccount(@PathVariable String accountId) {
+    public ResponseEntity<Account> getAccount(@PathVariable String accountId) throws AccountNotFoundException {
         Account account = accountService.getAccountById(accountId);
         return ResponseEntity.ok(account);
     }
@@ -34,13 +38,13 @@ public class AccountController {
     @PutMapping("/{accountId}")
     public ResponseEntity<Account> updateAccount(
             @PathVariable String accountId,
-            @RequestBody Account account) {
+            @Valid @RequestBody Account account) throws AccountNotFoundException {
         Account updated = accountService.updateAccount(accountId, account);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{accountId}")
-    public ResponseEntity<Void> deleteAccount(@PathVariable String accountId) {
+    public ResponseEntity<Void> deleteAccount(@PathVariable String accountId) throws AccountNotFoundException {
         accountService.deleteAccount(accountId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
@@ -48,7 +52,7 @@ public class AccountController {
     @PostMapping("/{accountId}/credit")
     public ResponseEntity<Account> creditAccount(
             @PathVariable String accountId,
-            @RequestBody Map<String, BigDecimal> request) {
+            @RequestBody Map<String, BigDecimal> request) throws AccountNotFoundException, AccountNotActiveException {
         BigDecimal amount = request.get("amount");
         Account updated = accountService.credit(accountId, amount);
         return ResponseEntity.ok(updated);
@@ -57,7 +61,7 @@ public class AccountController {
     @PostMapping("/{accountId}/debit")
     public ResponseEntity<Account> debitAccount(
             @PathVariable String accountId,
-            @RequestBody Map<String, BigDecimal> request) {
+            @RequestBody Map<String, BigDecimal> request) throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
         BigDecimal amount = request.get("amount");
         Account updated = accountService.debit(accountId, amount);
         return ResponseEntity.ok(updated);
