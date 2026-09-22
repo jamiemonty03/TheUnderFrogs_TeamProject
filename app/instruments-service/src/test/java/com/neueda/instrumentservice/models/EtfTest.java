@@ -68,6 +68,48 @@ public class EtfTest {
     }
 
     @Test
+    @DisplayName("getters: Every Etf-specific getter returns the value passed to the constructor")
+    public void testAllGettersReturnConstructorValues() {
+        Etf etf = newEtf();
+
+        assertEquals("ETF", etf.getLegalType());
+        assertEquals(new BigDecimal("0.09"), etf.getNetExpenseRatio());
+        assertEquals(new BigDecimal("450.10"), etf.getNavPrice());
+        assertEquals(new BigDecimal("400000000000"), etf.getTotalAssets());
+        assertEquals(new BigDecimal("399000000000"), etf.getNetAssets());
+        assertEquals(new BigDecimal("10.2"), etf.getThreeYearAvgReturn());
+        assertEquals(new BigDecimal("11.8"), etf.getFiveYearAvgReturn());
+    }
+
+    @Test
+    @DisplayName("setters: Every Etf-specific setter updates the value returned by its getter")
+    public void testAllSettersMutateFields() {
+        Etf etf = new Etf();
+
+        etf.setFundFamily("Vanguard");
+        etf.setLegalType("Unit Trust");
+        etf.setNavPrice(new BigDecimal("101.00"));
+        etf.setTotalAssets(new BigDecimal("2000"));
+        etf.setNetAssets(new BigDecimal("1900"));
+        etf.setYtdReturn(new BigDecimal("9.0"));
+        etf.setThreeYearAvgReturn(new BigDecimal("8.0"));
+        etf.setFiveYearAvgReturn(new BigDecimal("7.0"));
+        etf.setBeta3Year(new BigDecimal("0.9"));
+        etf.setDistributionYield(new BigDecimal("1.5"));
+
+        assertEquals("Vanguard", etf.getFundFamily());
+        assertEquals("Unit Trust", etf.getLegalType());
+        assertEquals(new BigDecimal("101.00"), etf.getNavPrice());
+        assertEquals(new BigDecimal("2000"), etf.getTotalAssets());
+        assertEquals(new BigDecimal("1900"), etf.getNetAssets());
+        assertEquals(new BigDecimal("9.0"), etf.getYtdReturn());
+        assertEquals(new BigDecimal("8.0"), etf.getThreeYearAvgReturn());
+        assertEquals(new BigDecimal("7.0"), etf.getFiveYearAvgReturn());
+        assertEquals(new BigDecimal("0.9"), etf.getBeta3Year());
+        assertEquals(new BigDecimal("1.5"), etf.getDistributionYield());
+    }
+
+    @Test
     @DisplayName("toString: Identifies itself as an Etf and includes key fields")
     public void testToStringIncludesEtfFields() {
         Etf etf = newEtf();
