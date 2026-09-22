@@ -14,7 +14,9 @@ public class Position {
     private LocalDateTime lastUpdated;
     private String updatedBy;
 
-    public Position() {}
+    public Position() {
+        this.version = 0;
+    }
 
     public Position(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
         if (accountId == null || accountId.trim().isEmpty()) {
@@ -105,7 +107,7 @@ public class Position {
 
     public BigDecimal getMarketValue(BigDecimal currentPrice) {
         return currentPrice.multiply(quantity);
-    }
+    } 
 
     @Override
     public boolean equals(Object obj) {

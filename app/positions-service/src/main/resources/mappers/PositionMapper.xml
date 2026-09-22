@@ -18,16 +18,13 @@
 
   <!-- INSERT: Add a new position -->
   <insert id="insertPosition" parameterType="com.neueda.positionservice.models.Position">
-    INSERT INTO positions (account_id, symbol, quantity, average_cost, version, created_at, last_updated, updated_by)
+    INSERT INTO positions (account_id, symbol, quantity, average_cost, version)
     VALUES (
       #{accountId},
       #{symbol},
       #{quantity},
       #{averageCost},
-      #{version},
-      #{createdAt},
-      #{lastUpdated},
-      #{updatedBy}
+      #{version}
     )
   </insert>
 
