@@ -2,39 +2,118 @@ package com.neueda.accountservice.services;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.stereotype.Service;
 import com.neueda.accountservice.models.Account;
+import com.neueda.accountservice.repositories.AccountRepository;
+import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
+import com.neueda.accountservice.exceptions.AccountNotFoundException;
 
+@Service
 public class AccountService {
 
-    public void credit(Account account, BigDecimal amount) throws AccountNotActiveException {
+    private final AccountRepository accountRepository;
+
+    public AccountService(AccountRepository accountRepository) {
+        this.accountRepository = accountRepository;
+    }
+
+    // CREATE: Save a new account
+    public Account createAccount(Account account) {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
         }
+        
+        // Set timestamps if not already set
+        if (account.getCreatedAt() == null) {
+            account.setCreatedAt(LocalDateTime.now());
+        }
+        if (account.getLastUpdated() == null) {
+            account.setLastUpdated(LocalDateTime.now());
+        }
+        if (account.getVersion() == 0) {
+            account.setVersion(1);
+        }
+        
+        accountRepository.save(account);
+        return account;
+    }
+
+    // READ: Get account by ID
+    public Account getAccountById(String accountId) throws AccountNotFoundException {
+        if (accountId == null || accountId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Account ID cannot be null or empty");
+        }
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountId));
+    }
+
+    // READ: Get all accounts (if repository supports it)
+    public List<Account> getAllAccounts() {
+        // This would need to be added to AccountRepository if needed
+        // For now, returning empty list as placeholder
+        return List.of();
+    }
+
+    // UPDATE: Update an existing account
+    public Account updateAccount(String accountId, Account updatedAccount) throws AccountNotFoundException {
+        Account existing = getAccountById(accountId);
+        
+        if (updatedAccount.getHolderName() != null && !updatedAccount.getHolderName().trim().isEmpty()) {
+            existing.setHolderName(updatedAccount.getHolderName());
+        }
+        if (updatedAccount.getStatus() != null) {
+            existing.setStatus(updatedAccount.getStatus());
+        }
+        
+        existing.setLastUpdated(LocalDateTime.now());
+        existing.setVersion(existing.getVersion() + 1);
+        
+        accountRepository.update(existing);
+        return existing;
+    }
+
+    // DELETE: Delete an account by ID
+    public void deleteAccount(String accountId) throws AccountNotFoundException {
+        if (!accountRepository.exists(accountId)) {
+            throw new AccountNotFoundException("Account not found: " + accountId);
+        }
+        accountRepository.delete(accountId);
+    }
+
+    // BUSINESS LOGIC: Credit account
+    public Account credit(String accountId, BigDecimal amount) throws AccountNotActiveException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Credit amount must be positive");
         }
         
-        if (!account.isActive()) {
+        Account account = getAccountById(accountId);
+        
+        if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException("Cannot credit an inactive account");
         }
         
         account.setCashBalance(account.getCashBalance().add(amount));
         account.setLastUpdated(LocalDateTime.now());
         account.setVersion(account.getVersion() + 1);
+        
+        accountRepository.update(account);
+        return account;
     }
 
-    public void debit(Account account, BigDecimal amount) 
-            throws AccountNotActiveException, InsufficientFundsException {
-        if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
-        }
+    // BUSINESS LOGIC: Debit account
+    public Account debit(String accountId, BigDecimal amount) 
+            throws AccountNotActiveException, InsufficientFundsException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Debit amount must be positive");
         }
         
-        if (!account.isActive()) {
+        Account account = getAccountById(accountId);
+        
+        if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException("Cannot debit an inactive account");
         }
         
@@ -48,5 +127,8 @@ public class AccountService {
         account.setCashBalance(account.getCashBalance().subtract(amount));
         account.setLastUpdated(LocalDateTime.now());
         account.setVersion(account.getVersion() + 1);
+        
+        accountRepository.update(account);
+        return account;
     }
 }
