@@ -1,0 +1,225 @@
+openapi: 3.0.0
+info:
+  title: Stocks API
+  description: Equity fundamentals, joined with instrument reference data and latest price
+  version: 1.0.0
+  contact:
+    name: Neueda LEAP Team
+    url: https://github.com/neueda/leap
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://instruments-service.example.com
+    description: Production Server
+  - url: http://localhost:8082/api/instruments
+    description: Local Development Server
+
+tags:
+  - name: Stocks
+    description: Equity-specific fundamentals
+
+paths:
+  /stocks:
+    get:
+      tags:
+        - Stocks
+      summary: List all stocks
+      description: Returns every equity's fundamentals, joined with instrument reference data and latest price
+      operationId: getStocks
+      responses:
+        '200':
+          description: Stocks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockResponse'
+
+  /stocks/{symbol}:
+    get:
+      tags:
+        - Stocks
+      summary: Retrieve a stock's fundamentals by symbol
+      operationId: getStock
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "AAPL"
+      responses:
+        '200':
+          description: Stock retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockResponse'
+              examples:
+                success:
+                  summary: Stock found
+                  value:
+                    symbol: "AAPL"
+                    name: "Apple Inc."
+                    price: 337.855
+                    tradeDate: "2026-09-21T00:00:00"
+                    createdAt: "2026-09-21T16:02:58.001367"
+                    lastUpdated: "2026-09-21T16:02:58.001367"
+                    sector: "Technology"
+                    industry: "Consumer Electronics"
+                    country: "United States"
+                    fullTimeEmployees: 150000
+                    beta: null
+                    trailingPe: 38.7842
+                    forwardPe: 35.2304
+                    trailingEps: 8.71
+                    dividendRate: 1.08
+                    payoutRatio: 0.1204
+                    priceToBook: 45.8981
+                    returnOnEquity: 1.4875
+                    marketCap: 4930059894784.0
+                    sharesOutstanding: 14594180000.0
+                    totalRevenue: 466822987776.0
+                    website: "https://www.apple.com"
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    errorCode: "INS-404"
+                    message: "Instrument not found"
+
+components:
+  schemas:
+    StockResponse:
+      type: object
+      description: Equity fundamentals, joined with instrument reference data and latest price
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        name:
+          type: string
+          example: "Apple Inc."
+        price:
+          type: number
+          format: decimal
+          nullable: true
+          description: Latest close price, from clean_prices. Null if no price history exists yet.
+          example: 337.855
+        tradeDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Date of the latest price used above
+          example: "2026-09-21T00:00:00"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.001367"
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.001367"
+        sector:
+          type: string
+          example: "Technology"
+        industry:
+          type: string
+          example: "Consumer Electronics"
+        country:
+          type: string
+          example: "United States"
+        fullTimeEmployees:
+          type: integer
+          nullable: true
+          example: 150000
+        beta:
+          type: number
+          format: decimal
+          nullable: true
+          description: Not currently captured by clean_stocks - always null until that column is added.
+          example: null
+        trailingPe:
+          type: number
+          format: decimal
+          nullable: true
+          example: 38.7842
+        forwardPe:
+          type: number
+          format: decimal
+          nullable: true
+          example: 35.2304
+        trailingEps:
+          type: number
+          format: decimal
+          nullable: true
+          example: 8.71
+        dividendRate:
+          type: number
+          format: decimal
+          nullable: true
+          example: 1.08
+        payoutRatio:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.1204
+        priceToBook:
+          type: number
+          format: decimal
+          nullable: true
+          example: 45.8981
+        returnOnEquity:
+          type: number
+          format: decimal
+          nullable: true
+          example: 1.4875
+        marketCap:
+          type: number
+          format: decimal
+          example: 4930059894784.0
+        sharesOutstanding:
+          type: number
+          format: decimal
+          example: 14594180000.0
+        totalRevenue:
+          type: number
+          format: decimal
+          nullable: true
+          example: 466822987776.0
+        website:
+          type: string
+          nullable: true
+          example: "https://www.apple.com"
+      required:
+        - symbol
+        - name
+        - sector
+        - industry
+        - country
+        - marketCap
+        - sharesOutstanding
+
+    ErrorResponse:
+      type: object
+      description: Error response object
+      properties:
+        errorCode:
+          type: string
+          description: Unique error code identifier
+          example: "INS-404"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Instrument not found"
+      required:
+        - errorCode
+        - message
