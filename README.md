@@ -17,10 +17,8 @@
 ## Docker Setup
 The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
 
-1) Create a `.env` file for each service from its example file, then set the database password in each generated file:
-```
-for s in accounts instruments orders positions; do cp app/$s-service/.env.example app/$s-service/.env; done
-```
+1) Create a `.env` file in the project root (this is gitignored, so it won't be committed):
+
 2) Start the stack:
 ```
 docker-compose up -d
