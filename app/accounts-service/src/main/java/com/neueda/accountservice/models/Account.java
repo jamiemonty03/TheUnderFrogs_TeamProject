@@ -3,12 +3,21 @@ package com.neueda.accountservice.models;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import com.neueda.accountservice.enums.AccountStatus;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 public class Account {
    
+    @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
+    
+    @NotBlank(message = "Holder name cannot be null or blank")
     private String holderName;
+    
+    @NotNull(message = "Cash balance cannot be null")
     private BigDecimal cashBalance;
+    
+    @NotNull(message = "Account status cannot be null")
     private AccountStatus status;
     private int version;
     private LocalDateTime createdAt;
@@ -81,6 +90,10 @@ public class Account {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public LocalDateTime getLastUpdated() {
