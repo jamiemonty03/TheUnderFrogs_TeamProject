@@ -187,7 +187,39 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
 
     seed_db accounts-db  accounts  app/accounts-service/db/seed/dummy-data.sql
     seed_db orders-db    orders    app/orders-service/db/seed/dummy-data.sql
+seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
+
+echo ""
+echo -e "${YELLOW}Checking historical trades against current positions...${NC}"
+
+trades_file=$(mktemp)
+positions_file=$(mktemp)
+
+db_psql orders-db -Atc "
+    SELECT account_id || '|' || symbol || '|' || net_quantity
+    FROM (
+        SELECT account_id, symbol,
+               SUM(CASE WHEN trade_type = 'BUY' THEN quantity ELSE -quantity END)::NUMERIC(18,4) AS net_quantity
+        FROM client_trades
+        GROUP BY account_id, symbol
+    ) trade_totals
+    ORDER BY account_id, symbol;
+" > "$trades_file" || error_exit "Failed to calculate client_trades totals"
+
+db_psql positions-db -Atc "
+    SELECT account_id || '|' || symbol || '|' || quantity::NUMERIC(18,4)
+    FROM positions
+    ORDER BY account_id, symbol;
+" > "$positions_file" || error_exit "Failed to read positions totals"
+
+if diff -u "$positions_file" "$trades_file"; then
+    echo -e "${GREEN}✓ Historical trades reconcile with positions${NC}"
+else
+    error_exit "client_trades net quantities do not match positions"
+fi
+
+rm -f "$trades_file" "$positions_file"
 
     echo ""
 fi
