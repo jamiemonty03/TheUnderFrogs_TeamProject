@@ -129,14 +129,14 @@ public class AccountServiceTest {
             Account acc = invocation.getArgument(0);
             assertEquals(2, acc.getVersion());
             return null;
-        }).when(accountRepository).update(any(Account.class));
+        }).when(accountRepository).save(any(Account.class));
         
         Account result = accountService.updateAccount("ACC001", updateData);
         
         assertEquals("Jane Updated", result.getHolderName());
         assertEquals(2, result.getVersion());
         verify(accountRepository).findById("ACC001");
-        verify(accountRepository).update(any(Account.class));
+        verify(accountRepository).save(any(Account.class));
     }
     
     @Test
@@ -154,24 +154,24 @@ public class AccountServiceTest {
     @Test
     @DisplayName("deleteAccount: Successfully deletes an account")
     public void testDeleteAccountSuccess() throws AccountNotFoundException {
-        when(accountRepository.exists("ACC001")).thenReturn(true);
+        when(accountRepository.existsById("ACC001")).thenReturn(true);
         
         accountService.deleteAccount("ACC001");
         
-        verify(accountRepository).exists("ACC001");
-        verify(accountRepository).delete("ACC001");
+        verify(accountRepository).existsById("ACC001");
+        verify(accountRepository).deleteById("ACC001");
     }
     
     @Test
     @DisplayName("deleteAccount: Throws exception when account not found")
     public void testDeleteAccountNotFound() {
-        when(accountRepository.exists("INVALID")).thenReturn(false);
+        when(accountRepository.existsById("INVALID")).thenReturn(false);
         
         assertThrows(AccountNotFoundException.class, () -> {
             accountService.deleteAccount("INVALID");
         });
         
-        verify(accountRepository, never()).delete(any());
+        verify(accountRepository, never()).deleteById(any());
     }
     
     // ==================== CREDIT TESTS ====================
@@ -185,14 +185,14 @@ public class AccountServiceTest {
             assertEquals(new BigDecimal("6000"), acc.getCashBalance());
             assertEquals(2, acc.getVersion());
             return null;
-        }).when(accountRepository).update(any(Account.class));
+        }).when(accountRepository).save(any(Account.class));
         
         Account result = accountService.credit("ACC001", new BigDecimal("1000"));
         
         assertEquals(new BigDecimal("6000"), result.getCashBalance());
         assertEquals(2, result.getVersion());
         verify(accountRepository).findById("ACC001");
-        verify(accountRepository).update(any(Account.class));
+        verify(accountRepository).save(any(Account.class));
     }
     
     @Test
@@ -229,7 +229,7 @@ public class AccountServiceTest {
             accountService.credit("ACC001", new BigDecimal("1000"));
         });
         
-        verify(accountRepository, never()).update(any());
+        verify(accountRepository, never()).save(any());
     }
     
     @Test
@@ -253,14 +253,14 @@ public class AccountServiceTest {
             assertEquals(new BigDecimal("4000"), acc.getCashBalance());
             assertEquals(2, acc.getVersion());
             return null;
-        }).when(accountRepository).update(any(Account.class));
+        }).when(accountRepository).save(any(Account.class));
         
         Account result = accountService.debit("ACC001", new BigDecimal("1000"));
         
         assertEquals(new BigDecimal("4000"), result.getCashBalance());
         assertEquals(2, result.getVersion());
         verify(accountRepository).findById("ACC001");
-        verify(accountRepository).update(any(Account.class));
+        verify(accountRepository).save(any(Account.class));
     }
     
     @Test
@@ -271,7 +271,7 @@ public class AccountServiceTest {
             Account acc = invocation.getArgument(0);
             assertEquals(BigDecimal.ZERO, acc.getCashBalance());
             return null;
-        }).when(accountRepository).update(any(Account.class));
+        }).when(accountRepository).save(any(Account.class));
         
         Account result = accountService.debit("ACC001", new BigDecimal("5000"));
         
@@ -322,7 +322,7 @@ public class AccountServiceTest {
             accountService.debit("ACC001", new BigDecimal("1000"));
         });
         
-        verify(accountRepository, never()).update(any());
+        verify(accountRepository, never()).save(any());
     }
     
     @Test
