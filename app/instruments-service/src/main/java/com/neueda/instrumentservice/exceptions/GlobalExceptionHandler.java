@@ -17,24 +17,6 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INS-404", ex.getMessage()));
     }
 
-    @ExceptionHandler(InstrumentNotTradableException.class)
-    public ResponseEntity<ErrorResponse> handleInstrumentNotTradable(InstrumentNotTradableException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("INS-404", ex.getMessage()));
-    }
-
-    @ExceptionHandler(InsufficientFundsException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientFunds(InsufficientFundsException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("ORD-400", ex.getMessage()));
-    }
-
-    @ExceptionHandler(InsufficientHoldingsException.class)
-    public ResponseEntity<ErrorResponse> handleInsufficientHoldings(InsufficientHoldingsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse("ORD-409", ex.getMessage()));
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
