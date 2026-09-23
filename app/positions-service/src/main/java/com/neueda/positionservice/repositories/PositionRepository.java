@@ -15,4 +15,5 @@ public interface PositionRepository {
     void update(Position position);
     boolean delete(@Param("accountId") String accountId, @Param("symbol") String symbol);
     boolean exists(@Param("accountId") String accountId, @Param("symbol") String symbol);
+    
 }

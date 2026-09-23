@@ -195,6 +195,8 @@ def transform_clean_to_metrics(df: pd.DataFrame) -> pd.DataFrame:
     null_counts = df[['close', 'open', 'high', 'low', 'volume']].isnull().sum()
     if null_counts.sum() > 0:
         logger.warning(f"Data conversion resulted in NaN values: {null_counts[null_counts > 0].to_dict()}")
+        df = df.dropna(subset=['close', 'open', 'high', 'low', 'volume'])
+        logger.info(f"Dropped rows with NaN values, remaining rows: {len(df)}")
     
     df = df.sort_values(['ticker', 'date']).reset_index(drop=True)
     

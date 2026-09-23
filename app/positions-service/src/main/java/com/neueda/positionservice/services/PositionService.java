@@ -3,6 +3,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
+import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.repositories.PositionRepository;
 
 import java.math.BigDecimal;
@@ -44,6 +45,33 @@ public class PositionService {
  
     public boolean deletePosition(String accountId, String symbol) {
         return positionRepository.delete(accountId, symbol);
+    }
+
+    public Position updatePosition(String accountId, String symbol, Position position) {
+        Position existing = positionRepository.findByAccountAndSymbol(accountId, symbol)
+            .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
+        
+        if (position.getQuantity() != null) {
+            if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Quantity must be positive");
+            }
+            existing.setQuantity(position.getQuantity());
+        }
+        if (position.getAverageCost() != null) {
+            if (position.getAverageCost().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Average cost cannot be negative");
+            }
+            existing.setAverageCost(position.getAverageCost());
+        }
+        if (position.getUpdatedBy() != null) {
+            existing.setUpdatedBy(position.getUpdatedBy());
+        }
+        
+        existing.setVersion(existing.getVersion() + 1);
+        existing.setLastUpdated(LocalDateTime.now());
+        
+        positionRepository.update(existing);
+        return existing;
     }
 
     public Position getOrCreatePosition(String accountId, String symbol) {
@@ -140,8 +168,7 @@ public class PositionService {
         }
     }
 
-    private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price,
-                                           String amountMessage) {
+    private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price, String amountMessage) {
         if (position == null || quantity == null) {
             throw new IllegalArgumentException("Position and quantity must not be null");
         }
