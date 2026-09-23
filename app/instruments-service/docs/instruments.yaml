@@ -13,7 +13,7 @@ info:
 servers:
   - url: https://instruments-service.example.com
     description: Production Server
-  - url: http://localhost:8082/api/instruments
+  - url: http://localhost:8082/api
     description: Local Development Server
 
 tags:
@@ -21,7 +21,7 @@ tags:
     description: Base instrument reference data operations
 
 paths:
-  /:
+  /instruments:
     get:
       tags:
         - Instruments
@@ -54,7 +54,7 @@ paths:
                       exchange: "NYSEArca"
                       tradable: true
 
-  /{symbol}:
+  /instruments/{symbol}:
     get:
       tags:
         - Instruments
