@@ -13,7 +13,7 @@ info:
 servers:
   - url: https://instruments-service.example.com
     description: Production Server
-  - url: http://localhost:8082/api/instruments
+  - url: http://localhost:8082/api
     description: Local Development Server
 
 tags:
