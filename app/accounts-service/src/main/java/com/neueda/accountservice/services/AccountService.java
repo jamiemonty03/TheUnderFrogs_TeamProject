@@ -61,15 +61,15 @@ public class AccountService {
         existing.setLastUpdated(LocalDateTime.now());
         existing.setVersion(existing.getVersion() + 1);
         
-        accountRepository.update(existing);
+        accountRepository.save(existing);
         return existing;
     }
 
     public void deleteAccount(String accountId) throws AccountNotFoundException {
-        if (!accountRepository.exists(accountId)) {
+        if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException("Account not found: " + accountId);
         }
-        accountRepository.delete(accountId);
+        accountRepository.deleteById(accountId);
     }
 
     public Account credit(String accountId, BigDecimal amount) throws AccountNotActiveException, AccountNotFoundException {
@@ -87,7 +87,7 @@ public class AccountService {
         account.setLastUpdated(LocalDateTime.now());
         account.setVersion(account.getVersion() + 1);
         
-        accountRepository.update(account);
+        accountRepository.save(account);
         return account;
     }
 
@@ -114,7 +114,7 @@ public class AccountService {
         account.setLastUpdated(LocalDateTime.now());
         account.setVersion(account.getVersion() + 1);
         
-        accountRepository.update(account);
+        accountRepository.save(account);
         return account;
     }
 }

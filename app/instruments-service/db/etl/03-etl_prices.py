@@ -61,6 +61,18 @@ def is_valid(row: tuple) -> bool:
     
     symbol, date, open_price, high, low, close, volume = row
     
+    if any(val is None for val in [open_price, high, low, close, volume]):
+        return False
+    
+    try:
+        open_price = float(open_price)
+        high = float(high)
+        low = float(low)
+        close = float(close)
+        volume = float(volume)
+    except (ValueError, TypeError):
+        return False
+    
     if any(val <= 0 for val in [open_price, high, low, close]) or volume < 0:
         return False
     if high < low or high < open_price or high < close:
