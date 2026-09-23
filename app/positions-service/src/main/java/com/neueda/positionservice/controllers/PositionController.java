@@ -50,10 +50,8 @@ public class PositionController {
 
     @PatchMapping("/{accountId}/{symbol}")
     public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody UpdatePositionRequest request) {
-        // Create Position with default non-null values
         Position position = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
         
-        // Override only the fields provided in the request (non-null values)
         if (request.getQuantity() != null) {
             position.setQuantity(request.getQuantity());
         }

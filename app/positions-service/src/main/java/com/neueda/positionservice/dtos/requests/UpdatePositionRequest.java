@@ -1,11 +1,13 @@
 package com.neueda.positionservice.dtos.requests;
 
 import java.math.BigDecimal;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 public class UpdatePositionRequest {
     
     private BigDecimal quantity;
-    
+
     private BigDecimal averageCost;
     
     private String updatedBy;
@@ -14,14 +16,12 @@ public class UpdatePositionRequest {
     public UpdatePositionRequest() {
     }
     
-    // Constructor with parameters
     public UpdatePositionRequest(BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
         this.quantity = quantity;
         this.averageCost = averageCost;
         this.updatedBy = updatedBy;
     }
-    
-    // Getters and Setters
+
     public BigDecimal getQuantity() {
         return quantity;
     }

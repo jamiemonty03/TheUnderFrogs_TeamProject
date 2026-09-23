@@ -43,4 +43,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse("SYS-500", ex.getMessage()));
     }
+    @ExceptionHandler(PositionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePositionNotFound(PositionNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("POS-404", ex.getMessage()));
+    }
 }

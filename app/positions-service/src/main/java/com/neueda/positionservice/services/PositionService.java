@@ -168,8 +168,7 @@ public class PositionService {
         }
     }
 
-    private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price,
-                                           String amountMessage) {
+    private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price, String amountMessage) {
         if (position == null || quantity == null) {
             throw new IllegalArgumentException("Position and quantity must not be null");
         }
