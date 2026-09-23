@@ -9,7 +9,6 @@ import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.services.AccountService;
-import com.neueda.orderservice.services.PositionService;
 
 /**
  * Strategy for executing BUY orders.
@@ -27,13 +26,9 @@ import com.neueda.orderservice.services.PositionService;
 public class BuyOrderStrategy implements OrderExecutionStrategy {
     
     private final AccountService accountService;
-    private final PositionService positionService;
 
-    public BuyOrderStrategy(
-            AccountService accountService,
-            PositionService positionService) {
+    public BuyOrderStrategy(AccountService accountService) {
         this.accountService = accountService;
-        this.positionService = positionService;
     }
 
     @Override
@@ -43,10 +38,6 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
             BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
             accountService.debit(account, totalCost);
             cashDebited = true;
-
-            positionService.updatePositionAfterBuy(account.getAccountId(), order.getSymbol(), 
-                order.getQuantity(), order.getPrice());
-            
 
             order.setOrderStatus(OrderStatus.FILLED);
             order.setLastUpdated(LocalDateTime.now());

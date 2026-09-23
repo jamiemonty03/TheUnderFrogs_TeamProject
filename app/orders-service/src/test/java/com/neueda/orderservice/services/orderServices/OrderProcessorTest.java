@@ -18,8 +18,7 @@ import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.models.Position;
-import com.neueda.orderservice.repositories.InMemoryPositionRepository;
+
 import com.neueda.orderservice.services.OrderService;
 
 public class OrderProcessorTest {

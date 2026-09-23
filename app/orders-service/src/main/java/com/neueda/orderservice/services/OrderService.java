@@ -11,16 +11,13 @@ import com.neueda.orderservice.exceptions.InsufficientFundsException;
 import com.neueda.orderservice.exceptions.InsufficientHoldingsException;
 import com.neueda.orderservice.exceptions.InvalidOrderException;
 import com.neueda.orderservice.exceptions.TradingException;
-import com.neueda.orderservice.repositories.PositionRepository;
 import com.neueda.orderservice.repositories.OrderRepository;
-import com.neueda.orderservice.repositories.InMemoryOrderRepository;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class OrderService {
@@ -29,19 +26,11 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final Map<String, Order> ordersByIdempotencyKey = new ConcurrentHashMap<>();
 
-    @Autowired
-    public OrderService(PositionRepository positionRepository) {
-        this(positionRepository, new InMemoryOrderRepository());
-    }
-
-    public OrderService(PositionRepository positionRepository, OrderRepository orderRepository) {
-        if (positionRepository == null) {
-            throw new IllegalArgumentException("PositionRepository cannot be null");
-        }
+    public OrderService(OrderRepository orderRepository) {
         if (orderRepository == null) {
             throw new IllegalArgumentException("OrderRepository cannot be null");
         }
-        this.validationService = new OrderValidationService(positionRepository);
+        this.validationService = new OrderValidationService();
         this.orderRepository = orderRepository;
     }
 
@@ -49,16 +38,17 @@ public class OrderService {
         if (ordersByIdempotencyKey.containsKey(order.getIdempotencyKey())) {
             throw new DuplicateOrderException(order.getIdempotencyKey(), "idempotencyKey");
         }
-        Order savedOrder = orderRepository.save(order);
-        ordersByIdempotencyKey.put(savedOrder.getIdempotencyKey(), savedOrder);
-        return savedOrder;
+        orderRepository.save(order);
+        ordersByIdempotencyKey.put(order.getIdempotencyKey(), order);
+        return order;
     }
 
     public Order saveOrder(Order order) {
         if (order == null) {
             throw new IllegalArgumentException("Order cannot be null");
         }
-        return orderRepository.save(order);
+        orderRepository.save(order);
+        return order;
     }
 
     public Order placeOrder(Account account, Instrument instrument, OrderSide side,

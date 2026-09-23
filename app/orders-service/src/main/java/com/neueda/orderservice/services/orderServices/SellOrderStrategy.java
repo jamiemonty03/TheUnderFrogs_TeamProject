@@ -9,18 +9,13 @@ import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.services.AccountService;
-import com.neueda.orderservice.services.PositionService;
 
 public class SellOrderStrategy implements OrderExecutionStrategy {
     
     private final AccountService accountService;
-    private final PositionService positionService;
 
-    public SellOrderStrategy(
-            AccountService accountService,
-            PositionService positionService) {
+    public SellOrderStrategy(AccountService accountService) {
         this.accountService = accountService;
-        this.positionService = positionService;
     }
 
     @Override
@@ -32,8 +27,6 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
             accountService.credit(account, totalProceeds);
             cashCredited = true;
 
-            positionService.updatePositionAfterSell(account.getAccountId(), order.getSymbol(), order.getQuantity());
-            
             order.setOrderStatus(OrderStatus.FILLED);
             order.setLastUpdated(LocalDateTime.now());
 

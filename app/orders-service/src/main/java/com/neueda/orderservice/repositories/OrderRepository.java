@@ -2,12 +2,16 @@ package com.neueda.orderservice.repositories;
 
 import java.util.Optional;
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
 import com.neueda.orderservice.models.Order;
 
+@Mapper
 public interface OrderRepository {
-    Order save(Order order);
+    void save(Order order);
+    int update(Order order);
+    List<Order> findAll();
     Optional<Order> findById(String orderId);
     List<Order> findByAccountId(String accountId);
-    boolean delete(String orderId);
+    void delete(String orderId);
     boolean exists(String orderId);
 }

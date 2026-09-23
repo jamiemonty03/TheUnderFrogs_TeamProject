@@ -1,10 +1,7 @@
 package com.neueda.orderservice.controllers;
 
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.repositories.InMemoryOrderRepository;
-import com.neueda.orderservice.repositories.InMemoryPositionRepository;
 import com.neueda.orderservice.repositories.OrderRepository;
-import com.neueda.orderservice.repositories.PositionRepository;
 import com.neueda.orderservice.services.OrderService;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
@@ -14,11 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 /**
  * OrderController Unit Tests
@@ -30,19 +33,23 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OrderControllerTest {
 
     private OrderController orderController;
+    
+    @Mock
     private OrderRepository orderRepository;
+    
+    @Mock
+    private RestTemplate restTemplate;
+    
     private OrderService orderService;
-    private PositionRepository positionRepository;
     
     private Order testOrder1;
     private Order testOrder2;
 
     @BeforeEach
     void setUp() {
-        orderRepository = new InMemoryOrderRepository();
-        positionRepository = new InMemoryPositionRepository();
-        orderService = new OrderService(positionRepository);
-        orderController = new OrderController(orderService, orderRepository);
+        MockitoAnnotations.openMocks(this);
+        orderService = new OrderService(orderRepository);
+        orderController = new OrderController(orderService, orderRepository, restTemplate);
 
         testOrder1 = new Order(
             "ORD001",
@@ -64,8 +71,11 @@ public class OrderControllerTest {
             "idempotent-key-2"
         );
 
-        orderRepository.save(testOrder1);
-        orderRepository.save(testOrder2);
+        when(orderRepository.findById("ORD001")).thenReturn(Optional.of(testOrder1));
+        when(orderRepository.findById("ORD002")).thenReturn(Optional.of(testOrder2));
+        when(orderRepository.findById("NONEXISTENT")).thenReturn(Optional.empty());
+        when(orderRepository.findByAccountId("ACC001")).thenReturn(java.util.List.of(testOrder1, testOrder2));
+        when(orderRepository.findByAccountId("ACC999")).thenReturn(java.util.List.of());
     }
 
     @Test

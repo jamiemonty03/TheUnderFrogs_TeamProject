@@ -5,7 +5,6 @@ import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.AccountStatus;
-import com.neueda.orderservice.repositories.PositionRepository;
 import com.neueda.orderservice.exceptions.InvalidOrderException;
 import com.neueda.orderservice.enums.OrderStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,15 +26,12 @@ public class OrderServiceTest {
     private OrderService orderService;
 
     @Mock
-    private PositionRepository positionRepository;
+    private com.neueda.orderservice.repositories.OrderRepository orderRepository;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        orderService = new OrderService(positionRepository);
-        
-        when(positionRepository.findByAccountIdAndSymbol(anyString(), anyString()))
-            .thenReturn(Optional.empty());
+        orderService = new OrderService(orderRepository);
     }
 
     @Test

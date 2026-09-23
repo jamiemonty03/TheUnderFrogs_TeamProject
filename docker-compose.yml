@@ -13,8 +13,8 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5433:5432"
@@ -48,8 +48,8 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5434:5432"
@@ -83,8 +83,8 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5435:5432"
@@ -118,8 +118,8 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5436:5432"
@@ -154,8 +154,7 @@ services:
       instruments-db:
         condition: service_healthy
     ports:
-      - "0.0.0.0:8080:8082"
-      # replace with a different port if needed
+      - "0.0.0.0:8090:8082"
     volumes:
       - ./db:/db
       - ./app/instruments-service/db/etl:/db/etl

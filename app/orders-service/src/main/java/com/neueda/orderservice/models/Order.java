@@ -94,6 +94,7 @@ public class Order {
         this.version = 0;
         this.createdAt = LocalDateTime.now();
         this.lastUpdated = LocalDateTime.now();
+        this.updatedBy = "SYSTEM";
     }
 
     public String getOrderId() {
