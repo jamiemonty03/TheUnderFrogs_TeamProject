@@ -74,8 +74,8 @@ public class OrderControllerTest {
         when(orderRepository.findById("ORD001")).thenReturn(Optional.of(testOrder1));
         when(orderRepository.findById("ORD002")).thenReturn(Optional.of(testOrder2));
         when(orderRepository.findById("NONEXISTENT")).thenReturn(Optional.empty());
-        when(orderRepository.findByAccountId("ACC001")).thenReturn(java.util.List.of(testOrder1, testOrder2));
-        when(orderRepository.findByAccountId("ACC999")).thenReturn(java.util.List.of());
+        when(orderRepository.findByAccountIdOrderByCreatedAtDesc("ACC001")).thenReturn(java.util.List.of(testOrder1, testOrder2));
+        when(orderRepository.findByAccountIdOrderByCreatedAtDesc("ACC999")).thenReturn(java.util.List.of());
     }
 
     @Test

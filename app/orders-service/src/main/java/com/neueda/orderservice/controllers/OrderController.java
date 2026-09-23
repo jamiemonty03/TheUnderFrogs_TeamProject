@@ -50,7 +50,7 @@ public class OrderController {
 
     @GetMapping
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
-        List<Order> orders = orderRepository.findAll();
+        List<Order> orders = orderRepository.findAllByOrderByCreatedAtDesc();
         List<OrderResponse> responses = orders.stream()
             .map(this::toOrderResponse)
             .toList();
@@ -66,7 +66,7 @@ public class OrderController {
 
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<OrderResponse>> getOrdersByAccountId(@PathVariable String accountId) {
-        List<Order> orders = orderRepository.findByAccountId(accountId);
+        List<Order> orders = orderRepository.findByAccountIdOrderByCreatedAtDesc(accountId);
         List<OrderResponse> responses = orders.stream()
             .map(this::toOrderResponse)
             .toList();
@@ -166,7 +166,7 @@ public class OrderController {
         order.setLastUpdated(java.time.LocalDateTime.now());
         order.setVersion(order.getVersion() + 1);
 
-        orderRepository.update(order);
+        orderRepository.save(order);
         return ResponseEntity.ok(toOrderResponse(order));
     }
 
@@ -183,7 +183,7 @@ public class OrderController {
         order.setVersion(order.getVersion() + 1);
         order.setUpdatedBy("SYSTEM");
 
-        orderRepository.update(order);
+        orderRepository.save(order);
         return ResponseEntity.noContent().build();
     }
 
