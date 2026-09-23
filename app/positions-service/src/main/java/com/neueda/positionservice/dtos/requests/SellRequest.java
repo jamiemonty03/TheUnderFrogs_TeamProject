@@ -1,3 +1,5 @@
+package com.neueda.positionservice.dtos.requests;
+
 import java.math.BigDecimal;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

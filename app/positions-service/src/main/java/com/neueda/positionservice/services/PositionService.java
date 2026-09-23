@@ -3,6 +3,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
+import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.repositories.PositionRepository;
 
 import java.math.BigDecimal;
