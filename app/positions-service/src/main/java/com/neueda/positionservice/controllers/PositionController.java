@@ -47,4 +47,16 @@ public class PositionController {
     public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @Valid @RequestBody Position position) {
         return positionService.updatePosition(accountId, symbol, position);
     }
+
+    @PostMapping("/{accountId}/{symbol}/buy")
+    public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody BuyRequest request) {
+        positionService.updatePositionAfterBuy(accountId, symbol, request.getQuantity(), request.getPrice());
+        return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
+    }
+
+    @PostMapping("/{accountId}/{symbol}/sell")
+    public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody SellRequest request) {
+        positionService.updatePositionAfterSell(accountId, symbol, request.getQuantity());
+        return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
+    }
 }
