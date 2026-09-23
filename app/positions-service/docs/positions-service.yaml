@@ -179,6 +179,111 @@ paths:
                     errorCode: "POS-500"
                     message: "Position not found"
 
+    put:
+      tags:
+        - Positions
+      summary: Update a position (full update)
+      description: Fully updates an existing position with all required fields
+      operationId: updatePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+            examples:
+              success:
+                summary: Valid position update
+                value:
+                  accountId: "ACC001"
+                  symbol: "AAPL"
+                  quantity: 150
+                  averageCost: 152.00
+      responses:
+        '200':
+          description: Position updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Positions
+      summary: Partially update a position
+      description: Updates selected fields of an existing position
+      operationId: partiallyUpdatePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePositionRequest'
+            examples:
+              quantityOnly:
+                summary: Update quantity only
+                value:
+                  quantity: 120
+              averageCostOnly:
+                summary: Update average cost only
+                value:
+                  averageCost: 155.00
+      responses:
+        '200':
+          description: Position partially updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
     delete:
       tags:
         - Positions
@@ -214,6 +319,119 @@ paths:
                 notFound:
                   summary: Position did not exist
                   value: false
+
+  /positions/{accountId}/{symbol}/buy:
+    post:
+      tags:
+        - Positions
+      summary: Execute a buy operation
+      description: Adds shares to an existing position or creates a new position with FIFO average cost calculation
+      operationId: buyPosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuyRequest'
+            examples:
+              success:
+                summary: Valid buy order
+                value:
+                  quantity: 50
+                  price: 155.00
+      responses:
+        '200':
+          description: Buy operation executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '400':
+          description: Bad Request - Invalid trade operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /positions/{accountId}/{symbol}/sell:
+    post:
+      tags:
+        - Positions
+      summary: Execute a sell operation
+      description: Removes shares from an existing position using FIFO method
+      operationId: sellPosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellRequest'
+            examples:
+              success:
+                summary: Valid sell order
+                value:
+                  quantity: 30
+      responses:
+        '200':
+          description: Sell operation executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '400':
+          description: Bad Request - Insufficient holdings or invalid operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Insufficient holdings to complete sale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -276,5 +494,55 @@ components:
       required:
         - errorCode
         - message
+
+    BuyRequest:
+      type: object
+      required:
+        - quantity
+        - price
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          description: Number of shares to buy
+          example: 50
+          minimum: 1
+        price:
+          type: number
+          format: decimal
+          description: Purchase price per share
+          example: 155.00
+          minimum: 0.01
+
+    SellRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          description: Number of shares to sell
+          example: 30
+          minimum: 1
+
+    UpdatePositionRequest:
+      type: object
+      description: Request body for PATCH operations - all fields are optional
+      properties:
+        quantity:
+          type: number
+          format: decimal
+          description: Updated quantity of shares held
+          example: 120
+        averageCost:
+          type: number
+          format: decimal
+          description: Updated average cost per share
+          example: 155.00
+        updatedBy:
+          type: string
+          description: User or system making the update
+          example: "USER123"
 
 
