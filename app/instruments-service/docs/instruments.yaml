@@ -21,7 +21,7 @@ tags:
     description: Base instrument reference data operations
 
 paths:
-  /instruments:
+  /:
     get:
       tags:
         - Instruments
@@ -54,7 +54,7 @@ paths:
                       exchange: "NYSEArca"
                       tradable: true
 
-  /instruments/{symbol}:
+  /{symbol}:
     get:
       tags:
         - Instruments

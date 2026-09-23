@@ -9,7 +9,6 @@ import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.services.InstrumentService;
 
 @RestController
-@RequestMapping("/instruments")
 public class InstrumentController {
 
     private final InstrumentService instrumentService;

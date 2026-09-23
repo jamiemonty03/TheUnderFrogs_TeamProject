@@ -33,7 +33,7 @@ public class InstrumentControllerTest {
         InstrumentResponse tesla = new InstrumentResponse("TSLA", "Tesla Inc.", "EQUITY", "USD", "NASDAQ", false);
         when(instrumentService.getAllInstruments()).thenReturn(List.of(apple, tesla));
 
-        mockMvc.perform(get("/instruments"))
+        mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"))
@@ -45,7 +45,7 @@ public class InstrumentControllerTest {
         InstrumentResponse apple = new InstrumentResponse("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
         when(instrumentService.getInstrumentBySymbol("AAPL")).thenReturn(apple);
 
-        mockMvc.perform(get("/instruments/AAPL"))
+        mockMvc.perform(get("/AAPL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.symbol").value("AAPL"))
                 .andExpect(jsonPath("$.name").value("Apple Inc."))
@@ -58,7 +58,7 @@ public class InstrumentControllerTest {
         when(instrumentService.getInstrumentBySymbol("ZZZZ"))
                 .thenThrow(new InstrumentNotFoundException("ZZZZ"));
 
-        mockMvc.perform(get("/instruments/ZZZZ"))
+        mockMvc.perform(get("/ZZZZ"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("INS-404"))
                 .andExpect(jsonPath("$.message").value("Instrument not found"));
@@ -66,7 +66,7 @@ public class InstrumentControllerTest {
 
     @Test
     void deleteInstrument_returns204WhenDeleted() throws Exception {
-        mockMvc.perform(delete("/instruments/AAPL"))
+        mockMvc.perform(delete("/AAPL"))
                 .andExpect(status().isNoContent());
     }
 
@@ -75,7 +75,7 @@ public class InstrumentControllerTest {
         org.mockito.Mockito.doThrow(new InstrumentNotFoundException("ZZZZ"))
                 .when(instrumentService).deleteInstrument("ZZZZ");
 
-        mockMvc.perform(delete("/instruments/ZZZZ"))
+        mockMvc.perform(delete("/ZZZZ"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("INS-404"));
     }
