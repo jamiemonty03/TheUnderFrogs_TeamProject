@@ -46,6 +46,33 @@ public class PositionService {
         return positionRepository.delete(accountId, symbol);
     }
 
+    public Position updatePosition(String accountId, String symbol, Position position) {
+        Position existing = positionRepository.findByAccountAndSymbol(accountId, symbol)
+            .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
+        
+        if (position.getQuantity() != null) {
+            if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Quantity must be positive");
+            }
+            existing.setQuantity(position.getQuantity());
+        }
+        if (position.getAverageCost() != null) {
+            if (position.getAverageCost().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Average cost cannot be negative");
+            }
+            existing.setAverageCost(position.getAverageCost());
+        }
+        if (position.getUpdatedBy() != null) {
+            existing.setUpdatedBy(position.getUpdatedBy());
+        }
+        
+        existing.setVersion(existing.getVersion() + 1);
+        existing.setLastUpdated(LocalDateTime.now());
+        
+        positionRepository.update(existing);
+        return existing;
+    }
+
     public Position getOrCreatePosition(String accountId, String symbol) {
 
         Optional<Position> existing = positionRepository.findByAccountAndSymbol(accountId, symbol);

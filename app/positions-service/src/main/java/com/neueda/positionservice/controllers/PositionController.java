@@ -37,5 +37,14 @@ public class PositionController {
     public boolean deletePosition(@PathVariable String accountId, @PathVariable String symbol) {
         return positionService.deletePosition(accountId, symbol);
     }
-    
+
+    @PutMapping("/{accountId}/{symbol}")
+    public Position updatePosition(@PathVariable String accountId, @PathVariable String symbol, @Valid @RequestBody Position position) {
+        return positionService.updatePosition(accountId, symbol, position);
+    }
+
+    @PatchMapping("/{accountId}/{symbol}")
+    public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @Valid @RequestBody Position position) {
+        return positionService.updatePosition(accountId, symbol, position);
+    }
 }
