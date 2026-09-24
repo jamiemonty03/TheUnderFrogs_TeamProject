@@ -19,13 +19,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.neueda.instrumentservice.dtos.responses.StockResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Stock;
-import com.neueda.instrumentservice.repositories.StockRepository;
+import com.neueda.instrumentservice.mappers.StockMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class StockServiceTest {
 
     @Mock
-    private StockRepository stockRepository;
+    private StockMapper stockMapper;
 
     private StockService stockService;
 
@@ -40,13 +40,13 @@ public class StockServiceTest {
 
     @BeforeEach
     public void setUp() {
-        stockService = new StockService(stockRepository);
+        stockService = new StockService(stockMapper);
     }
 
     @Test
     @DisplayName("getAllStocks: Returns all stocks mapped to StockResponse")
     public void testGetAllStocks() {
-        when(stockRepository.findAll()).thenReturn(List.of(newStock()));
+        when(stockMapper.findAll()).thenReturn(List.of(newStock()));
 
         List<StockResponse> result = stockService.getAllStocks();
 
@@ -58,7 +58,7 @@ public class StockServiceTest {
     @Test
     @DisplayName("getAllStocks: Returns empty list when repository has no stocks")
     public void testGetAllStocksEmpty() {
-        when(stockRepository.findAll()).thenReturn(List.of());
+        when(stockMapper.findAll()).thenReturn(List.of());
 
         assertTrue(stockService.getAllStocks().isEmpty());
     }
@@ -66,7 +66,7 @@ public class StockServiceTest {
     @Test
     @DisplayName("getStockBySymbol: Returns matching stock as StockResponse")
     public void testGetStockBySymbolFound() throws InstrumentNotFoundException {
-        when(stockRepository.findBySymbol("AAPL")).thenReturn(Optional.of(newStock()));
+        when(stockMapper.findBySymbol("AAPL")).thenReturn(Optional.of(newStock()));
 
         StockResponse result = stockService.getStockBySymbol("AAPL");
 
@@ -77,7 +77,7 @@ public class StockServiceTest {
     @Test
     @DisplayName("getStockBySymbol: Throws InstrumentNotFoundException when symbol is missing")
     public void testGetStockBySymbolNotFound() {
-        when(stockRepository.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
+        when(stockMapper.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> stockService.getStockBySymbol("ZZZZ"));

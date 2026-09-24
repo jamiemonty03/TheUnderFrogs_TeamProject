@@ -2,33 +2,57 @@ package com.neueda.accountservice.models;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import jakarta.persistence.*;
 import com.neueda.accountservice.enums.AccountStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+@Entity
+@Table(name = "accounts")
 public class Account {
    
+    @Id
+    @Column(name = "account_id")
     @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
     
+    @Column(name = "user_id")
+    @NotNull(message = "User ID cannot be null")
+    private Long userId;
+    
+    @Column(name = "holder_name")
     @NotBlank(message = "Holder name cannot be null or blank")
     private String holderName;
     
+    @Column(name = "cash_balance")
     @NotNull(message = "Cash balance cannot be null")
     private BigDecimal cashBalance;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     @NotNull(message = "Account status cannot be null")
     private AccountStatus status;
+    
+    @Column(name = "version")
     private int version;
+    
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+    
+    @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
+    
+    @Column(name = "updated_by")
     private String updatedBy;
 
     public Account() {}
 
-    public Account(String accountId, String holderName, BigDecimal cashBalance, AccountStatus status) {
+    public Account(String accountId, Long userId, String holderName, BigDecimal cashBalance, AccountStatus status) {
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("Account ID cannot be null or blank");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
         }
         if (holderName == null || holderName.trim().isEmpty()) {
             throw new IllegalArgumentException("Holder name cannot be null or blank");
@@ -40,6 +64,7 @@ public class Account {
             throw new IllegalArgumentException("Account status cannot be null");
         }
         this.accountId = accountId;
+        this.userId = userId;
         this.holderName = holderName;
         this.cashBalance = cashBalance;
         this.status = status;
@@ -54,6 +79,14 @@ public class Account {
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getHolderName() {

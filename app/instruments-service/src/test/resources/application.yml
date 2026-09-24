@@ -1,0 +1,2 @@
+jwt:
+  secret: instrument-test-secret-32-bytes-minimum

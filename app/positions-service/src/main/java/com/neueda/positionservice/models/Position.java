@@ -3,18 +3,62 @@ package com.neueda.positionservice.models;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.persistence.*;
 
+@IdClass(PositionId.class)
+@Entity
+@Table(name = "positions")
 public class Position {
-    private String accountId;
-    private String symbol;
-    private BigDecimal quantity;
-    private BigDecimal averageCost;
-    private int version;
-    private LocalDateTime createdAt;
-    private LocalDateTime lastUpdated;
-    private String updatedBy;
 
-    public Position() {}
+    @Id
+    @Column(name = "account_id")
+    @NotBlank(message = "Account ID cannot be null or blank")
+    private String accountId;
+    
+    @Id
+    @Column(name = "symbol")
+    @NotBlank(message = "Symbol cannot be null or blank")
+    private String symbol;
+    
+    @Column(name = "quantity")
+    @NotNull(message = "Quantity cannot be null")
+    @PositiveOrZero(message = "Quantity cannot be negative")
+    private BigDecimal quantity;
+    
+    @Column(name = "average_cost")
+    @NotNull(message = "Average cost cannot be null")
+    @PositiveOrZero(message = "Average cost cannot be negative")
+    private BigDecimal averageCost;
+    @Column(name = "version")
+    private int version;
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "last_updated")
+    private LocalDateTime lastUpdated;
+
+    @Column(name = "updated_by")
+    private String updatedBy = "SYSTEM";
+
+    public Position() {
+        this.version = 0;
+    }
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.lastUpdated = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.lastUpdated = LocalDateTime.now();
+    }
 
     public Position(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
         if (accountId == null || accountId.trim().isEmpty()) {
@@ -35,8 +79,6 @@ public class Position {
         this.quantity = quantity;
         this.averageCost = averageCost;
         this.version = 0;
-        this.createdAt = LocalDateTime.now();
-        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getAccountId() {
@@ -105,7 +147,7 @@ public class Position {
 
     public BigDecimal getMarketValue(BigDecimal currentPrice) {
         return currentPrice.multiply(quantity);
-    }
+    } 
 
     @Override
     public boolean equals(Object obj) {

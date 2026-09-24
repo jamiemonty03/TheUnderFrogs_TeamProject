@@ -19,13 +19,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.neueda.instrumentservice.dtos.responses.EtfResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Etf;
-import com.neueda.instrumentservice.repositories.EtfRepository;
+import com.neueda.instrumentservice.mappers.EtfMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class EtfServiceTest {
 
     @Mock
-    private EtfRepository etfRepository;
+    private EtfMapper etfMapper;
 
     private EtfService etfService;
 
@@ -39,13 +39,13 @@ public class EtfServiceTest {
 
     @BeforeEach
     public void setUp() {
-        etfService = new EtfService(etfRepository);
+        etfService = new EtfService(etfMapper);
     }
 
     @Test
     @DisplayName("getAllEtfs: Returns all ETFs mapped to EtfResponse")
     public void testGetAllEtfs() {
-        when(etfRepository.findAll()).thenReturn(List.of(newEtf()));
+        when(etfMapper.findAll()).thenReturn(List.of(newEtf()));
 
         List<EtfResponse> result = etfService.getAllEtfs();
 
@@ -57,7 +57,7 @@ public class EtfServiceTest {
     @Test
     @DisplayName("getAllEtfs: Returns empty list when repository has no ETFs")
     public void testGetAllEtfsEmpty() {
-        when(etfRepository.findAll()).thenReturn(List.of());
+        when(etfMapper.findAll()).thenReturn(List.of());
 
         assertTrue(etfService.getAllEtfs().isEmpty());
     }
@@ -65,7 +65,7 @@ public class EtfServiceTest {
     @Test
     @DisplayName("getEtfBySymbol: Returns matching ETF as EtfResponse")
     public void testGetEtfBySymbolFound() throws InstrumentNotFoundException {
-        when(etfRepository.findBySymbol("SPY")).thenReturn(Optional.of(newEtf()));
+        when(etfMapper.findBySymbol("SPY")).thenReturn(Optional.of(newEtf()));
 
         EtfResponse result = etfService.getEtfBySymbol("SPY");
 
@@ -76,7 +76,7 @@ public class EtfServiceTest {
     @Test
     @DisplayName("getEtfBySymbol: Throws InstrumentNotFoundException when symbol is missing")
     public void testGetEtfBySymbolNotFound() {
-        when(etfRepository.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
+        when(etfMapper.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> etfService.getEtfBySymbol("ZZZZ"));

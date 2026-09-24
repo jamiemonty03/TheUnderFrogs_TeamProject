@@ -1,0 +1,190 @@
+openapi: 3.0.0
+info:
+  title: Instruments API
+  description: Base instrument reference data (symbol, name, asset class, currency, exchange)
+  version: 1.0.0
+  contact:
+    name: Neueda LEAP Team
+    url: https://github.com/neueda/leap
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://instruments-service.example.com
+    description: Production Server
+  - url: http://localhost:8082/api
+    description: Local Development Server
+
+tags:
+  - name: Instruments
+    description: Base instrument reference data operations
+
+paths:
+  /instruments:
+    get:
+      tags:
+        - Instruments
+      summary: List all instruments
+      description: Returns every instrument in the repository
+      operationId: getInstruments
+      responses:
+        '200':
+          description: Instruments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InstrumentResponse'
+              examples:
+                success:
+                  summary: A mix of stocks, ETFs and bonds
+                  value:
+                    - symbol: "AAPL"
+                      name: "Apple Inc."
+                      assetClass: "Equity"
+                      currency: "USD"
+                      exchange: "NasdaqGS"
+                      tradable: true
+                    - symbol: "SPY"
+                      name: "State Street SPDR S&P 500 ETF T"
+                      assetClass: "ETF"
+                      currency: "USD"
+                      exchange: "NYSEArca"
+                      tradable: true
+
+  /instruments/{symbol}:
+    get:
+      tags:
+        - Instruments
+      summary: Retrieve an instrument by symbol
+      description: Fetches a single instrument's reference data by its ticker symbol
+      operationId: getInstrument
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: The instrument's ticker symbol
+          schema:
+            type: string
+            example: "AAPL"
+      responses:
+        '200':
+          description: Instrument retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentResponse'
+              examples:
+                success:
+                  summary: Instrument found
+                  value:
+                    symbol: "AAPL"
+                    name: "Apple Inc."
+                    assetClass: "Equity"
+                    currency: "USD"
+                    exchange: "NasdaqGS"
+                    tradable: true
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  summary: Instrument does not exist
+                  value:
+                    errorCode: "INS-404"
+                    message: "Instrument not found"
+
+    delete:
+      tags:
+        - Instruments
+      summary: Delete an instrument
+      description: >
+        Deletes an instrument by symbol. Note: instruments-service's ETL
+        (db/etl/01-generate_raw_instruments.py) is the authoritative writer
+        for the base instrument set and upserts on every run - deleting a
+        symbol that's part of the ETL's fixed ticker list will not persist
+        past the next ETL run.
+      operationId: deleteInstrument
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: The instrument's ticker symbol
+          schema:
+            type: string
+            example: "AAPL"
+      responses:
+        '204':
+          description: Instrument deleted successfully
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  summary: Instrument does not exist
+                  value:
+                    errorCode: "INS-404"
+                    message: "Instrument not found"
+
+components:
+  schemas:
+    InstrumentResponse:
+      type: object
+      description: Base instrument reference data
+      properties:
+        symbol:
+          type: string
+          description: Unique ticker symbol
+          example: "AAPL"
+        name:
+          type: string
+          description: Instrument display name
+          example: "Apple Inc."
+        assetClass:
+          type: string
+          enum: [Equity, Bond, ETF]
+          description: Classification of the instrument
+          example: "Equity"
+        currency:
+          type: string
+          description: ISO currency code the instrument trades in
+          example: "USD"
+        exchange:
+          type: string
+          description: Exchange the instrument trades on
+          example: "NasdaqGS"
+        tradable:
+          type: boolean
+          description: Whether the instrument is currently tradable
+          example: true
+      required:
+        - symbol
+        - name
+        - assetClass
+        - currency
+        - exchange
+        - tradable
+
+    ErrorResponse:
+      type: object
+      description: Error response object
+      properties:
+        errorCode:
+          type: string
+          description: Unique error code identifier
+          example: "INS-404"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Instrument not found"
+      required:
+        - errorCode
+        - message

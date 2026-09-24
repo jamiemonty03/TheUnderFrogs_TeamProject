@@ -1,0 +1,562 @@
+openapi: 3.0.0
+info:
+  title: Positions Service API
+  description: Microservice for portfolio position management and tracking
+  version: 1.0.0
+  contact:
+    name: Neueda LEAP Team
+    url: https://github.com/neueda/leap
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://positions-service.example.com
+    description: Production Server
+  - url: http://localhost:8084
+    description: Local Development Server
+
+security: []
+
+tags:
+  - name: Positions
+    description: Position management operations
+  - name: Position Queries
+    description: Position lookup and retrieval operations
+
+paths:
+  /positions:
+    post:
+      tags:
+        - Positions
+      summary: Create or update a position
+      description: Creates a new position or updates an existing one using insert-or-update logic
+      operationId: createPosition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+            examples:
+              success:
+                summary: Valid position creation
+                value:
+                  accountId: "ACC001"
+                  symbol: "AAPL"
+                  quantity: 100
+                  averageCost: 150.50
+      responses:
+        '200':
+          description: Position created or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+              examples:
+                success:
+                  summary: Successfully created position
+                  value:
+                    accountId: "ACC001"
+                    symbol: "AAPL"
+                    quantity: 100
+                    averageCost: 150.50
+                    version: 1
+                    createdAt: "2026-09-22T10:30:00Z"
+                    lastUpdated: "2026-09-22T10:30:00Z"
+        '422':
+          description: Unprocessable Entity - Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingField:
+                  summary: Missing required field
+                  value:
+                    errorCode: "VAL-422"
+                    message: "Account ID cannot be null or blank"
+                invalidSymbol:
+                  summary: Invalid symbol
+                  value:
+                    errorCode: "VAL-422"
+                    message: "Symbol cannot be null or blank"
+
+  /positions/{accountId}:
+    get:
+      tags:
+        - Position Queries
+      summary: Retrieve all positions for an account
+      description: Fetches all positions held by a specific account
+      operationId: getPositionsByAccount
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+      responses:
+        '200':
+          description: Positions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Position'
+              examples:
+                success:
+                  summary: Account has multiple positions
+                  value:
+                    - accountId: "ACC001"
+                      symbol: "AAPL"
+                      quantity: 100
+                      averageCost: 150.50
+                      version: 1
+                      createdAt: "2026-09-22T10:30:00Z"
+                      lastUpdated: "2026-09-22T10:30:00Z"
+                    - accountId: "ACC001"
+                      symbol: "GOOGL"
+                      quantity: 25
+                      averageCost: 2800.00
+                      version: 1
+                      createdAt: "2026-09-22T10:35:00Z"
+                      lastUpdated: "2026-09-22T10:35:00Z"
+                empty:
+                  summary: Account has no positions
+                  value: []
+        '400':
+          description: Bad Request - Invalid account ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /positions/{accountId}/{symbol}:
+    get:
+      tags:
+        - Position Queries
+      summary: Retrieve a specific position
+      description: Fetches position details for a specific account and symbol combination
+      operationId: getPosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      responses:
+        '200':
+          description: Position retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+              examples:
+                success:
+                  summary: Position found
+                  value:
+                    accountId: "ACC001"
+                    symbol: "AAPL"
+                    quantity: 100
+                    averageCost: 150.50
+                    version: 1
+                    createdAt: "2026-09-22T10:30:00Z"
+                    lastUpdated: "2026-09-22T10:30:00Z"
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  summary: Position does not exist
+                  value:
+                    errorCode: "POS-404"
+                    message: "Position not found for account ACC001 and symbol AAPL"
+
+    put:
+      tags:
+        - Positions
+      summary: Update a position (full update)
+      description: Fully updates an existing position with all required fields
+      operationId: updatePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+            examples:
+              success:
+                summary: Valid position update
+                value:
+                  accountId: "ACC001"
+                  symbol: "AAPL"
+                  quantity: 150
+                  averageCost: 152.00
+      responses:
+        '200':
+          description: Position updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Positions
+      summary: Partially update a position
+      description: Updates selected fields of an existing position
+      operationId: partiallyUpdatePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePositionRequest'
+            examples:
+              quantityOnly:
+                summary: Update quantity only
+                value:
+                  quantity: 120
+              averageCostOnly:
+                summary: Update average cost only
+                value:
+                  averageCost: 155.00
+      responses:
+        '200':
+          description: Position partially updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Positions
+      summary: Delete a position
+      description: Removes a position from an account
+      operationId: deletePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      responses:
+        '200':
+          description: Position deleted successfully
+          content:
+            application/json:
+              schema:
+                type: boolean
+              examples:
+                success:
+                  summary: Position was deleted
+                  value: true
+                notFound:
+                  summary: Position did not exist
+                  value: false
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /positions/{accountId}/{symbol}/buy:
+    post:
+      tags:
+        - Positions
+      summary: Execute a buy operation
+      description: Adds shares to an existing position or creates a new position with FIFO average cost calculation
+      operationId: buyPosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuyRequest'
+            examples:
+              success:
+                summary: Valid buy order
+                value:
+                  quantity: 50
+                  price: 155.00
+      responses:
+        '200':
+          description: Buy operation executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '400':
+          description: Bad Request - Invalid trade operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /positions/{accountId}/{symbol}/sell:
+    post:
+      tags:
+        - Positions
+      summary: Execute a sell operation
+      description: Removes shares from an existing position using FIFO method
+      operationId: sellPosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellRequest'
+            examples:
+              success:
+                summary: Valid sell order
+                value:
+                  quantity: 30
+      responses:
+        '200':
+          description: Sell operation executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '400':
+          description: Bad Request - Insufficient holdings or invalid operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Insufficient holdings to complete sale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Position:
+      type: object
+      required:
+        - accountId
+        - symbol
+        - quantity
+        - averageCost
+      properties:
+        accountId:
+          type: string
+          description: The unique identifier of the account holding the position
+          example: "ACC001"
+        symbol:
+          type: string
+          description: The trading symbol/ticker of the security
+          example: "AAPL"
+        quantity:
+          type: number
+          format: decimal
+          description: The number of shares/units held
+          example: 100
+        averageCost:
+          type: number
+          format: decimal
+          description: The average purchase price per share/unit (FIFO calculated)
+          example: 150.50
+        version:
+          type: integer
+          description: Version number for optimistic locking
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the position was created
+          example: "2026-09-22T10:30:00Z"
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Timestamp of the last update to this position
+          example: "2026-09-22T10:30:00Z"
+        updatedBy:
+          type: string
+          description: User or system that performed the last update
+          example: "ORDER-PROCESSOR"
+
+    ErrorResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Unique error code for the error type
+          example: "POS-404"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Position not found"
+      required:
+        - errorCode
+        - message
+
+    BuyRequest:
+      type: object
+      required:
+        - quantity
+        - price
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          description: Number of shares to buy
+          example: 50
+          minimum: 1
+        price:
+          type: number
+          format: decimal
+          description: Purchase price per share
+          example: 155.00
+          minimum: 0.01
+
+    SellRequest:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          format: int32
+          description: Number of shares to sell
+          example: 30
+          minimum: 1
+
+    UpdatePositionRequest:
+      type: object
+      description: Request body for PATCH operations - all fields are optional
+      properties:
+        quantity:
+          type: number
+          format: decimal
+          description: Updated quantity of shares held
+          example: 120
+        averageCost:
+          type: number
+          format: decimal
+          description: Updated average cost per share
+          example: 155.00
+        updatedBy:
+          type: string
+          description: User or system making the update
+          example: "USER123"
+
+

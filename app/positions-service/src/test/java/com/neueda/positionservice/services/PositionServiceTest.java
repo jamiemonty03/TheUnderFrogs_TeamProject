@@ -5,26 +5,37 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
+import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.models.Position;
-import com.neueda.positionservice.repositories.InMemoryPositionRepository;
+import com.neueda.positionservice.models.PositionId;
+import com.neueda.positionservice.repositories.PositionRepository;
 
+@ExtendWith(MockitoExtension.class)
 class PositionServiceTest {
 
-    private InMemoryPositionRepository repository;
-    private PositionService positionService;
+    @Mock
+    private PositionRepository repository;
 
-    @BeforeEach
-    void setUp() {
-        repository = new InMemoryPositionRepository();
-        positionService = new PositionService(repository);
-    }
+    @InjectMocks
+    private PositionService positionService;
 
     // Tests (applyBuy / applySell) 
 
@@ -154,80 +165,58 @@ class PositionServiceTest {
         });
     }
 
-    // ============ Integration Tests (updatePositionAfterBuy / updatePositionAfterSell with Repository) ============
+    // Tests (patchPosition / updatePositionAfterSell)
 
-    @Test
-    @DisplayName("updatePositionAfterBuy: Creates position and calculates FIFO average cost")
-    void testUpdatePositionAfterBuyCreatesPositionAndCalculatesAverageCost() {
-        positionService.updatePositionAfterBuy("ACC-1", "AAPL", 10, new BigDecimal("100.00"));
-        positionService.updatePositionAfterBuy("ACC-1", "AAPL", 10, new BigDecimal("120.00"));
-
-        assertEquals(20, positionService.getTotalQuantity("ACC-1", "AAPL"));
-        assertEquals(new BigDecimal("110.0000"), positionService.getAverageCost("ACC-1", "AAPL"));
-        assertTrue(positionService.hasPosition("ACC-1", "AAPL"));
+    private Position stubExisting() {
+        Position existing = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        when(repository.findById(new PositionId("ACC-1", "AAPL"))).thenReturn(Optional.of(existing));
+        when(repository.save(any(Position.class))).thenAnswer(inv -> inv.getArgument(0));
+        return existing;
     }
 
     @Test
-    @DisplayName("updatePositionAfterSell: Deletes position when quantity reaches zero")
-    void testUpdatePositionAfterSellDeletesPositionWhenQuantityReachesZero() throws InsufficientHoldingsException {
-        repository.save(new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("100")));
+    @DisplayName("patchPosition: Updating averageCost only keeps the existing quantity")
+    void testPatchAverageCostOnlyKeepsQuantity() {
+        stubExisting();
 
-        positionService.updatePositionAfterSell("ACC-1", "AAPL", 10);
+        Position result = positionService.patchPosition("ACC-1", "AAPL",
+            new UpdatePositionRequest(null, new BigDecimal("160.00"), null));
 
-        assertTrue(positionService.getPosition("ACC-1", "AAPL").isEmpty());
-        assertFalse(positionService.hasPosition("ACC-1", "AAPL"));
+        assertEquals(new BigDecimal("100"), result.getQuantity());
+        assertEquals(new BigDecimal("160.00"), result.getAverageCost());
     }
 
     @Test
-    @DisplayName("updatePositionAfterSell: Reduces quantity on partial sell")
-    void testUpdatePositionAfterSellReducesQuantityWhenPartialSell() throws InsufficientHoldingsException {
-        repository.save(new Position("ACC-1", "AAPL", new BigDecimal("20"), new BigDecimal("100")));
+    @DisplayName("patchPosition: Updating quantity only keeps the existing averageCost")
+    void testPatchQuantityOnlyKeepsAverageCost() {
+        stubExisting();
 
-        positionService.updatePositionAfterSell("ACC-1", "AAPL", 10);
+        Position result = positionService.patchPosition("ACC-1", "AAPL",
+            new UpdatePositionRequest(new BigDecimal("120"), null, null));
 
-        assertEquals(10, positionService.getTotalQuantity("ACC-1", "AAPL"));
-        assertTrue(positionService.hasPosition("ACC-1", "AAPL"));
+        assertEquals(new BigDecimal("120"), result.getQuantity());
+        assertEquals(new BigDecimal("150.50"), result.getAverageCost());
     }
 
     @Test
-    @DisplayName("updatePositionAfterSell: Throws exception when trying to sell more than held")
-    void testUpdatePositionAfterSellMoreThanHeldLeavesPositionUnchanged() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("100"));
-        repository.save(position);
+    @DisplayName("patchPosition: Throws PositionNotFoundException when the position does not exist")
+    void testPatchPositionNotFound() {
+        when(repository.findById(new PositionId("ACC-1", "MSFT"))).thenReturn(Optional.empty());
 
-        assertThrows(InsufficientHoldingsException.class,
-            () -> positionService.updatePositionAfterSell("ACC-1", "AAPL", 11));
-
-        assertEquals(new BigDecimal("10"), positionService.getPosition("ACC-1", "AAPL").orElseThrow().getQuantity());
+        assertThrows(PositionNotFoundException.class, () -> positionService.patchPosition("ACC-1", "MSFT",
+            new UpdatePositionRequest(new BigDecimal("10"), null, null)));
     }
 
     @Test
-    @DisplayName("updatePositionAfterSell: Throws exception for non-existent position")
-    void testUpdatePositionAfterSellNonExistentPositionThrowsException() {
-        assertThrows(InsufficientHoldingsException.class,
-            () -> positionService.updatePositionAfterSell("ACC-1", "NONEXISTENT", 10));
-    }
+    @DisplayName("updatePositionAfterSell: Selling all shares deletes the position and returns quantity 0")
+    void testSellAllSharesDeletesAndReturnsPosition() throws InsufficientHoldingsException {
+        Position existing = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        when(repository.findById(new PositionId("ACC-1", "AAPL"))).thenReturn(Optional.of(existing));
 
-    @Test
-    @DisplayName("getOrCreatePosition: Creates new position if it doesn't exist")
-    void testGetOrCreatePositionCreatesNewIfNotExists() {
-        Position position = positionService.getOrCreatePosition("ACC-1", "AAPL");
-        
-        assertTrue(repository.findByAccountAndSymbol("ACC-1", "AAPL").isPresent());
-        assertEquals("ACC-1", position.getAccountId());
-        assertEquals("AAPL", position.getSymbol());
-        assertEquals(BigDecimal.ZERO, position.getQuantity());
-    }
+        Position result = positionService.updatePositionAfterSell("ACC-1", "AAPL", 100);
 
-    @Test
-    @DisplayName("getOrCreatePosition: Returns existing position if it already exists")
-    void testGetOrCreatePositionReturnsExistingIfExists() {
-        Position original = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
-        repository.save(original);
-        
-        Position retrieved = positionService.getOrCreatePosition("ACC-1", "AAPL");
-        
-        assertEquals(new BigDecimal("100"), retrieved.getQuantity());
-        assertEquals(new BigDecimal("50"), retrieved.getAverageCost());
+        assertEquals(0, result.getQuantity().compareTo(BigDecimal.ZERO));
+        verify(repository).deleteById(new PositionId("ACC-1", "AAPL"));
+        verify(repository, never()).save(any(Position.class));
     }
 }
