@@ -1,20 +1,40 @@
 package com.neueda.positionservice.exceptions;
 
-import com.neueda.positionservice.dtos.responses.ErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.neueda.positionservice.dtos.responses.ErrorResponse;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(PositionNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePositionNotFound(PositionNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, "POS-404", ex.getMessage());
+    }
+
     @ExceptionHandler(InsufficientHoldingsException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientHoldings(InsufficientHoldingsException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse("ORD-409", ex.getMessage()));
+        return error(HttpStatus.CONFLICT, "POS-409", ex.getMessage());
+    }
+
+    @ExceptionHandler(TradingException.class)
+    public ResponseEntity<ErrorResponse> handleTradingException(TradingException ex) {
+        return error(HttpStatus.BAD_REQUEST, "TRD-400", ex.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return error(HttpStatus.BAD_REQUEST, "REQ-400", "Malformed or unreadable request body");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -23,29 +43,21 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .findFirst()
                 .orElse("Validation failed");
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse("VAL-422", message));
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "VAL-422", message);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse("VAL-422", ex.getMessage()));
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "VAL-422", ex.getMessage());
     }
 
-    @ExceptionHandler(TradingException.class)
-    public ResponseEntity<ErrorResponse> handleTradingException(TradingException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("TRD-400", ex.getMessage()));
-    }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("SYS-500", ex.getMessage()));
+        log.error("Unhandled exception", ex);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "SYS-500", "An unexpected error occurred");
     }
-    @ExceptionHandler(PositionNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handlePositionNotFound(PositionNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse("POS-404", ex.getMessage()));
+
+    private static ResponseEntity<ErrorResponse> error(HttpStatus status, String code, String message) {
+        return ResponseEntity.status(status).body(new ErrorResponse(code, message));
     }
 }
