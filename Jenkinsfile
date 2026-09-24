@@ -8,7 +8,7 @@ pipeline {
     }
 
     triggers {
-        cron('*/15 * * * *')
+        cron('*/45 * * * *')
     }
     tools {
         jdk 'JDK21'
