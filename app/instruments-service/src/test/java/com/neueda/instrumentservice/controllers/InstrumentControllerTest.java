@@ -1,6 +1,7 @@
 package com.neueda.instrumentservice.controllers;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,6 +69,9 @@ public class InstrumentControllerTest {
     void deleteInstrument_returns204WhenDeleted() throws Exception {
         mockMvc.perform(delete("/instruments/AAPL"))
                 .andExpect(status().isNoContent());
+
+        // tracked_tickers deactivation is asserted in InstrumentServiceTest
+        verify(instrumentService).deleteInstrument("AAPL");
     }
 
     @Test

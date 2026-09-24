@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -22,6 +24,7 @@ import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Instrument;
 import com.neueda.instrumentservice.repositories.InstrumentRepository;
+import com.neueda.instrumentservice.repositories.TrackedTickerRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class InstrumentServiceTest {
@@ -29,11 +32,14 @@ public class InstrumentServiceTest {
     @Mock
     private InstrumentRepository instrumentRepository;
 
+    @Mock
+    private TrackedTickerRepository trackedTickerRepository;
+
     private InstrumentService instrumentService;
 
     @BeforeEach
     public void setUp() {
-        instrumentService = new InstrumentService(instrumentRepository);
+        instrumentService = new InstrumentService(instrumentRepository, trackedTickerRepository);
     }
 
     @Test
@@ -79,13 +85,27 @@ public class InstrumentServiceTest {
     }
 
     @Test
-    @DisplayName("deleteInstrument: Deletes when the instrument exists")
+    @DisplayName("deleteInstrument: Deletes the instrument and deactivates its tracked_tickers row")
     public void testDeleteInstrumentFound() throws InstrumentNotFoundException {
         when(instrumentRepository.exists("AAPL")).thenReturn(true);
+        when(trackedTickerRepository.deactivate("AAPL")).thenReturn(1);
 
         instrumentService.deleteInstrument("AAPL");
 
         verify(instrumentRepository, times(1)).delete("AAPL");
+        verify(trackedTickerRepository, times(1)).deactivate("AAPL");
+    }
+
+    @Test
+    @DisplayName("deleteInstrument: Still deletes without error when the symbol isn't in tracked_tickers")
+    public void testDeleteInstrumentNotTracked() {
+        when(instrumentRepository.exists("CUSTOM")).thenReturn(true);
+        when(trackedTickerRepository.deactivate("CUSTOM")).thenReturn(0);
+
+        assertDoesNotThrow(() -> instrumentService.deleteInstrument("CUSTOM"));
+
+        verify(instrumentRepository, times(1)).delete("CUSTOM");
+        verify(trackedTickerRepository, times(1)).deactivate("CUSTOM");
     }
 
     @Test
@@ -96,5 +116,6 @@ public class InstrumentServiceTest {
         assertThrows(InstrumentNotFoundException.class,
                 () -> instrumentService.deleteInstrument("ZZZZ"));
         verify(instrumentRepository, never()).delete(any());
+        verify(trackedTickerRepository, never()).deactivate(anyString());
     }
 }
