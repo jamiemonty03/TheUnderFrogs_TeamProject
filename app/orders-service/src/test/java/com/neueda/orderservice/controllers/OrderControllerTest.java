@@ -2,8 +2,13 @@ package com.neueda.orderservice.controllers;
 
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.repositories.OrderRepository;
-import com.neueda.orderservice.services.OrderService;
+import com.neueda.orderservice.services.orderServices.OrderProcessor;
+import com.neueda.orderservice.dtos.requests.PlaceOrderRequest;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
+import com.neueda.orderservice.enums.AccountStatus;
+import com.neueda.orderservice.models.Account;
+import com.neueda.orderservice.models.Instrument;
+import com.neueda.orderservice.services.orderServices.OrderResult;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.OrderStatus;
@@ -17,10 +22,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -40,7 +47,8 @@ public class OrderControllerTest {
     @Mock
     private RestTemplate restTemplate;
     
-    private OrderService orderService;
+    @Mock
+    private OrderProcessor orderProcessor;
     
     private Order testOrder1;
     private Order testOrder2;
@@ -48,8 +56,7 @@ public class OrderControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        orderService = new OrderService(orderRepository);
-        orderController = new OrderController(orderService, orderRepository, restTemplate);
+        orderController = new OrderController(orderProcessor, orderRepository, restTemplate);
 
         testOrder1 = new Order(
             "ORD001",
@@ -229,6 +236,48 @@ public class OrderControllerTest {
         orderController.deleteOrder("ORD001");
         var getResponse = orderController.getOrderById("ORD001");
         assertNotNull(getResponse.getBody().lastUpdated());
+    }
+
+    @Test
+    @DisplayName("POST /orders returns 201 with the FILLED order when execution succeeds")
+    void testPlaceOrderFilled() throws Exception {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("50000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.25"), true);
+        when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC001"))).thenReturn(account);
+        when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
+        testOrder1.setOrderStatus(OrderStatus.FILLED);
+        when(orderProcessor.processOrder(account, instrument, OrderSide.BUY, new BigDecimal("100"),
+                new BigDecimal("150.25"), "idempotent-key-1"))
+            .thenReturn(new OrderResult(true, "filled", null, testOrder1));
+
+        var response = orderController.placeOrder(new PlaceOrderRequest("ACC001", "AAPL", OrderSide.BUY,
+            new BigDecimal("100"), new BigDecimal("150.25"), "idempotent-key-1"));
+
+        assertEquals(201, response.getStatusCode().value());
+        OrderResponse body = (OrderResponse) response.getBody();
+        assertEquals("ORD001", body.orderId());
+        assertEquals(OrderStatus.FILLED, body.orderStatus());
+    }
+
+    @Test
+    @DisplayName("POST /orders returns 422 with the REJECTED order when execution fails")
+    void testPlaceOrderRejected() throws Exception {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("50000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.25"), true);
+        when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC001"))).thenReturn(account);
+        when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
+        testOrder1.setOrderStatus(OrderStatus.REJECTED);
+        when(orderProcessor.processOrder(account, instrument, OrderSide.BUY, new BigDecimal("100"),
+                new BigDecimal("150.25"), "idempotent-key-1"))
+            .thenReturn(new OrderResult(false, "BUY order ORD001 execution FAILED", null, testOrder1));
+
+        var response = orderController.placeOrder(new PlaceOrderRequest("ACC001", "AAPL", OrderSide.BUY,
+            new BigDecimal("100"), new BigDecimal("150.25"), "idempotent-key-1"));
+
+        assertEquals(422, response.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        assertEquals("ORD001", body.get("orderId"));
+        assertEquals(OrderStatus.REJECTED, body.get("orderStatus"));
     }
 
 }

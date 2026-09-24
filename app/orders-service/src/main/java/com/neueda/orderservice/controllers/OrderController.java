@@ -14,7 +14,8 @@ import java.util.Optional;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
-import com.neueda.orderservice.services.OrderService;
+import com.neueda.orderservice.services.orderServices.OrderProcessor;
+import com.neueda.orderservice.services.orderServices.OrderResult;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.dtos.requests.PlaceOrderRequest;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
@@ -32,7 +33,7 @@ import com.neueda.orderservice.exceptions.DuplicateOrderException;
 @RequestMapping("/orders")
 public class OrderController {
 
-    private final OrderService orderService;
+    private final OrderProcessor orderProcessor;
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
     
@@ -42,8 +43,8 @@ public class OrderController {
     @Value("${service.instruments.url:http://instruments-service:8081/api/instruments}")
     private String instrumentsServiceUrl;
 
-    public OrderController(OrderService orderService, OrderRepository orderRepository, RestTemplate restTemplate) {
-        this.orderService = orderService;
+    public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate) {
+        this.orderProcessor = orderProcessor;
         this.orderRepository = orderRepository;
         this.restTemplate = restTemplate;
     }
@@ -109,7 +110,7 @@ public class OrderController {
         }
 
         try {
-            Order order = orderService.placeOrder(
+            OrderResult result = orderProcessor.processOrder(
                 account,
                 instrument,
                 request.side(),
@@ -117,7 +118,15 @@ public class OrderController {
                 request.price(),
                 request.idempotencyKey()
             );
-            return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(order));
+            if (!result.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(Map.of(
+                        "error", result.getMessage(),
+                        "orderId", result.getOrder().getOrderId(),
+                        "orderStatus", result.getOrder().getOrderStatus()
+                    ));
+            }
+            return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(result.getOrder()));
         } catch (AccountNotActiveException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", e.getMessage()));

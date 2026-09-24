@@ -10,6 +10,9 @@ import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.services.AccountService;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class SellOrderStrategy implements OrderExecutionStrategy {
     
     private final AccountService accountService;
@@ -38,7 +41,7 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
                 order.getPrice(),
                 totalProceeds
             );
-            return new OrderResult(true, successMessage, null);
+            return new OrderResult(true, successMessage, null, order);
             
         } catch (Exception e) {
             if (cashCredited) {
@@ -55,7 +58,7 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
 
             String failureMessage = "SELL order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
             System.out.println(failureMessage);
-            return new OrderResult(false, failureMessage, null);
+            return new OrderResult(false, failureMessage, null, order);
         }
     }
 }

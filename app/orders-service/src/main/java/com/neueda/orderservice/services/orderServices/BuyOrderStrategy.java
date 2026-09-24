@@ -10,6 +10,8 @@ import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.services.AccountService;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Strategy for executing BUY orders.
  * 
@@ -23,6 +25,7 @@ import com.neueda.orderservice.services.AccountService;
  * 
  * On failure: reverse debit, mark REJECTED, return failure
  */
+@Component
 public class BuyOrderStrategy implements OrderExecutionStrategy {
     
     private final AccountService accountService;
@@ -50,7 +53,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
                 order.getPrice(),
                 totalCost
             );
-            return new OrderResult(true, successMessage, null);
+            return new OrderResult(true, successMessage, null, order);
             
         } catch (Exception e) {
             if (cashDebited) {
@@ -68,7 +71,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
 
             String failureMessage = "BUY order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
             System.out.println(failureMessage);
-            return new OrderResult(false, failureMessage, null);
+            return new OrderResult(false, failureMessage, null, order);
         }
     }
 }
