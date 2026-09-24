@@ -8,31 +8,31 @@ import org.springframework.transaction.annotation.Transactional;
 import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Instrument;
-import com.neueda.instrumentservice.repositories.InstrumentRepository;
-import com.neueda.instrumentservice.repositories.TrackedTickerRepository;
+import com.neueda.instrumentservice.mappers.InstrumentMapper;
+import com.neueda.instrumentservice.mappers.TrackedTickerMapper;
 
 @Service
 public class InstrumentService {
 
     private static final Logger log = LoggerFactory.getLogger(InstrumentService.class);
 
-    private final InstrumentRepository instrumentRepository;
-    private final TrackedTickerRepository trackedTickerRepository;
+    private final InstrumentMapper instrumentMapper;
+    private final TrackedTickerMapper trackedTickerMapper;
 
-    public InstrumentService(InstrumentRepository instrumentRepository,
-                             TrackedTickerRepository trackedTickerRepository) {
-        this.instrumentRepository = instrumentRepository;
-        this.trackedTickerRepository = trackedTickerRepository;
+    public InstrumentService(InstrumentMapper instrumentMapper,
+                             TrackedTickerMapper trackedTickerMapper) {
+        this.instrumentMapper = instrumentMapper;
+        this.trackedTickerMapper = trackedTickerMapper;
     }
 
     public List<InstrumentResponse> getAllInstruments() {
-        return instrumentRepository.findAll().stream()
+        return instrumentMapper.findAll().stream()
                 .map(InstrumentService::toResponse)
                 .toList();
     }
 
     public InstrumentResponse getInstrumentBySymbol(String symbol) throws InstrumentNotFoundException {
-        Instrument instrument = instrumentRepository.findBySymbol(symbol)
+        Instrument instrument = instrumentMapper.findBySymbol(symbol)
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
         return toResponse(instrument);
     }
@@ -43,11 +43,11 @@ public class InstrumentService {
      */
     @Transactional
     public void deleteInstrument(String symbol) throws InstrumentNotFoundException {
-        if (!instrumentRepository.exists(symbol)) {
+        if (!instrumentMapper.exists(symbol)) {
             throw new InstrumentNotFoundException(symbol);
         }
-        instrumentRepository.delete(symbol);
-        if (trackedTickerRepository.deactivate(symbol) == 0) {
+        instrumentMapper.delete(symbol);
+        if (trackedTickerMapper.deactivate(symbol) == 0) {
             log.warn("Deleted instrument {} had no tracked_tickers row to deactivate", symbol);
         }
     }
