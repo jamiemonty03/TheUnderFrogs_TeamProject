@@ -31,7 +31,7 @@ class SellOrderStrategyTest {
     void setUp() {
         account = new Account("ACC-1", "Test", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
         instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
-        // SellOrderStrategy requires AccountService and PositionService dependencies
+        // SellOrderStrategy requires AccountsClient and PositionService dependencies
         // In a microservices architecture, these would be external service clients
         strategy = mock(SellOrderStrategy.class);
     }

@@ -1,4 +1,4 @@
-package com.neueda.orderservice.services;
+package com.neueda.orderservice.clients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,18 +18,18 @@ import org.springframework.web.client.RestTemplate;
 import com.neueda.orderservice.enums.AccountStatus;
 import com.neueda.orderservice.models.Account;
 
-class AccountServiceTest {
+class AccountsClientTest {
 
     private static final String URL = "http://accounts-service:8081/api/accounts";
 
     private RestTemplate restTemplate;
-    private AccountService accountService;
+    private AccountsClient accountsClient;
     private Account account;
 
     @BeforeEach
     void setUp() {
         restTemplate = mock(RestTemplate.class);
-        accountService = new AccountService(restTemplate, URL);
+        accountsClient = new AccountsClient(restTemplate, URL);
         account = new Account("ACC0001", "Alice", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
     }
 
@@ -40,7 +40,7 @@ class AccountServiceTest {
         when(restTemplate.postForObject(URL + "/{accountId}/debit", Map.of("amount", new BigDecimal("300.00")),
                 Account.class, "ACC0001")).thenReturn(updated);
 
-        accountService.debit(account, new BigDecimal("300.00"));
+        accountsClient.debit(account, new BigDecimal("300.00"));
 
         assertEquals(new BigDecimal("700.00"), account.getCashBalance());
     }
@@ -52,7 +52,7 @@ class AccountServiceTest {
         when(restTemplate.postForObject(URL + "/{accountId}/credit", Map.of("amount", new BigDecimal("300.00")),
                 Account.class, "ACC0001")).thenReturn(updated);
 
-        accountService.credit(account, new BigDecimal("300.00"));
+        accountsClient.credit(account, new BigDecimal("300.00"));
 
         assertEquals(new BigDecimal("1300.00"), account.getCashBalance());
     }
@@ -63,7 +63,7 @@ class AccountServiceTest {
         when(restTemplate.postForObject(eq(URL + "/{accountId}/debit"), eq(Map.of("amount", new BigDecimal("5000.00"))),
                 eq(Account.class), eq("ACC0001"))).thenThrow(new RestClientException("400 Insufficient funds"));
 
-        assertThrows(RestClientException.class, () -> accountService.debit(account, new BigDecimal("5000.00")));
+        assertThrows(RestClientException.class, () -> accountsClient.debit(account, new BigDecimal("5000.00")));
         assertEquals(new BigDecimal("1000.00"), account.getCashBalance());
     }
 }

@@ -8,7 +8,7 @@ import com.neueda.orderservice.exceptions.*;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.services.AccountService;
+import com.neueda.orderservice.clients.AccountsClient;
 
 import org.springframework.stereotype.Component;
 
@@ -28,10 +28,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class BuyOrderStrategy implements OrderExecutionStrategy {
     
-    private final AccountService accountService;
+    private final AccountsClient accountsClient;
 
-    public BuyOrderStrategy(AccountService accountService) {
-        this.accountService = accountService;
+    public BuyOrderStrategy(AccountsClient accountsClient) {
+        this.accountsClient = accountsClient;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
         boolean cashDebited = false;
         try {
             BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-            accountService.debit(account, totalCost);
+            accountsClient.debit(account, totalCost);
             cashDebited = true;
 
             order.setOrderStatus(OrderStatus.FILLED);
@@ -60,7 +60,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
                 try {
                     
                     BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-                    accountService.credit(account, totalCost);
+                    accountsClient.credit(account, totalCost);
                 } catch (Exception rollbackError) {
                     System.out.println("Rollback failed: " + rollbackError.getMessage());
                 }

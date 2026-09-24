@@ -1,26 +1,39 @@
-package com.neueda.orderservice.services;
+package com.neueda.orderservice.clients;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.neueda.orderservice.models.Account;
 
 /**
- * Client for accounts-service. Debits and credits are applied by accounts-service,
- * which also enforces active status and sufficient funds; any failure surfaces
- * as a RestClientException.
+ * HTTP client for the accounts-service REST API.
+ *
+ * <p>This is <b>not</b> an account service. orders-service does not own account data,
+ * has no access to accounts-db and holds no account business rules. Each method is a
+ * thin wrapper around one accounts-service endpoint:
+ * <ul>
+ *   <li>{@link #getAccountById} - {@code GET  /accounts/{accountId}}</li>
+ *   <li>{@link #debit}          - {@code POST /accounts/{accountId}/debit}</li>
+ *   <li>{@link #credit}         - {@code POST /accounts/{accountId}/credit}</li>
+ * </ul>
+ *
+ * <p>accounts-service remains the single source of truth: it applies the balance change
+ * and enforces active status, sufficient funds and optimistic locking. Any rejection or
+ * connectivity failure surfaces here as a {@link org.springframework.web.client.RestClientException}.
+ *
+ * <p>The base URL comes from {@code service.accounts.url}.
  */
-@Service
-public class AccountService {
+@Component
+public class AccountsClient {
 
     private final RestTemplate restTemplate;
     private final String accountsServiceUrl;
 
-    public AccountService(RestTemplate restTemplate,
+    public AccountsClient(RestTemplate restTemplate,
             @Value("${service.accounts.url:http://accounts-service:8081/api/accounts}") String accountsServiceUrl) {
         this.restTemplate = restTemplate;
         this.accountsServiceUrl = accountsServiceUrl;
@@ -50,6 +63,7 @@ public class AccountService {
         syncBalance(account, updated);
     }
 
+    /** Copies the balance accounts-service returned onto the caller's local snapshot. */
     private void syncBalance(Account account, Account updated) {
         if (updated != null) {
             account.setCashBalance(updated.getCashBalance());

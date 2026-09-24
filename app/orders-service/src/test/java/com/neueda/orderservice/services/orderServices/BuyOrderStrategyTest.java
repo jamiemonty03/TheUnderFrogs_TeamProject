@@ -34,7 +34,7 @@ class BuyOrderStrategyTest {
 
     @Test
     void testOrderExecution() {
-        // BuyOrderStrategy requires AccountService and PositionService dependencies
+        // BuyOrderStrategy requires AccountsClient and PositionService dependencies
         // In a microservices architecture, these would be external service clients
         // This test is marked as a placeholder for integration testing
         // where external services can be properly mocked or stubbed
