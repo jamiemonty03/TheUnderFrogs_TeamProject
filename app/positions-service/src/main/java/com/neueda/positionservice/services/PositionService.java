@@ -38,13 +38,12 @@ public class PositionService {
         return positionRepository.save(position);
     }
 
-    public boolean deletePosition(String accountId, String symbol) {
+    public void deletePosition(String accountId, String symbol) {
         PositionId id = new PositionId(accountId, symbol);
         if (!positionRepository.existsById(id)) {
-            return false;
+            throw new PositionNotFoundException(accountId, symbol);
         }
         positionRepository.deleteById(id);
-        return true;
     }
 
     public Position updatePosition(String accountId, String symbol, Position position) {

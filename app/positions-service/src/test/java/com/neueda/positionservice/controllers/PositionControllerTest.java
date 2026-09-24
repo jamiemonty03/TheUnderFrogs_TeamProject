@@ -1,7 +1,10 @@
 package com.neueda.positionservice.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.neueda.positionservice.config.SecurityConfig;
 import com.neueda.positionservice.models.Position;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.test.context.support.WithMockUser;
 import com.neueda.positionservice.services.PositionService;
 import com.neueda.positionservice.dtos.requests.BuyRequest;
 import com.neueda.positionservice.dtos.requests.SellRequest;
@@ -31,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.hamcrest.Matchers.*;
 
 @WebMvcTest(PositionController.class)
+@Import(SecurityConfig.class)
+@WithMockUser
 @DisplayName("PositionController Integration Tests")
 public class PositionControllerTest {
 
@@ -180,25 +185,23 @@ public class PositionControllerTest {
     @Test
     @DisplayName("DELETE /positions/{accountId}/{symbol}: Successfully deletes position")
     public void testDeletePositionSuccess() throws Exception {
-        when(positionService.deletePosition("ACC001", "AAPL")).thenReturn(true);
-
         mockMvc.perform(delete("/positions/ACC001/AAPL")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string("true"));
+                .andExpect(status().isNoContent());
 
         verify(positionService).deletePosition("ACC001", "AAPL");
     }
 
     @Test
-    @DisplayName("DELETE /positions/{accountId}/{symbol}: Returns false when position not found")
+    @DisplayName("DELETE /positions/{accountId}/{symbol}: Returns 404 when position not found")
     public void testDeletePositionNotFound() throws Exception {
-        when(positionService.deletePosition("ACC001", "INVALID")).thenReturn(false);
+        doThrow(new PositionNotFoundException("ACC001", "INVALID"))
+                .when(positionService).deletePosition("ACC001", "INVALID");
 
         mockMvc.perform(delete("/positions/ACC001/INVALID")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().string("false"));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode", equalTo("POS-404")));
 
         verify(positionService).deletePosition("ACC001", "INVALID");
     }

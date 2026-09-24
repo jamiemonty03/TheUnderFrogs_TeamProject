@@ -7,6 +7,7 @@ import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -38,8 +39,9 @@ public class PositionController {
     }
     
     @DeleteMapping("/{accountId}/{symbol}")
-    public boolean deletePosition(@PathVariable String accountId, @PathVariable String symbol) {
-        return positionService.deletePosition(accountId, symbol);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletePosition(@PathVariable String accountId, @PathVariable String symbol) {
+        positionService.deletePosition(accountId, symbol);
     }
 
     @PutMapping("/{accountId}/{symbol}")
