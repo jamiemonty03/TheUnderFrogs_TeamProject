@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        timestamps()
-        disableConcurrentBuilds()
-        timeout(time: 30, unit: 'MINUTES')
-    }
-    
     environment {
         // Jenkins Secret Text credentials. These are used only by disposable DB
         // containers in the schema validation stage.
