@@ -7,6 +7,8 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.neueda.positionservice.dtos.requests.CreatePositionRequest;
+import com.neueda.positionservice.dtos.requests.ReplacePositionRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
@@ -34,30 +36,29 @@ public class PositionService {
         return positionRepository.findById(new PositionId(accountId, symbol));
     }
 
-    public Position savePosition(Position position) {
-        return positionRepository.save(position);
+    public Position createPosition(CreatePositionRequest request) {
+        Optional<Position> existing = getPosition(request.accountId(), request.symbol());
+        if (existing.isPresent()) {
+            return applyUpdate(existing.get(), request.quantity(), request.averageCost());
+        }
+        return positionRepository.save(new Position(
+            request.accountId(), request.symbol(), request.quantity(), request.averageCost()));
     }
 
-    public boolean deletePosition(String accountId, String symbol) {
+    public void deletePosition(String accountId, String symbol) {
         PositionId id = new PositionId(accountId, symbol);
         if (!positionRepository.existsById(id)) {
-            return false;
+            throw new PositionNotFoundException(accountId, symbol);
         }
         positionRepository.deleteById(id);
-        return true;
     }
 
-    public Position updatePosition(String accountId, String symbol, Position position) {
-        if (!accountId.equals(position.getAccountId()) || !symbol.equals(position.getSymbol())) {
-            throw new IllegalArgumentException("Account ID and symbol in the body must match the URL");
-        }
-        return applyUpdate(accountId, symbol,
-            position.getQuantity(), position.getAverageCost(), position.getUpdatedBy());
+    public Position updatePosition(String accountId, String symbol, ReplacePositionRequest request) {
+        return applyUpdate(findExisting(accountId, symbol), request.quantity(), request.averageCost());
     }
 
     public Position patchPosition(String accountId, String symbol, UpdatePositionRequest request) {
-        return applyUpdate(accountId, symbol,
-            request.quantity(), request.averageCost(), request.updatedBy());
+        return applyUpdate(findExisting(accountId, symbol), request.quantity(), request.averageCost());
     }
 
     public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
@@ -94,7 +95,6 @@ public class PositionService {
         position.setQuantity(newQuantity);
         position.setAverageCost(currentCostBasis.add(purchaseCost)
             .divide(newQuantity, DECIMAL_PLACES, ROUNDING_MODE));
-        position.setVersion(position.getVersion() + 1);
     }
 
     public void applySell(Position position, BigDecimal quantity) throws InsufficientHoldingsException {
@@ -107,13 +107,14 @@ public class PositionService {
         }
 
         position.setQuantity(position.getQuantity().subtract(quantity));
-        position.setVersion(position.getVersion() + 1);
     }
 
-    private Position applyUpdate(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
-        Position existing = getPosition(accountId, symbol)
+    private Position findExisting(String accountId, String symbol) {
+        return getPosition(accountId, symbol)
             .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
+    }
 
+    private Position applyUpdate(Position existing, BigDecimal quantity, BigDecimal averageCost) {
         if (quantity != null) {
             requirePositive(quantity, "Quantity must be positive");
             existing.setQuantity(quantity);
@@ -124,11 +125,6 @@ public class PositionService {
             }
             existing.setAverageCost(averageCost);
         }
-        if (updatedBy != null) {
-            existing.setUpdatedBy(updatedBy);
-        }
-        existing.setVersion(existing.getVersion() + 1);
-
         return positionRepository.save(existing);
     }
 

@@ -1,0 +1,2 @@
+jwt:
+  secret: test-only-secret-not-used-in-any-real-environment-1234567890

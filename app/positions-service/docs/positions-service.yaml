@@ -37,7 +37,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Position'
+              $ref: '#/components/schemas/CreatePositionRequest'
             examples:
               success:
                 summary: Valid position creation
@@ -213,13 +213,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Position'
+              $ref: '#/components/schemas/ReplacePositionRequest'
             examples:
               success:
                 summary: Valid position update
                 value:
-                  accountId: "ACC001"
-                  symbol: "AAPL"
                   quantity: 150
                   averageCost: 152.00
       responses:
@@ -314,19 +312,8 @@ paths:
             type: string
             example: "AAPL"
       responses:
-        '200':
-          description: Position deleted successfully
-          content:
-            application/json:
-              schema:
-                type: boolean
-              examples:
-                success:
-                  summary: Position was deleted
-                  value: true
-                notFound:
-                  summary: Position did not exist
-                  value: false
+        '204':
+          description: Position deleted successfully (no response body)
         '404':
           description: Position not found
           content:
@@ -476,23 +463,27 @@ components:
           description: The average purchase price per share/unit (FIFO calculated)
           example: 150.50
         version:
+          readOnly: true
           type: integer
-          description: Version number for optimistic locking
+          description: Set by the server - 0 when created, +1 on every update
           example: 1
         createdAt:
+          readOnly: true
           type: string
           format: date-time
           description: Timestamp when the position was created
           example: "2026-09-22T10:30:00Z"
         lastUpdated:
+          readOnly: true
           type: string
           format: date-time
           description: Timestamp of the last update to this position
           example: "2026-09-22T10:30:00Z"
         updatedBy:
+          readOnly: true
           type: string
-          description: User or system that performed the last update
-          example: "ORDER-PROCESSOR"
+          description: Set by the server - the logged-in user, or SYSTEM
+          example: "SYSTEM"
 
     ErrorResponse:
       type: object
@@ -554,9 +545,49 @@ components:
           format: decimal
           description: Updated average cost per share
           example: 155.00
-        updatedBy:
+
+    CreatePositionRequest:
+      type: object
+      description: Request body for POST - version, timestamps and updatedBy are set by the server
+      required:
+        - accountId
+        - symbol
+        - quantity
+        - averageCost
+      properties:
+        accountId:
           type: string
-          description: User or system making the update
-          example: "USER123"
+          example: "ACC001"
+        symbol:
+          type: string
+          example: "AAPL"
+        quantity:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 100
+        averageCost:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 150.50
+
+    ReplacePositionRequest:
+      type: object
+      description: Request body for PUT - the position is identified by the URL
+      required:
+        - quantity
+        - averageCost
+      properties:
+        quantity:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 150
+        averageCost:
+          type: number
+          format: decimal
+          minimum: 0
+          example: 152.00
 
 
