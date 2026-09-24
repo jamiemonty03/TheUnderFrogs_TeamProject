@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS clean_prices CASCADE;
 
 CREATE TABLE clean_prices (
-    symbol VARCHAR(10) NOT NULL REFERENCES instruments(symbol),
+    symbol VARCHAR(10) NOT NULL REFERENCES instruments(symbol) ON DELETE CASCADE,
 
     date DATE NOT NULL,
 
