@@ -52,14 +52,14 @@ public class PositionController {
     public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody UpdatePositionRequest request) {
         Position position = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
         
-        if (request.getQuantity() != null) {
-            position.setQuantity(request.getQuantity());
+        if (request.quantity() != null) {
+            position.setQuantity(request.quantity());
         }
-        if (request.getAverageCost() != null) {
-            position.setAverageCost(request.getAverageCost());
+        if (request.averageCost() != null) {
+            position.setAverageCost(request.averageCost());
         }
-        if (request.getUpdatedBy() != null) {
-            position.setUpdatedBy(request.getUpdatedBy());
+        if (request.updatedBy() != null) {
+            position.setUpdatedBy(request.updatedBy());
         }
         
         return positionService.updatePosition(accountId, symbol, position);
@@ -67,13 +67,13 @@ public class PositionController {
 
     @PostMapping("/{accountId}/{symbol}/buy")
     public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid BuyRequest request) {
-        positionService.updatePositionAfterBuy(accountId, symbol, request.getQuantity(), request.getPrice());
+        positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price());
         return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
     }
 
     @PostMapping("/{accountId}/{symbol}/sell")
     public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid SellRequest request) throws InsufficientHoldingsException {
-        positionService.updatePositionAfterSell(accountId, symbol, request.getQuantity());
+        positionService.updatePositionAfterSell(accountId, symbol, request.quantity());
         return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
     }
 }

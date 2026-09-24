@@ -5,26 +5,56 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.persistence.*;
 
+@IdClass(PositionId.class)
+@Entity
+@Table(name = "positions")
 public class Position {
+
+    @Id
+    @Column(name = "account_id")
     @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
     
+    @Id
+    @Column(name = "symbol")
     @NotBlank(message = "Symbol cannot be null or blank")
     private String symbol;
     
+    @Column(name = "quantity")
     @NotNull(message = "Quantity cannot be null")
     private BigDecimal quantity;
     
+    @Column(name = "average_cost")
     @NotNull(message = "Average cost cannot be null")
     private BigDecimal averageCost;
+    @Column(name = "version")
     private int version;
+
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
+
+    @Column(name = "updated_by")
     private String updatedBy;
 
     public Position() {
         this.version = 0;
+    }
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.lastUpdated = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.lastUpdated = LocalDateTime.now();
     }
 
     public Position(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {

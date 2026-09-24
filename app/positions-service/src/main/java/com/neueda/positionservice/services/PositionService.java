@@ -2,6 +2,7 @@ package com.neueda.positionservice.services;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import com.neueda.positionservice.models.Position;
+import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.repositories.PositionRepository;
@@ -26,29 +27,32 @@ public class PositionService {
         this.positionRepository = positionRepository;
     }
 
-     public List<Position> getPositionsByAccountId(String accountId) {
-        return positionRepository.findByAccountId(accountId);
+    public List<Position> getPositionsByAccountId(String accountId) {
+        if (accountId == null || accountId.trim().isEmpty()) {
+            throw new IllegalArgumentException("AccountId cannot be null or empty");
+        }
+        return positionRepository.findByAccountIdOrderBySymbol(accountId);
     }
 
     public Optional<Position> getPosition(String accountId, String symbol) {
-        return positionRepository.findByAccountAndSymbol(accountId, symbol);
+        return positionRepository.findById(new PositionId(accountId, symbol));
     }
 
     public Position savePosition(Position position) {
-        if (positionRepository.exists(position.getAccountId(), position.getSymbol())) {
-            positionRepository.update(position);
-        } else {
-            positionRepository.save(position);
-        }
-        return position;
+        return positionRepository.save(position);
     }
- 
+
     public boolean deletePosition(String accountId, String symbol) {
-        return positionRepository.delete(accountId, symbol);
+        PositionId id = new PositionId(accountId, symbol);
+        if (!positionRepository.existsById(id)) {
+            return false;
+        }
+        positionRepository.deleteById(id);
+        return true;
     }
 
     public Position updatePosition(String accountId, String symbol, Position position) {
-        Position existing = positionRepository.findByAccountAndSymbol(accountId, symbol)
+        Position existing = getPosition(accountId, symbol)
             .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
         
         if (position.getQuantity() != null) {
@@ -70,13 +74,13 @@ public class PositionService {
         existing.setVersion(existing.getVersion() + 1);
         existing.setLastUpdated(LocalDateTime.now());
         
-        positionRepository.update(existing);
+        positionRepository.save(existing);
         return existing;
     }
 
     public Position getOrCreatePosition(String accountId, String symbol) {
 
-        Optional<Position> existing = positionRepository.findByAccountAndSymbol(accountId, symbol);
+        Optional<Position> existing = getPosition(accountId, symbol);
         if (existing.isPresent()) {
             return existing.get();
         }
@@ -87,19 +91,19 @@ public class PositionService {
     }
 
     public boolean hasPosition(String accountId, String symbol) {
-        return positionRepository.findByAccountAndSymbol(accountId, symbol)
+        return getPosition(accountId, symbol)
             .map(pos -> pos.getQuantity().compareTo(BigDecimal.ZERO) > 0)
             .orElse(false);
     }
 
     public int getTotalQuantity(String accountId, String symbol) {
-        return positionRepository.findByAccountAndSymbol(accountId, symbol)
+        return getPosition(accountId, symbol)
             .map(pos -> pos.getQuantity().intValue())
             .orElse(0);
     }
 
     public BigDecimal getAverageCost(String accountId, String symbol) {
-        return positionRepository.findByAccountAndSymbol(accountId, symbol)
+        return getPosition(accountId, symbol)
             .map(Position::getAverageCost)
             .orElse(BigDecimal.ZERO);
     }
@@ -151,7 +155,7 @@ public class PositionService {
 
     public void updatePositionAfterSell(String accountId, String symbol, int quantity)
             throws InsufficientHoldingsException {
-        Position position = positionRepository.findByAccountAndSymbol(accountId, symbol)
+        Position position = getPosition(accountId, symbol)
             .orElseThrow(() -> new InsufficientHoldingsException(
                 symbol,
                 BigDecimal.valueOf(quantity),
@@ -162,7 +166,7 @@ public class PositionService {
         applySell(position, BigDecimal.valueOf(quantity));
 
         if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-            positionRepository.delete(accountId, symbol);
+            positionRepository.deleteById(new PositionId(accountId, symbol));
         } else {
             positionRepository.save(position);
         }

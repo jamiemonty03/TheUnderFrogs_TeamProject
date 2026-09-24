@@ -16,6 +16,8 @@ servers:
   - url: http://localhost:8084
     description: Local Development Server
 
+security: []
+
 tags:
   - name: Positions
     description: Position management operations
@@ -125,6 +127,12 @@ paths:
                 empty:
                   summary: Account has no positions
                   value: []
+        '400':
+          description: Bad Request - Invalid account ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /positions/{accountId}/{symbol}:
     get:
@@ -166,6 +174,12 @@ paths:
                     version: 1
                     createdAt: "2026-09-22T10:30:00Z"
                     lastUpdated: "2026-09-22T10:30:00Z"
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal Server Error - Position not found
           content:
@@ -319,6 +333,12 @@ paths:
                 notFound:
                   summary: Position did not exist
                   value: false
+        '404':
+          description: Position not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /positions/{accountId}/{symbol}/buy:
     post:
