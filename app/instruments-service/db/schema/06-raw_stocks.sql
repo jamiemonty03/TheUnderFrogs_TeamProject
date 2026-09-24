@@ -2,7 +2,7 @@ DROP TABLE IF EXISTS raw_stocks CASCADE;
 
 
 CREATE TABLE raw_stocks (
-    symbol               VARCHAR(10) PRIMARY KEY REFERENCES instruments(symbol),
+    symbol               VARCHAR(10) PRIMARY KEY REFERENCES instruments(symbol) ON DELETE CASCADE,
     sector               VARCHAR(100),
     industry             VARCHAR(100),
     country              VARCHAR(100),

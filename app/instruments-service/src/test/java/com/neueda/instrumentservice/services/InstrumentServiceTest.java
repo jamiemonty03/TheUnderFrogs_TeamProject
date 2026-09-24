@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,19 +23,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Instrument;
-import com.neueda.instrumentservice.repositories.InstrumentRepository;
+import com.neueda.instrumentservice.mappers.InstrumentMapper;
+import com.neueda.instrumentservice.mappers.TrackedTickerMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class InstrumentServiceTest {
 
     @Mock
-    private InstrumentRepository instrumentRepository;
+    private InstrumentMapper instrumentMapper;
+
+    @Mock
+    private TrackedTickerMapper trackedTickerMapper;
 
     private InstrumentService instrumentService;
 
     @BeforeEach
     public void setUp() {
-        instrumentService = new InstrumentService(instrumentRepository);
+        instrumentService = new InstrumentService(instrumentMapper, trackedTickerMapper);
     }
 
     @Test
@@ -41,7 +47,7 @@ public class InstrumentServiceTest {
     public void testGetAllInstruments() {
         Instrument apple = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
         Instrument tesla = new Instrument("TSLA", "Tesla Inc.", "EQUITY", "USD", "NASDAQ", false);
-        when(instrumentRepository.findAll()).thenReturn(List.of(apple, tesla));
+        when(instrumentMapper.findAll()).thenReturn(List.of(apple, tesla));
 
         List<InstrumentResponse> result = instrumentService.getAllInstruments();
 
@@ -53,7 +59,7 @@ public class InstrumentServiceTest {
     @Test
     @DisplayName("getAllInstruments: Returns empty list when repository has no instruments")
     public void testGetAllInstrumentsEmpty() {
-        when(instrumentRepository.findAll()).thenReturn(List.of());
+        when(instrumentMapper.findAll()).thenReturn(List.of());
 
         assertTrue(instrumentService.getAllInstruments().isEmpty());
     }
@@ -62,7 +68,7 @@ public class InstrumentServiceTest {
     @DisplayName("getInstrumentBySymbol: Returns matching instrument as InstrumentResponse")
     public void testGetInstrumentBySymbolFound() throws InstrumentNotFoundException {
         Instrument apple = new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true);
-        when(instrumentRepository.findBySymbol("AAPL")).thenReturn(Optional.of(apple));
+        when(instrumentMapper.findBySymbol("AAPL")).thenReturn(Optional.of(apple));
 
         InstrumentResponse result = instrumentService.getInstrumentBySymbol("AAPL");
 
@@ -72,29 +78,44 @@ public class InstrumentServiceTest {
     @Test
     @DisplayName("getInstrumentBySymbol: Throws InstrumentNotFoundException when symbol is missing")
     public void testGetInstrumentBySymbolNotFound() {
-        when(instrumentRepository.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
+        when(instrumentMapper.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> instrumentService.getInstrumentBySymbol("ZZZZ"));
     }
 
     @Test
-    @DisplayName("deleteInstrument: Deletes when the instrument exists")
+    @DisplayName("deleteInstrument: Deletes the instrument and deactivates its tracked_tickers row")
     public void testDeleteInstrumentFound() throws InstrumentNotFoundException {
-        when(instrumentRepository.exists("AAPL")).thenReturn(true);
+        when(instrumentMapper.exists("AAPL")).thenReturn(true);
+        when(trackedTickerMapper.deactivate("AAPL")).thenReturn(1);
 
         instrumentService.deleteInstrument("AAPL");
 
-        verify(instrumentRepository, times(1)).delete("AAPL");
+        verify(instrumentMapper, times(1)).delete("AAPL");
+        verify(trackedTickerMapper, times(1)).deactivate("AAPL");
+    }
+
+    @Test
+    @DisplayName("deleteInstrument: Still deletes without error when the symbol isn't in tracked_tickers")
+    public void testDeleteInstrumentNotTracked() {
+        when(instrumentMapper.exists("CUSTOM")).thenReturn(true);
+        when(trackedTickerMapper.deactivate("CUSTOM")).thenReturn(0);
+
+        assertDoesNotThrow(() -> instrumentService.deleteInstrument("CUSTOM"));
+
+        verify(instrumentMapper, times(1)).delete("CUSTOM");
+        verify(trackedTickerMapper, times(1)).deactivate("CUSTOM");
     }
 
     @Test
     @DisplayName("deleteInstrument: Throws InstrumentNotFoundException and does not delete when missing")
     public void testDeleteInstrumentNotFound() {
-        when(instrumentRepository.exists("ZZZZ")).thenReturn(false);
+        when(instrumentMapper.exists("ZZZZ")).thenReturn(false);
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> instrumentService.deleteInstrument("ZZZZ"));
-        verify(instrumentRepository, never()).delete(any());
+        verify(instrumentMapper, never()).delete(any());
+        verify(trackedTickerMapper, never()).deactivate(anyString());
     }
 }

@@ -5,25 +5,25 @@ import org.springframework.stereotype.Service;
 import com.neueda.instrumentservice.dtos.responses.EtfResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Etf;
-import com.neueda.instrumentservice.repositories.EtfRepository;
+import com.neueda.instrumentservice.mappers.EtfMapper;
 
 @Service
 public class EtfService {
 
-    private final EtfRepository etfRepository;
+    private final EtfMapper etfMapper;
 
-    public EtfService(EtfRepository etfRepository) {
-        this.etfRepository = etfRepository;
+    public EtfService(EtfMapper etfMapper) {
+        this.etfMapper = etfMapper;
     }
 
     public List<EtfResponse> getAllEtfs() {
-        return etfRepository.findAll().stream()
+        return etfMapper.findAll().stream()
                 .map(EtfService::toResponse)
                 .toList();
     }
 
     public EtfResponse getEtfBySymbol(String symbol) throws InstrumentNotFoundException {
-        Etf etf = etfRepository.findBySymbol(symbol)
+        Etf etf = etfMapper.findBySymbol(symbol)
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
         return toResponse(etf);
     }

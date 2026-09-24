@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS instruments_metrics;
 
 CREATE TABLE instruments_metrics (
-    symbol VARCHAR(10) NOT NULL PRIMARY KEY REFERENCES instruments(symbol),
+    symbol VARCHAR(10) NOT NULL PRIMARY KEY REFERENCES instruments(symbol) ON DELETE CASCADE,
     latest_price NUMERIC(18, 4),         
     latest_date DATE,                    
     price_52w_high NUMERIC(18, 4),        

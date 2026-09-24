@@ -259,7 +259,7 @@ def load_to_database(db: DatabaseConnection, df: pd.DataFrame) -> int:
     """Load metrics into instruments_metrics table."""
     try:
         # Read and execute table creation SQL
-        sql_file_path = os.path.join(os.path.dirname(__file__), '..', 'schema', '01-instruments_metrics.sql')
+        sql_file_path = os.path.join(os.path.dirname(__file__), '..', 'schema', '13-instruments_metrics.sql')
         with open(sql_file_path, 'r') as f:
             sql_content = f.read()
         

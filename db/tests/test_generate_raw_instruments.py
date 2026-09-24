@@ -169,35 +169,38 @@ def test_get_db_connection_failure_returns_none(instruments_module, monkeypatch)
 
 
 # ---------------------------------------------------------------------------
-# load_instruments
+# load_tracked_tickers
 # ---------------------------------------------------------------------------
 
-def test_load_instruments_returns_symbols(instruments_module, monkeypatch):
+def test_load_tracked_tickers_returns_active_symbols(instruments_module, monkeypatch):
     fake_cursor = MagicMock()
     fake_cursor.fetchall.return_value = [("AAPL",), ("MSFT",)]
     fake_conn = MagicMock()
     fake_conn.cursor.return_value = fake_cursor
     monkeypatch.setattr(instruments_module, "get_db_connection", lambda: fake_conn)
 
-    result = instruments_module.load_instruments()
+    result = instruments_module.load_tracked_tickers()
 
     assert result == ["AAPL", "MSFT"]
+    query = fake_cursor.execute.call_args[0][0]
+    assert "FROM tracked_tickers" in query
+    assert "active = true" in query
     fake_conn.close.assert_called_once()
 
 
-def test_load_instruments_no_connection_returns_empty(instruments_module, monkeypatch):
+def test_load_tracked_tickers_no_connection_returns_empty(instruments_module, monkeypatch):
     monkeypatch.setattr(instruments_module, "get_db_connection", lambda: None)
 
-    assert instruments_module.load_instruments() == []
+    assert instruments_module.load_tracked_tickers() == []
 
 
-def test_load_instruments_db_error_returns_empty_and_closes(instruments_module, monkeypatch):
+def test_load_tracked_tickers_db_error_returns_empty_and_closes(instruments_module, monkeypatch):
     fake_conn = MagicMock()
     fake_conn.cursor.side_effect = FakePsycopgError("fail")
     monkeypatch.setattr(instruments_module, "get_db_connection", lambda: fake_conn)
     monkeypatch.setattr(instruments_module, "psycopg", make_fake_psycopg())
 
-    result = instruments_module.load_instruments()
+    result = instruments_module.load_tracked_tickers()
 
     assert result == []
     fake_conn.close.assert_called_once()
@@ -298,7 +301,21 @@ def test_insert_to_db_error_rolls_back(instruments_module, monkeypatch):
 # main
 # ---------------------------------------------------------------------------
 
+def test_main_exits_early_when_no_tracked_tickers(instruments_module, monkeypatch):
+    monkeypatch.setattr(instruments_module, "load_tracked_tickers", lambda: [])
+    fetch_mock = MagicMock()
+    monkeypatch.setattr(instruments_module, "fetch_yfinance_data", fetch_mock)
+    insert_mock = MagicMock()
+    monkeypatch.setattr(instruments_module, "insert_to_db", insert_mock)
+
+    instruments_module.main()
+
+    fetch_mock.assert_not_called()
+    insert_mock.assert_not_called()
+
+
 def test_main_exits_early_when_no_yf_data(instruments_module, monkeypatch):
+    monkeypatch.setattr(instruments_module, "load_tracked_tickers", lambda: ["AAPL"])
     monkeypatch.setattr(instruments_module, "fetch_yfinance_data", lambda tickers: {})
     insert_mock = MagicMock()
     monkeypatch.setattr(instruments_module, "insert_to_db", insert_mock)
@@ -308,25 +325,22 @@ def test_main_exits_early_when_no_yf_data(instruments_module, monkeypatch):
     insert_mock.assert_not_called()
 
 
-def test_main_also_fetches_db_only_symbols(instruments_module, monkeypatch):
+def test_main_fetches_only_tracked_tickers(instruments_module, monkeypatch):
     calls = []
 
     def fake_fetch(tickers):
         tickers = list(tickers)
         calls.append(tickers)
-        if tickers == instruments_module.TICKERS:
-            return {"AAPL": {"quoteType": "EQUITY", "shortName": "Apple",
-                              "currency": "USD", "fullExchangeName": "NASDAQ"}}
-        return {"CUSTOM": {"quoteType": "EQUITY", "shortName": "Custom",
-                            "currency": "USD", "fullExchangeName": "NASDAQ"}}
+        return {s: {"quoteType": "EQUITY", "shortName": s,
+                    "currency": "USD", "fullExchangeName": "NASDAQ"} for s in tickers}
 
+    monkeypatch.setattr(instruments_module, "load_tracked_tickers", lambda: ["AAPL", "CUSTOM"])
     monkeypatch.setattr(instruments_module, "fetch_yfinance_data", fake_fetch)
-    monkeypatch.setattr(instruments_module, "load_instruments", lambda: ["AAPL", "CUSTOM"])
     insert_mock = MagicMock(return_value=True)
     monkeypatch.setattr(instruments_module, "insert_to_db", insert_mock)
 
     instruments_module.main()
 
-    assert calls == [instruments_module.TICKERS, ["CUSTOM"]]
+    assert calls == [["AAPL", "CUSTOM"]]
     inserted_instruments_df = insert_mock.call_args[0][0]
     assert set(inserted_instruments_df["symbol"]) == {"AAPL", "CUSTOM"}

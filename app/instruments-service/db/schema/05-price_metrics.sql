@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS price_metrics;
 
 CREATE TABLE price_metrics (
-    ticker VARCHAR(100) NOT NULL REFERENCES instruments(symbol),
+    ticker VARCHAR(100) NOT NULL REFERENCES instruments(symbol) ON DELETE CASCADE,
     trade_date DATE NOT NULL,
     close_price NUMERIC(18, 4) NOT NULL,
     daily_return NUMERIC(18, 8),

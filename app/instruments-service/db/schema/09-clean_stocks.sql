@@ -40,7 +40,7 @@ CREATE TABLE clean_stocks (
 
     PRIMARY KEY (symbol),
 
-    FOREIGN KEY (symbol) REFERENCES instruments(symbol),
+    FOREIGN KEY (symbol) REFERENCES instruments(symbol) ON DELETE CASCADE,
 
     CHECK (market_cap >= 0),
     CHECK (shares_outstanding >= 0),
