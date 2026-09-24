@@ -5,25 +5,25 @@ import org.springframework.stereotype.Service;
 import com.neueda.instrumentservice.dtos.responses.StockResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Stock;
-import com.neueda.instrumentservice.repositories.StockRepository;
+import com.neueda.instrumentservice.mappers.StockMapper;
 
 @Service
 public class StockService {
 
-    private final StockRepository stockRepository;
+    private final StockMapper stockMapper;
 
-    public StockService(StockRepository stockRepository) {
-        this.stockRepository = stockRepository;
+    public StockService(StockMapper stockMapper) {
+        this.stockMapper = stockMapper;
     }
 
     public List<StockResponse> getAllStocks() {
-        return stockRepository.findAll().stream()
+        return stockMapper.findAll().stream()
                 .map(StockService::toResponse)
                 .toList();
     }
 
     public StockResponse getStockBySymbol(String symbol) throws InstrumentNotFoundException {
-        Stock stock = stockRepository.findBySymbol(symbol)
+        Stock stock = stockMapper.findBySymbol(symbol)
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
         return toResponse(stock);
     }

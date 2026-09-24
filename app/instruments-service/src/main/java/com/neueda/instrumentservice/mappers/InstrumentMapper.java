@@ -1,4 +1,4 @@
-package com.neueda.instrumentservice.repositories;
+package com.neueda.instrumentservice.mappers;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import com.neueda.instrumentservice.models.Instrument;
 
 @Mapper
-public interface InstrumentRepository {
+public interface InstrumentMapper {
     void save(Instrument instrument);
     Optional<Instrument> findBySymbol(String symbol);
     List<Instrument> findAll();

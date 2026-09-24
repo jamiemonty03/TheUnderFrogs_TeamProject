@@ -147,6 +147,26 @@ fi
 if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     echo -e "${YELLOW}Populating tables with data...${NC}\n"
 
+    # Seed data function
+    seed_db() {
+        local container="$1" table="$2" seed_file="$3"
+        [ -f "$seed_file" ] || { echo -e "${YELLOW}⚠ $seed_file not found, skipping${NC}"; return 0; }
+        
+        local count
+        count=$(db_psql "$container" -Atc "SELECT COUNT(*) FROM $table;" 2>/dev/null || echo "0") || true
+        
+        if [ "$count" -gt 0 ]; then
+            echo -e "${YELLOW}⚠ $table already has $count rows, skipping seed${NC}"
+        else
+            db_psql "$container" -i -v ON_ERROR_STOP=1 --single-transaction < "$seed_file" || error_exit "Failed to load $seed_file"
+            echo -e "${GREEN}✓ $table seeded${NC}"
+        fi
+    }
+
+    # The ETL reads tracked_tickers to decide what to fetch, so seed it first
+    seed_db instruments-db tracked_tickers app/instruments-service/db/seed/tracked-tickers.sql
+    echo ""
+
     # Python ETL scripts
     echo -e "${YELLOW}Running Python ETL scripts...${NC}"
     PYTHON_SCRIPTS=(
@@ -168,22 +188,6 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     
     echo ""
     echo -e "${YELLOW}Seeding dummy data...${NC}"
-
-    # Seed data function
-    seed_db() {
-        local container="$1" table="$2" seed_file="$3"
-        [ -f "$seed_file" ] || { echo -e "${YELLOW}⚠ $seed_file not found, skipping${NC}"; return 0; }
-        
-        local count
-        count=$(db_psql "$container" -Atc "SELECT COUNT(*) FROM $table;" 2>/dev/null || echo "0") || true
-        
-        if [ "$count" -gt 0 ]; then
-            echo -e "${YELLOW}⚠ $table already has $count rows, skipping seed${NC}"
-        else
-            db_psql "$container" -i -v ON_ERROR_STOP=1 --single-transaction < "$seed_file" || error_exit "Failed to load $seed_file"
-            echo -e "${GREEN}✓ $table seeded${NC}"
-        fi
-    }
 
     seed_db accounts-db  accounts  app/accounts-service/db/seed/dummy-data.sql
     seed_db orders-db    orders    app/orders-service/db/seed/dummy-data.sql

@@ -36,7 +36,7 @@ CREATE TABLE clean_etfs (
 
     PRIMARY KEY (symbol),
     
-    FOREIGN KEY (symbol) REFERENCES instruments(symbol),
+    FOREIGN KEY (symbol) REFERENCES instruments(symbol) ON DELETE CASCADE,
 
     CHECK (nav_price > 0),
 
