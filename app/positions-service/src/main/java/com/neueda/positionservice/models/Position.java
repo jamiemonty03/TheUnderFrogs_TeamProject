@@ -42,7 +42,7 @@ public class Position {
     private LocalDateTime lastUpdated;
 
     @Column(name = "updated_by")
-    private String updatedBy;
+    private String updatedBy = "SYSTEM";
 
     public Position() {
         this.version = 0;

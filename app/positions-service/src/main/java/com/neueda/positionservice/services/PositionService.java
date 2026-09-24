@@ -110,8 +110,7 @@ public class PositionService {
         position.setVersion(position.getVersion() + 1);
     }
 
-    private Position applyUpdate(String accountId, String symbol,
-                                 BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
+    private Position applyUpdate(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
         Position existing = getPosition(accountId, symbol)
             .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
 
