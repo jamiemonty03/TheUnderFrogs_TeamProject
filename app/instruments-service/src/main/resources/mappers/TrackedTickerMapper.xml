@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neueda.instrumentservice.mappers.TrackedTickerMapper">
+
+    <!-- UPDATE: Stop the ETL fetching a ticker; returns the number of rows updated -->
+    <update id="deactivate" parameterType="String">
+        UPDATE tracked_tickers SET active = FALSE WHERE symbol = #{symbol}
+    </update>
+
+</mapper>

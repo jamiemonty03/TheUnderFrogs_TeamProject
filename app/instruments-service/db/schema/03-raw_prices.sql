@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS raw_prices CASCADE;
 
 CREATE TABLE raw_prices (
-    symbol      VARCHAR(10) NOT NULL REFERENCES instruments(symbol),
+    symbol      VARCHAR(10) NOT NULL REFERENCES instruments(symbol) ON DELETE CASCADE,
     date        DATE NOT NULL,
     open        NUMERIC(18, 4) NOT NULL,
     high        NUMERIC(18, 4) NOT NULL,

@@ -5,25 +5,25 @@ import org.springframework.stereotype.Service;
 import com.neueda.instrumentservice.dtos.responses.BondResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Bond;
-import com.neueda.instrumentservice.repositories.BondRepository;
+import com.neueda.instrumentservice.mappers.BondMapper;
 
 @Service
 public class BondService {
 
-    private final BondRepository bondRepository;
+    private final BondMapper bondMapper;
 
-    public BondService(BondRepository bondRepository) {
-        this.bondRepository = bondRepository;
+    public BondService(BondMapper bondMapper) {
+        this.bondMapper = bondMapper;
     }
 
     public List<BondResponse> getAllBonds() {
-        return bondRepository.findAll().stream()
+        return bondMapper.findAll().stream()
                 .map(BondService::toResponse)
                 .toList();
     }
 
     public BondResponse getBondBySymbol(String symbol) throws InstrumentNotFoundException {
-        Bond bond = bondRepository.findBySymbol(symbol)
+        Bond bond = bondMapper.findBySymbol(symbol)
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
         return toResponse(bond);
     }

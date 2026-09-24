@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS raw_etfs CASCADE;
 
 CREATE TABLE raw_etfs (
-    symbol                  VARCHAR(10) PRIMARY KEY REFERENCES instruments(symbol),
+    symbol                  VARCHAR(10) PRIMARY KEY REFERENCES instruments(symbol) ON DELETE CASCADE,
     category                VARCHAR(100),
     fund_family             VARCHAR(100),
     legal_type              VARCHAR(100),

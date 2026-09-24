@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.neueda.instrumentservice.repositories.StockRepository">
+<mapper namespace="com.neueda.instrumentservice.mappers.StockMapper">
 
     <!--
         clean_stocks has no beta column (yfinance's beta is only captured on raw_stocks,

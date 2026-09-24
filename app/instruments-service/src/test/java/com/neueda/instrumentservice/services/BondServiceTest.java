@@ -19,13 +19,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.neueda.instrumentservice.dtos.responses.BondResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.models.Bond;
-import com.neueda.instrumentservice.repositories.BondRepository;
+import com.neueda.instrumentservice.mappers.BondMapper;
 
 @ExtendWith(MockitoExtension.class)
 public class BondServiceTest {
 
     @Mock
-    private BondRepository bondRepository;
+    private BondMapper bondMapper;
 
     private BondService bondService;
 
@@ -40,13 +40,13 @@ public class BondServiceTest {
 
     @BeforeEach
     public void setUp() {
-        bondService = new BondService(bondRepository);
+        bondService = new BondService(bondMapper);
     }
 
     @Test
     @DisplayName("getAllBonds: Returns all bonds mapped to BondResponse")
     public void testGetAllBonds() {
-        when(bondRepository.findAll()).thenReturn(List.of(newBond()));
+        when(bondMapper.findAll()).thenReturn(List.of(newBond()));
 
         List<BondResponse> result = bondService.getAllBonds();
 
@@ -58,7 +58,7 @@ public class BondServiceTest {
     @Test
     @DisplayName("getAllBonds: Returns empty list when repository has no bonds")
     public void testGetAllBondsEmpty() {
-        when(bondRepository.findAll()).thenReturn(List.of());
+        when(bondMapper.findAll()).thenReturn(List.of());
 
         assertTrue(bondService.getAllBonds().isEmpty());
     }
@@ -66,7 +66,7 @@ public class BondServiceTest {
     @Test
     @DisplayName("getBondBySymbol: Returns matching bond as BondResponse")
     public void testGetBondBySymbolFound() throws InstrumentNotFoundException {
-        when(bondRepository.findBySymbol("BND01")).thenReturn(Optional.of(newBond()));
+        when(bondMapper.findBySymbol("BND01")).thenReturn(Optional.of(newBond()));
 
         BondResponse result = bondService.getBondBySymbol("BND01");
 
@@ -77,7 +77,7 @@ public class BondServiceTest {
     @Test
     @DisplayName("getBondBySymbol: Throws InstrumentNotFoundException when symbol is missing")
     public void testGetBondBySymbolNotFound() {
-        when(bondRepository.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
+        when(bondMapper.findBySymbol("ZZZZ")).thenReturn(Optional.empty());
 
         assertThrows(InstrumentNotFoundException.class,
                 () -> bondService.getBondBySymbol("ZZZZ"));
