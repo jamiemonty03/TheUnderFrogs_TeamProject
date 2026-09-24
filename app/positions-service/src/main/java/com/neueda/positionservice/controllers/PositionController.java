@@ -2,7 +2,6 @@ package com.neueda.positionservice.controllers;
 
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.services.PositionService;
-import com.neueda.positionservice.dtos.responses.PositionResponse;
 import com.neueda.positionservice.dtos.requests.BuyRequest;
 import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;

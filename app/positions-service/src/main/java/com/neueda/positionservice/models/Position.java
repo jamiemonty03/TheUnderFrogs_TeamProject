@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.persistence.*;
 
 @IdClass(PositionId.class)
@@ -24,10 +25,12 @@ public class Position {
     
     @Column(name = "quantity")
     @NotNull(message = "Quantity cannot be null")
+    @PositiveOrZero(message = "Quantity cannot be negative")
     private BigDecimal quantity;
     
     @Column(name = "average_cost")
     @NotNull(message = "Average cost cannot be null")
+    @PositiveOrZero(message = "Average cost cannot be negative")
     private BigDecimal averageCost;
     @Column(name = "version")
     private int version;
@@ -76,8 +79,6 @@ public class Position {
         this.quantity = quantity;
         this.averageCost = averageCost;
         this.version = 0;
-        this.createdAt = LocalDateTime.now();
-        this.lastUpdated = LocalDateTime.now();
     }
 
     public String getAccountId() {

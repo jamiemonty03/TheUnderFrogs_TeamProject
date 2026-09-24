@@ -1,17 +1,18 @@
 package com.neueda.positionservice.services;
-import org.springframework.stereotype.Service;
-import java.util.List;
-import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
-import com.neueda.positionservice.models.Position;
-import com.neueda.positionservice.models.PositionId;
-import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
-import com.neueda.positionservice.exceptions.PositionNotFoundException;
-import com.neueda.positionservice.repositories.PositionRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
+import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
+import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
+import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.models.Position;
+import com.neueda.positionservice.models.PositionId;
+import com.neueda.positionservice.repositories.PositionRepository;
 
 @Service
 public class PositionService {
@@ -22,16 +23,10 @@ public class PositionService {
     private final PositionRepository positionRepository;
 
     public PositionService(PositionRepository positionRepository) {
-        if (positionRepository == null) {
-            throw new IllegalArgumentException("PositionRepository cannot be null");
-        }
         this.positionRepository = positionRepository;
     }
 
     public List<Position> getPositionsByAccountId(String accountId) {
-        if (accountId == null || accountId.trim().isEmpty()) {
-            throw new IllegalArgumentException("AccountId cannot be null or empty");
-        }
         return positionRepository.findByAccountIdOrderBySymbol(accountId);
     }
 
@@ -53,6 +48,9 @@ public class PositionService {
     }
 
     public Position updatePosition(String accountId, String symbol, Position position) {
+        if (!accountId.equals(position.getAccountId()) || !symbol.equals(position.getSymbol())) {
+            throw new IllegalArgumentException("Account ID and symbol in the body must match the URL");
+        }
         return applyUpdate(accountId, symbol,
             position.getQuantity(), position.getAverageCost(), position.getUpdatedBy());
     }
@@ -62,104 +60,9 @@ public class PositionService {
             request.quantity(), request.averageCost(), request.updatedBy());
     }
 
-    private Position applyUpdate(String accountId, String symbol,
-                                 BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
-        Position existing = getPosition(accountId, symbol)
-            .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
-
-        if (quantity != null) {
-            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Quantity must be positive");
-            }
-            existing.setQuantity(quantity);
-        }
-        if (averageCost != null) {
-            if (averageCost.compareTo(BigDecimal.ZERO) < 0) {
-                throw new IllegalArgumentException("Average cost cannot be negative");
-            }
-            existing.setAverageCost(averageCost);
-        }
-        if (updatedBy != null) {
-            existing.setUpdatedBy(updatedBy);
-        }
-
-        existing.setVersion(existing.getVersion() + 1);
-        existing.setLastUpdated(LocalDateTime.now());
-
-        return positionRepository.save(existing);
-    }
-
-    public Position getOrCreatePosition(String accountId, String symbol) {
-
-        Optional<Position> existing = getPosition(accountId, symbol);
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        Position newPosition = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
-        positionRepository.save(newPosition);
-        return newPosition;
-    }
-
-    public boolean hasPosition(String accountId, String symbol) {
-        return getPosition(accountId, symbol)
-            .map(pos -> pos.getQuantity().compareTo(BigDecimal.ZERO) > 0)
-            .orElse(false);
-    }
-
-    public int getTotalQuantity(String accountId, String symbol) {
-        return getPosition(accountId, symbol)
-            .map(pos -> pos.getQuantity().intValue())
-            .orElse(0);
-    }
-
-    public BigDecimal getAverageCost(String accountId, String symbol) {
-        return getPosition(accountId, symbol)
-            .map(Position::getAverageCost)
-            .orElse(BigDecimal.ZERO);
-    }
-
-    public void applyBuy(Position position, BigDecimal quantity, BigDecimal price) {
-        validatePositionAndAmount(position, quantity, price, "Quantity and price must be greater than zero");
-
-        BigDecimal currentQuantity = position.getQuantity();
-        BigDecimal currentAverageCost = position.getAverageCost();
-
-        BigDecimal currentCostBasis = currentAverageCost.multiply(currentQuantity);
-        BigDecimal purchaseCost = price.multiply(quantity);
-        BigDecimal newQuantity = currentQuantity.add(quantity);
-
-        BigDecimal newAverageCost = currentCostBasis.add(purchaseCost)
-            .divide(newQuantity, DECIMAL_PLACES, ROUNDING_MODE);
-
-        position.setQuantity(newQuantity);
-        position.setAverageCost(newAverageCost);
-        position.setVersion(position.getVersion() + 1);
-        position.setLastUpdated(LocalDateTime.now());
-    }
-
-    public void applySell(Position position, BigDecimal quantity) throws InsufficientHoldingsException {
-        validatePositionAndAmount(position, quantity, null, "Quantity must be greater than zero");
-
-        BigDecimal currentQuantity = position.getQuantity();
-
-        if (quantity.compareTo(currentQuantity) > 0) {
-            throw new InsufficientHoldingsException(
-                position.getSymbol(),
-                quantity,
-                currentQuantity,
-                position.getAccountId()
-            );
-        }
-
-        BigDecimal newQuantity = currentQuantity.subtract(quantity);
-        position.setQuantity(newQuantity);
-        position.setVersion(position.getVersion() + 1);
-        position.setLastUpdated(LocalDateTime.now());
-    }
-
     public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
-        Position position = getOrCreatePosition(accountId, symbol);
+        Position position = getPosition(accountId, symbol)
+            .orElseGet(() -> new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO));
         applyBuy(position, BigDecimal.valueOf(quantity), price);
         return positionRepository.save(position);
     }
@@ -168,35 +71,77 @@ public class PositionService {
             throws InsufficientHoldingsException {
         Position position = getPosition(accountId, symbol)
             .orElseThrow(() -> new InsufficientHoldingsException(
-                symbol,
-                BigDecimal.valueOf(quantity),
-                BigDecimal.ZERO,
-                accountId
-            ));
+                symbol, BigDecimal.valueOf(quantity), BigDecimal.ZERO, accountId));
 
         applySell(position, BigDecimal.valueOf(quantity));
 
-        if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+        if (position.getQuantity().compareTo(BigDecimal.ZERO) == 0) {
             positionRepository.deleteById(new PositionId(accountId, symbol));
             return position;
         }
         return positionRepository.save(position);
     }
 
-    private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price, String amountMessage) {
-        if (position == null || quantity == null) {
-            throw new IllegalArgumentException("Position and quantity must not be null");
+    public void applyBuy(Position position, BigDecimal quantity, BigDecimal price) {
+        requirePosition(position);
+        requirePositive(quantity, "Quantity and price must be greater than zero");
+        requirePositive(price, "Quantity and price must be greater than zero");
+
+        BigDecimal currentCostBasis = position.getAverageCost().multiply(position.getQuantity());
+        BigDecimal purchaseCost = price.multiply(quantity);
+        BigDecimal newQuantity = position.getQuantity().add(quantity);
+
+        position.setQuantity(newQuantity);
+        position.setAverageCost(currentCostBasis.add(purchaseCost)
+            .divide(newQuantity, DECIMAL_PLACES, ROUNDING_MODE));
+        position.setVersion(position.getVersion() + 1);
+    }
+
+    public void applySell(Position position, BigDecimal quantity) throws InsufficientHoldingsException {
+        requirePosition(position);
+        requirePositive(quantity, "Quantity must be greater than zero");
+
+        if (quantity.compareTo(position.getQuantity()) > 0) {
+            throw new InsufficientHoldingsException(
+                position.getSymbol(), quantity, position.getQuantity(), position.getAccountId());
         }
 
-        if (price != null && price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(amountMessage);
-        }
+        position.setQuantity(position.getQuantity().subtract(quantity));
+        position.setVersion(position.getVersion() + 1);
+    }
 
-        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(amountMessage);
+    private Position applyUpdate(String accountId, String symbol,
+                                 BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
+        Position existing = getPosition(accountId, symbol)
+            .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
+
+        if (quantity != null) {
+            requirePositive(quantity, "Quantity must be positive");
+            existing.setQuantity(quantity);
+        }
+        if (averageCost != null) {
+            if (averageCost.signum() < 0) {
+                throw new IllegalArgumentException("Average cost cannot be negative");
+            }
+            existing.setAverageCost(averageCost);
+        }
+        if (updatedBy != null) {
+            existing.setUpdatedBy(updatedBy);
+        }
+        existing.setVersion(existing.getVersion() + 1);
+
+        return positionRepository.save(existing);
+    }
+
+    private static void requirePosition(Position position) {
+        if (position == null) {
+            throw new IllegalArgumentException("Position must not be null");
+        }
+    }
+
+    private static void requirePositive(BigDecimal value, String message) {
+        if (value == null || value.signum() <= 0) {
+            throw new IllegalArgumentException(message);
         }
     }
 }
-
-
-
