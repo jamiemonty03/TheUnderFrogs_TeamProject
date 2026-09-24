@@ -91,9 +91,9 @@ public class AccountTest {
     }
 
     @Test
-    @DisplayName("isActive: Returns false when status is INACTIVE")
-    public void testIsActiveWhenInactive() {
-        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.INACTIVE);
+    @DisplayName("isActive: Returns false when status is CLOSED")
+    public void testIsActiveWhenClosed() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.CLOSED);
 
         assertFalse(account.isActive());
     }
