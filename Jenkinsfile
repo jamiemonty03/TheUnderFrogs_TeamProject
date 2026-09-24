@@ -12,6 +12,7 @@ pipeline {
         // containers in the schema validation stage.
         POSTGRES_USER = credentials('postgres-user')
         POSTGRES_PASSWORD = credentials('postgres-password')
+    }
 
     tools {
         jdk 'JDK21'
