@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -91,5 +93,65 @@ class OrderStrategyExecutionTest {
 
         assertFalse(result.isSuccess());
         assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
+    }
+
+    @Test
+    @DisplayName("BUY credits the cash back when a step after the debit fails")
+    void buyRollsBackDebitOnLaterFailure() {
+        Order order = orderFailingOnFill(OrderSide.BUY);
+
+        OrderResult result = new BuyOrderStrategy(accountsClient).execute(order, account, instrument);
+
+        assertFalse(result.isSuccess());
+        assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
+        verify(accountsClient).debit(account, new BigDecimal("500.00"));
+        verify(accountsClient).credit(account, new BigDecimal("500.00"));
+    }
+
+    @Test
+    @DisplayName("BUY is still REJECTED when the rollback credit also fails")
+    void buyRejectedWhenRollbackFails() {
+        Order order = orderFailingOnFill(OrderSide.BUY);
+        doThrow(new RestClientException("accounts-service unavailable"))
+            .when(accountsClient).credit(account, new BigDecimal("500.00"));
+
+        OrderResult result = new BuyOrderStrategy(accountsClient).execute(order, account, instrument);
+
+        assertFalse(result.isSuccess());
+        assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
+    }
+
+    @Test
+    @DisplayName("SELL debits the proceeds back when a step after the credit fails")
+    void sellRollsBackCreditOnLaterFailure() {
+        Order order = orderFailingOnFill(OrderSide.SELL);
+
+        OrderResult result = new SellOrderStrategy(accountsClient).execute(order, account, instrument);
+
+        assertFalse(result.isSuccess());
+        assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
+        verify(accountsClient).credit(account, new BigDecimal("500.00"));
+        verify(accountsClient).debit(account, new BigDecimal("500.00"));
+    }
+
+    @Test
+    @DisplayName("SELL is still REJECTED when the rollback debit also fails")
+    void sellRejectedWhenRollbackFails() {
+        Order order = orderFailingOnFill(OrderSide.SELL);
+        doThrow(new RestClientException("accounts-service unavailable"))
+            .when(accountsClient).debit(account, new BigDecimal("500.00"));
+
+        OrderResult result = new SellOrderStrategy(accountsClient).execute(order, account, instrument);
+
+        assertFalse(result.isSuccess());
+        assertEquals(OrderStatus.REJECTED, order.getOrderStatus());
+    }
+
+    /** An order whose first status change (to FILLED) throws, simulating a failure after the cash moved. */
+    private Order orderFailingOnFill(OrderSide side) {
+        Order order = spy(new Order("ORDER-RB", "ACC-1", "AAPL", side, 5, new BigDecimal("100.00"), "key-rb"));
+        doThrow(new IllegalStateException("simulated failure")).doCallRealMethod()
+            .when(order).setOrderStatus(any());
+        return order;
     }
 }

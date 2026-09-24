@@ -66,4 +66,23 @@ class AccountsClientTest {
         assertThrows(RestClientException.class, () -> accountsClient.debit(account, new BigDecimal("5000.00")));
         assertEquals(new BigDecimal("1000.00"), account.getCashBalance());
     }
+
+    @Test
+    @DisplayName("getAccountById GETs the account from accounts-service")
+    void getAccountByIdCallsAccountsService() {
+        when(restTemplate.getForObject(URL + "/{accountId}", Account.class, "ACC0001")).thenReturn(account);
+
+        assertEquals(account, accountsClient.getAccountById("ACC0001"));
+    }
+
+    @Test
+    @DisplayName("debit leaves the local balance alone when accounts-service returns no body")
+    void debitWithEmptyResponseKeepsBalance() {
+        when(restTemplate.postForObject(URL + "/{accountId}/debit", Map.of("amount", new BigDecimal("300.00")),
+                Account.class, "ACC0001")).thenReturn(null);
+
+        accountsClient.debit(account, new BigDecimal("300.00"));
+
+        assertEquals(new BigDecimal("1000.00"), account.getCashBalance());
+    }
 }
