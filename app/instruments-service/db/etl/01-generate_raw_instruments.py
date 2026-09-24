@@ -18,11 +18,6 @@ DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME', 'postgres')
 DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
 
 
-STOCKS = ["AAPL", "MSFT", "JPM", "TSLA", "GOOGL", "AMZN", "NVDA", "XOM", "JNJ", "KO"]
-ETFS = ["SPY", "QQQ", "VTI", "IWM", "DIA", "EFA", "EEM", "XLF", "XLK", "XLE"]
-BONDS = ["AGG", "TLT", "LQD", "BND", "SHY", "IEF", "HYG", "MUB", "TIP", "BNDX"]
-TICKERS = STOCKS + ETFS + BONDS
-
 # yfinance's quoteType tells stocks (EQUITY) apart from everything fund-shaped
 # (ETF), but a bond fund and an equity fund both just say "ETF" - the
 # category text (e.g. "Intermediate Core Bond", "Long Government") is what
@@ -48,19 +43,21 @@ def get_db_connection():
         return None
 
 
-def load_instruments():
+def load_tracked_tickers():
+    """The symbols to fetch come from tracked_tickers - adding, removing or
+    deactivating a row there is how the ticker list changes."""
     conn = get_db_connection()
     if not conn:
         return []
 
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT symbol FROM instruments;")
+        cursor.execute("SELECT symbol FROM tracked_tickers WHERE active = true ORDER BY symbol;")
         symbols = [row[0] for row in cursor.fetchall()]
         cursor.close()
         return symbols
     except psycopg.Error as e:
-        print(f"Error loading existing instruments: {e}")
+        print(f"Error loading tracked tickers: {e}")
         return []
     finally:
         conn.close()
@@ -223,16 +220,17 @@ def insert_to_db(instruments_df, stocks_df, etfs_df, bonds_df) -> bool:
 
 
 def main():
-    yf_data = fetch_yfinance_data(TICKERS)
+    tickers = load_tracked_tickers()
+
+    if not tickers:
+        print("No active tickers in tracked_tickers. Exiting.")
+        return
+
+    yf_data = fetch_yfinance_data(tickers)
 
     if not yf_data:
         print("No yfinance data available. Exiting.")
         return
-
-    extra_symbols = [s for s in load_instruments() if s not in yf_data]
-    if extra_symbols:
-        print(f"Also fetching {len(extra_symbols)} instruments already in the DB: {extra_symbols}")
-        yf_data.update(fetch_yfinance_data(extra_symbols))
 
     instruments_df, stocks_df, etfs_df, bonds_df = build_dataframes(yf_data)
 
