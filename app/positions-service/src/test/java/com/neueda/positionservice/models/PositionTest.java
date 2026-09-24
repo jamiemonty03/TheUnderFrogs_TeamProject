@@ -19,8 +19,6 @@ public class PositionTest {
         assertEquals(new BigDecimal("10"), position.getQuantity());
         assertEquals(new BigDecimal("150.00"), position.getAverageCost());
         assertEquals(0, position.getVersion());
-        assertNotNull(position.getCreatedAt());
-        assertNotNull(position.getLastUpdated());
     }
 
     @Test

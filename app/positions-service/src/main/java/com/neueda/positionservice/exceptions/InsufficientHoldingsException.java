@@ -14,8 +14,4 @@ public class InsufficientHoldingsException extends TradingException {
     public InsufficientHoldingsException(String message) {
         super(message);
     }
-
-    public InsufficientHoldingsException() {
-        super("Insufficient holdings to execute the sell order.");
-    }
 }
