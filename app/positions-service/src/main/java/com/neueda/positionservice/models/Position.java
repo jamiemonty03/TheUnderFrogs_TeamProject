@@ -7,8 +7,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.persistence.*;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @IdClass(PositionId.class)
+@EntityListeners(AuditingEntityListener.class)
 @Entity
 @Table(name = "positions")
 public class Position {
@@ -32,8 +35,10 @@ public class Position {
     @NotNull(message = "Average cost cannot be null")
     @PositiveOrZero(message = "Average cost cannot be negative")
     private BigDecimal averageCost;
+
+    @Version
     @Column(name = "version")
-    private int version;
+    private Integer version;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -41,11 +46,11 @@ public class Position {
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
 
+    @LastModifiedBy
     @Column(name = "updated_by")
-    private String updatedBy = "SYSTEM";
+    private String updatedBy;
 
     public Position() {
-        this.version = 0;
     }
 
     @PrePersist
@@ -78,7 +83,6 @@ public class Position {
         this.symbol = symbol;
         this.quantity = quantity;
         this.averageCost = averageCost;
-        this.version = 0;
     }
 
     public String getAccountId() {
@@ -113,11 +117,11 @@ public class Position {
         this.averageCost = averageCost;
     }
 
-    public int getVersion() {
+    public Integer getVersion() {
         return version;
     }
 
-    public void setVersion(int version) {
+    public void setVersion(Integer version) {
         this.version = version;
     }
 

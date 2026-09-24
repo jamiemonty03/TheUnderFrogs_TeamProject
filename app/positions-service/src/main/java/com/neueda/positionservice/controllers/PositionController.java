@@ -3,6 +3,8 @@ package com.neueda.positionservice.controllers;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.services.PositionService;
 import com.neueda.positionservice.dtos.requests.BuyRequest;
+import com.neueda.positionservice.dtos.requests.CreatePositionRequest;
+import com.neueda.positionservice.dtos.requests.ReplacePositionRequest;
 import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
@@ -34,8 +36,8 @@ public class PositionController {
     }
     
     @PostMapping
-    public Position createPosition(@RequestBody @Valid Position position) {
-        return positionService.savePosition(position);
+    public Position createPosition(@RequestBody @Valid CreatePositionRequest request) {
+        return positionService.createPosition(request);
     }
     
     @DeleteMapping("/{accountId}/{symbol}")
@@ -45,12 +47,12 @@ public class PositionController {
     }
 
     @PutMapping("/{accountId}/{symbol}")
-    public Position updatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid Position position) {
-        return positionService.updatePosition(accountId, symbol, position);
+    public Position updatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReplacePositionRequest request) {
+        return positionService.updatePosition(accountId, symbol, request);
     }
 
     @PatchMapping("/{accountId}/{symbol}")
-    public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody UpdatePositionRequest request) {
+    public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid UpdatePositionRequest request) {
         return positionService.patchPosition(accountId, symbol, request);
     }
 

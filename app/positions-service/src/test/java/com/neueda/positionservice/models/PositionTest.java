@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class PositionTest {
 
     @Test
-    @DisplayName("constructor: Valid arguments create a position with zero version and timestamps set")
+    @DisplayName("constructor: Valid arguments create a position with no version until it is saved")
     public void testConstructorValidArguments() {
         Position position = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
 
@@ -18,7 +18,7 @@ public class PositionTest {
         assertEquals("AAPL", position.getSymbol());
         assertEquals(new BigDecimal("10"), position.getQuantity());
         assertEquals(new BigDecimal("150.00"), position.getAverageCost());
-        assertEquals(0, position.getVersion());
+        assertNull(position.getVersion());
     }
 
     @Test
@@ -154,6 +154,31 @@ public class PositionTest {
         assertNull(position.getSymbol());
         assertNull(position.getQuantity());
         assertNull(position.getAverageCost());
-        assertEquals(0, position.getVersion());
+        assertNull(position.getVersion());
+    }
+
+    @Test
+    @DisplayName("onCreate: New position gets createdAt and lastUpdated set to now")
+    public void testOnCreateSetsTimestamps() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+
+        position.onCreate();
+
+        assertNotNull(position.getCreatedAt());
+        assertEquals(position.getCreatedAt(), position.getLastUpdated());
+    }
+
+    @Test
+    @DisplayName("onUpdate: Refreshes lastUpdated and keeps createdAt")
+    public void testOnUpdateKeepsCreatedAt() throws InterruptedException {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+        position.onCreate();
+        var createdAt = position.getCreatedAt();
+        Thread.sleep(5);
+
+        position.onUpdate();
+
+        assertEquals(createdAt, position.getCreatedAt());
+        assertTrue(position.getLastUpdated().isAfter(createdAt));
     }
 }
