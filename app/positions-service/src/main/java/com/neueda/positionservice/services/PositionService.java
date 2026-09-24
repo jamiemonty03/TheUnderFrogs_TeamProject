@@ -1,6 +1,7 @@
 package com.neueda.positionservice.services;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
@@ -52,30 +53,40 @@ public class PositionService {
     }
 
     public Position updatePosition(String accountId, String symbol, Position position) {
+        return applyUpdate(accountId, symbol,
+            position.getQuantity(), position.getAverageCost(), position.getUpdatedBy());
+    }
+
+    public Position patchPosition(String accountId, String symbol, UpdatePositionRequest request) {
+        return applyUpdate(accountId, symbol,
+            request.quantity(), request.averageCost(), request.updatedBy());
+    }
+
+    private Position applyUpdate(String accountId, String symbol,
+                                 BigDecimal quantity, BigDecimal averageCost, String updatedBy) {
         Position existing = getPosition(accountId, symbol)
             .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
-        
-        if (position.getQuantity() != null) {
-            if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+
+        if (quantity != null) {
+            if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("Quantity must be positive");
             }
-            existing.setQuantity(position.getQuantity());
+            existing.setQuantity(quantity);
         }
-        if (position.getAverageCost() != null) {
-            if (position.getAverageCost().compareTo(BigDecimal.ZERO) < 0) {
+        if (averageCost != null) {
+            if (averageCost.compareTo(BigDecimal.ZERO) < 0) {
                 throw new IllegalArgumentException("Average cost cannot be negative");
             }
-            existing.setAverageCost(position.getAverageCost());
+            existing.setAverageCost(averageCost);
         }
-        if (position.getUpdatedBy() != null) {
-            existing.setUpdatedBy(position.getUpdatedBy());
+        if (updatedBy != null) {
+            existing.setUpdatedBy(updatedBy);
         }
-        
+
         existing.setVersion(existing.getVersion() + 1);
         existing.setLastUpdated(LocalDateTime.now());
-        
-        positionRepository.save(existing);
-        return existing;
+
+        return positionRepository.save(existing);
     }
 
     public Position getOrCreatePosition(String accountId, String symbol) {
@@ -147,13 +158,13 @@ public class PositionService {
         position.setLastUpdated(LocalDateTime.now());
     }
 
-    public void updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
+    public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
         Position position = getOrCreatePosition(accountId, symbol);
         applyBuy(position, BigDecimal.valueOf(quantity), price);
-        positionRepository.save(position);
+        return positionRepository.save(position);
     }
 
-    public void updatePositionAfterSell(String accountId, String symbol, int quantity)
+    public Position updatePositionAfterSell(String accountId, String symbol, int quantity)
             throws InsufficientHoldingsException {
         Position position = getPosition(accountId, symbol)
             .orElseThrow(() -> new InsufficientHoldingsException(
@@ -167,9 +178,9 @@ public class PositionService {
 
         if (position.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
             positionRepository.deleteById(new PositionId(accountId, symbol));
-        } else {
-            positionRepository.save(position);
+            return position;
         }
+        return positionRepository.save(position);
     }
 
     private void validatePositionAndAmount(Position position, BigDecimal quantity, BigDecimal price, String amountMessage) {

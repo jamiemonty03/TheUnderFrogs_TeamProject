@@ -7,10 +7,10 @@ import com.neueda.positionservice.dtos.requests.BuyRequest;
 import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
+import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/positions")
@@ -30,7 +30,7 @@ public class PositionController {
     @GetMapping("/{accountId}/{symbol}")
     public Position getPosition(@PathVariable String accountId, @PathVariable String symbol) {
         return positionService.getPosition(accountId, symbol)
-            .orElseThrow(() -> new RuntimeException("Position not found"));
+            .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
     }
     
     @PostMapping
@@ -50,30 +50,16 @@ public class PositionController {
 
     @PatchMapping("/{accountId}/{symbol}")
     public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody UpdatePositionRequest request) {
-        Position position = new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
-        
-        if (request.quantity() != null) {
-            position.setQuantity(request.quantity());
-        }
-        if (request.averageCost() != null) {
-            position.setAverageCost(request.averageCost());
-        }
-        if (request.updatedBy() != null) {
-            position.setUpdatedBy(request.updatedBy());
-        }
-        
-        return positionService.updatePosition(accountId, symbol, position);
+        return positionService.patchPosition(accountId, symbol, request);
     }
 
     @PostMapping("/{accountId}/{symbol}/buy")
     public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid BuyRequest request) {
-        positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price());
-        return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
+        return positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price());
     }
 
     @PostMapping("/{accountId}/{symbol}/sell")
     public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid SellRequest request) throws InsufficientHoldingsException {
-        positionService.updatePositionAfterSell(accountId, symbol, request.quantity());
-        return positionService.getPosition(accountId, symbol).orElseThrow(() -> new RuntimeException("Position not found"));
+        return positionService.updatePositionAfterSell(accountId, symbol, request.quantity());
     }
 }

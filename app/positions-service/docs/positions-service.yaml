@@ -180,18 +180,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error - Position not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
               examples:
                 notFound:
                   summary: Position does not exist
                   value:
-                    errorCode: "POS-500"
-                    message: "Position not found"
+                    errorCode: "POS-404"
+                    message: "Position not found for account ACC001 and symbol AAPL"
 
     put:
       tags:
