@@ -5,19 +5,10 @@ DROP TABLE IF EXISTS tracked_tickers CASCADE;
 -- ETL run creates the instrument, and a deactivated row outlives the
 -- instrument's deletion as the record that it was removed on purpose.
 CREATE TABLE tracked_tickers (
-    symbol      VARCHAR(10) PRIMARY KEY,
-    active      BOOLEAN NOT NULL DEFAULT TRUE,
-    added_at    TIMESTAMP NOT NULL DEFAULT NOW(),
-    added_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
+    symbol        VARCHAR(10) PRIMARY KEY,
+    active        BOOLEAN NOT NULL DEFAULT TRUE,
+    version       INTEGER NOT NULL DEFAULT 0,
+    created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated  TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
-
-INSERT INTO tracked_tickers (symbol) VALUES
-    -- Stocks
-    ('AAPL'), ('MSFT'), ('JPM'), ('TSLA'), ('GOOGL'),
-    ('AMZN'), ('NVDA'), ('XOM'), ('JNJ'), ('KO'),
-    -- ETFs
-    ('SPY'), ('QQQ'), ('VTI'), ('IWM'), ('DIA'),
-    ('EFA'), ('EEM'), ('XLF'), ('XLK'), ('XLE'),
-    -- Bonds
-    ('AGG'), ('TLT'), ('LQD'), ('BND'), ('SHY'),
-    ('IEF'), ('HYG'), ('MUB'), ('TIP'), ('BNDX');

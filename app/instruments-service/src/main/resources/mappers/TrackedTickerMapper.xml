@@ -4,7 +4,11 @@
 
     <!-- UPDATE: Stop the ETL fetching a ticker; returns the number of rows updated -->
     <update id="deactivate" parameterType="String">
-        UPDATE tracked_tickers SET active = FALSE WHERE symbol = #{symbol}
+        UPDATE tracked_tickers
+        SET active = FALSE,
+            version = version + 1,
+            last_updated = NOW()
+        WHERE symbol = #{symbol}
     </update>
 
 </mapper>
