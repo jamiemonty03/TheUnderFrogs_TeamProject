@@ -8,8 +8,9 @@ import com.neueda.orderservice.exceptions.*;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.services.AccountService;
-import com.neueda.orderservice.services.PositionService;
+import com.neueda.orderservice.clients.AccountsClient;
+
+import org.springframework.stereotype.Component;
 
 /**
  * Strategy for executing BUY orders.
@@ -24,16 +25,13 @@ import com.neueda.orderservice.services.PositionService;
  * 
  * On failure: reverse debit, mark REJECTED, return failure
  */
+@Component
 public class BuyOrderStrategy implements OrderExecutionStrategy {
     
-    private final AccountService accountService;
-    private final PositionService positionService;
+    private final AccountsClient accountsClient;
 
-    public BuyOrderStrategy(
-            AccountService accountService,
-            PositionService positionService) {
-        this.accountService = accountService;
-        this.positionService = positionService;
+    public BuyOrderStrategy(AccountsClient accountsClient) {
+        this.accountsClient = accountsClient;
     }
 
     @Override
@@ -41,12 +39,8 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
         boolean cashDebited = false;
         try {
             BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-            accountService.debit(account, totalCost);
+            accountsClient.debit(account, totalCost);
             cashDebited = true;
-
-            positionService.updatePositionAfterBuy(account.getAccountId(), order.getSymbol(), 
-                order.getQuantity(), order.getPrice());
-            
 
             order.setOrderStatus(OrderStatus.FILLED);
             order.setLastUpdated(LocalDateTime.now());
@@ -59,14 +53,14 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
                 order.getPrice(),
                 totalCost
             );
-            return new OrderResult(true, successMessage, null);
+            return new OrderResult(true, successMessage, null, order);
             
         } catch (Exception e) {
             if (cashDebited) {
                 try {
                     
                     BigDecimal totalCost = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-                    accountService.credit(account, totalCost);
+                    accountsClient.credit(account, totalCost);
                 } catch (Exception rollbackError) {
                     System.out.println("Rollback failed: " + rollbackError.getMessage());
                 }
@@ -77,7 +71,7 @@ public class BuyOrderStrategy implements OrderExecutionStrategy {
 
             String failureMessage = "BUY order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
             System.out.println(failureMessage);
-            return new OrderResult(false, failureMessage, null);
+            return new OrderResult(false, failureMessage, null, order);
         }
     }
 }

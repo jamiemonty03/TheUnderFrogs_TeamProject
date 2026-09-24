@@ -8,19 +8,17 @@ import com.neueda.orderservice.exceptions.*;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.services.AccountService;
-import com.neueda.orderservice.services.PositionService;
+import com.neueda.orderservice.clients.AccountsClient;
 
+import org.springframework.stereotype.Component;
+
+@Component
 public class SellOrderStrategy implements OrderExecutionStrategy {
     
-    private final AccountService accountService;
-    private final PositionService positionService;
+    private final AccountsClient accountsClient;
 
-    public SellOrderStrategy(
-            AccountService accountService,
-            PositionService positionService) {
-        this.accountService = accountService;
-        this.positionService = positionService;
+    public SellOrderStrategy(AccountsClient accountsClient) {
+        this.accountsClient = accountsClient;
     }
 
     @Override
@@ -29,11 +27,9 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
         try {
             
             BigDecimal totalProceeds = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-            accountService.credit(account, totalProceeds);
+            accountsClient.credit(account, totalProceeds);
             cashCredited = true;
 
-            positionService.updatePositionAfterSell(account.getAccountId(), order.getSymbol(), order.getQuantity());
-            
             order.setOrderStatus(OrderStatus.FILLED);
             order.setLastUpdated(LocalDateTime.now());
 
@@ -45,13 +41,13 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
                 order.getPrice(),
                 totalProceeds
             );
-            return new OrderResult(true, successMessage, null);
+            return new OrderResult(true, successMessage, null, order);
             
         } catch (Exception e) {
             if (cashCredited) {
                 try {
                     BigDecimal totalProceeds = order.getPrice().multiply(BigDecimal.valueOf(order.getQuantity()));
-                    accountService.debit(account, totalProceeds);
+                    accountsClient.debit(account, totalProceeds);
                 } catch (Exception rollbackError) {
                     System.out.println("Rollback failed: " + rollbackError.getMessage());
                 }
@@ -62,7 +58,7 @@ public class SellOrderStrategy implements OrderExecutionStrategy {
 
             String failureMessage = "SELL order " + order.getOrderId() + " execution FAILED: " + e.getMessage();
             System.out.println(failureMessage);
-            return new OrderResult(false, failureMessage, null);
+            return new OrderResult(false, failureMessage, null, order);
         }
     }
 }

@@ -8,14 +8,17 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - accounts_db_data:/var/lib/postgresql/data
-      - ./app/accounts-service/db/schema:/docker-entrypoint-initdb.d
+      - ./app/accounts-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
       interval: 5s
@@ -43,14 +46,17 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
       - instruments_db_data:/var/lib/postgresql/data
-      - ./app/instruments-service/db/schema:/docker-entrypoint-initdb.d
+      - ./app/instruments-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
       interval: 5s
@@ -78,14 +84,17 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5435:5432"
     volumes:
       - orders_db_data:/var/lib/postgresql/data
-      - ./app/orders-service/db/schema:/docker-entrypoint-initdb.d
+      - ./app/orders-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
       interval: 5s
@@ -113,14 +122,17 @@ services:
       - -c
       - >-
         export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
-        POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
-        POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5436:5432"
     volumes:
       - positions_db_data:/var/lib/postgresql/data
-      - ./app/positions-service/db/schema:/docker-entrypoint-initdb.d
+      - ./app/positions-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
       interval: 5s

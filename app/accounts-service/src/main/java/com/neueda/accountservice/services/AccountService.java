@@ -40,6 +40,10 @@ public class AccountService {
         return account;
     }
 
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAll();
+    }
+
     public Account getAccountById(String accountId) throws AccountNotFoundException {
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("Account ID cannot be null or empty");

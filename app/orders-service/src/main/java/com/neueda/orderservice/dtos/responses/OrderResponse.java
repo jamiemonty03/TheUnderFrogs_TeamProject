@@ -13,5 +13,8 @@ public record OrderResponse(
     int quantity,
     BigDecimal price,
     OrderStatus orderStatus,
-    LocalDateTime createdAt
+    int version,
+    LocalDateTime createdAt,
+    LocalDateTime lastUpdated,
+    String updatedBy
 ) {}

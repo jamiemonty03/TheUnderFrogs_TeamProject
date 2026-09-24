@@ -9,6 +9,8 @@ import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.services.OrderService;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Main orchestrator for order execution.
  * 
@@ -18,6 +20,7 @@ import com.neueda.orderservice.services.OrderService;
  * 3. Return execution result
  * 
  */
+@Component
 public class OrderProcessor {
 
     private final OrderService orderService;

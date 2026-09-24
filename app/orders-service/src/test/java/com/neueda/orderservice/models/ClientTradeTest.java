@@ -196,8 +196,6 @@ public class ClientTradeTest {
         trade.setPrice(new BigDecimal("160.50"));
         LocalDateTime tradeDate = LocalDateTime.now();
         trade.setTradeDate(tradeDate);
-        LocalDateTime createdAt = LocalDateTime.now();
-        trade.setCreatedAt(createdAt);
 
         assertEquals("TRADE001", trade.getTradeId());
         assertEquals("ACC001", trade.getAccountId());
@@ -206,7 +204,7 @@ public class ClientTradeTest {
         assertEquals(new BigDecimal("50"), trade.getQuantity());
         assertEquals(new BigDecimal("160.50"), trade.getPrice());
         assertEquals(tradeDate, trade.getTradeDate());
-        assertEquals(createdAt, trade.getCreatedAt());
+        assertNull(trade.getCreatedAt());
     }
 
     @Test

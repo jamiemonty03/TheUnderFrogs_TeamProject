@@ -2,6 +2,12 @@ package com.neueda.orderservice.models;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -22,36 +28,51 @@ import com.neueda.orderservice.enums.OrderStatus;
  * @see Account
  * @see Position
  */
+@Entity
+@Table(name = "orders")
 public class Order {
 
+    @Id
+    @Column(name = "order_id")
     private String orderId;
-    
+
     @NotNull(message = "AccountId is mandatory")
+    @Column(name = "account_id")
     private String accountId;
-    
+
     @NotBlank(message = "Symbol is mandatory")
     private String symbol;
-    
+
     @NotNull(message = "Order side (BUY/SELL) is mandatory")
+    @Enumerated(EnumType.STRING)
     private OrderSide side;
-    
+
     @Positive(message = "Quantity must be positive")
     private int quantity;
-    
+
     @NotNull(message = "Price is mandatory")
     @DecimalMin(value = "0.01", message = "Price must be greater than 0")
     private BigDecimal price;
-    
+
     @NotNull(message = "Idempotency key is mandatory")
     @NotBlank(message = "Idempotency key cannot be blank")
+    @Column(name = "idempotency_key", updatable = false)
     private String idempotencyKey;
-    
+
     @NotNull(message = "Order status is mandatory")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_status")
     private OrderStatus orderStatus;
-    
+
     private int version;
+
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
+
+    @Column(name = "updated_by")
     private String updatedBy;
 
 
@@ -94,6 +115,7 @@ public class Order {
         this.version = 0;
         this.createdAt = LocalDateTime.now();
         this.lastUpdated = LocalDateTime.now();
+        this.updatedBy = "SYSTEM";
     }
 
     public String getOrderId() {

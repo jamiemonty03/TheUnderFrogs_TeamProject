@@ -314,8 +314,8 @@ public class AccountServiceTest {
     
     @Test
     @DisplayName("debit: Throws exception when account is not active")
-    public void testDebitWithInactiveAccount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
-        account.setStatus(AccountStatus.INACTIVE);
+    public void testDebitWithClosedAccount() throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        account.setStatus(AccountStatus.CLOSED);
         when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));
         
         assertThrows(AccountNotActiveException.class, () -> {
