@@ -6,18 +6,12 @@ pipeline {
         disableConcurrentBuilds()
         timeout(time: 30, unit: 'MINUTES')
     }
-
-<<<<<<< HEAD
+    
     environment {
         // Jenkins Secret Text credentials. These are used only by disposable DB
         // containers in the schema validation stage.
         POSTGRES_USER = credentials('postgres-user')
         POSTGRES_PASSWORD = credentials('postgres-password')
-=======
-    triggers {
-        cron('*/45 * * * *')
->>>>>>> develop
-    }
 
     tools {
         jdk 'JDK21'
