@@ -314,19 +314,8 @@ paths:
             type: string
             example: "AAPL"
       responses:
-        '200':
-          description: Position deleted successfully
-          content:
-            application/json:
-              schema:
-                type: boolean
-              examples:
-                success:
-                  summary: Position was deleted
-                  value: true
-                notFound:
-                  summary: Position did not exist
-                  value: false
+        '204':
+          description: Position deleted successfully (no response body)
         '404':
           description: Position not found
           content:
