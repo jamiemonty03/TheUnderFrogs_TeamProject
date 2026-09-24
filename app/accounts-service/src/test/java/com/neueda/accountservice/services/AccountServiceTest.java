@@ -32,7 +32,7 @@ public class AccountServiceTest {
     @BeforeEach
     public void setUp() {
         accountService = new AccountService(accountRepository);
-        account = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        account = new Account("ACC001", 1L, "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
         account.setVersion(1);
         account.setCreatedAt(LocalDateTime.now());
         account.setLastUpdated(LocalDateTime.now());
@@ -43,7 +43,7 @@ public class AccountServiceTest {
     @Test
     @DisplayName("createAccount: Successfully creates a new account with default timestamps")
     public void testCreateAccountSuccess() {
-        Account newAccount = new Account("ACC002", "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
+        Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
         doAnswer(invocation -> {
             Account acc = invocation.getArgument(0);
             assertNotNull(acc.getCreatedAt());
@@ -121,7 +121,7 @@ public class AccountServiceTest {
     @Test
     @DisplayName("updateAccount: Successfully updates account details")
     public void testUpdateAccountSuccess() throws AccountNotFoundException {
-        Account updateData = new Account("ACC001", "Jane Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
+        Account updateData = new Account("ACC001", 1L, "Jane Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
         updateData.setHolderName("Jane Updated");
         
         when(accountRepository.findById("ACC001")).thenReturn(Optional.of(account));

@@ -1,5 +1,6 @@
 package com.neueda.accountservice.exceptions;
 
+import com.neueda.accountservice.dtos.ErrorMessage;
 import com.neueda.accountservice.dtos.responses.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,8 +41,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+    public ResponseEntity<ErrorMessage> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse("VAL-422", ex.getMessage()));
+                .body(new ErrorMessage("VALIDATION_ERROR", ex.getMessage()));
     }
 }
