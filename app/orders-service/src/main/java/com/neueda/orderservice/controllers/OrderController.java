@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import com.neueda.orderservice.models.Order;
@@ -19,15 +18,11 @@ import com.neueda.orderservice.services.orderServices.OrderResult;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.dtos.requests.PlaceOrderRequest;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
+import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
 import com.neueda.orderservice.enums.OrderStatus;
-import com.neueda.orderservice.exceptions.AccountNotActiveException;
 import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
 import com.neueda.orderservice.exceptions.TradingException;
-import com.neueda.orderservice.exceptions.InsufficientFundsException;
-import com.neueda.orderservice.exceptions.InsufficientHoldingsException;
-import com.neueda.orderservice.exceptions.InvalidOrderException;
-import com.neueda.orderservice.exceptions.DuplicateOrderException;
 
 @RestController
 @RequestMapping("/orders")
@@ -75,70 +70,46 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) {
-        String accountId = request.accountId();
-        String symbol = request.symbol();
+    public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
+        Account account = fetchAccount(request.accountId());
+        if (account == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("ACC-404", "Account not found: " + request.accountId()));
+        }
+        Instrument instrument = fetchInstrument(request.symbol());
 
-        Account account = null;
-        Instrument instrument = null;
-        
+        OrderResult result = orderProcessor.processOrder(
+            account,
+            instrument,
+            request.side(),
+            request.quantity(),
+            request.price(),
+            request.idempotencyKey()
+        );
+        if (!result.isSuccess()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse("ORD-422", result.getMessage()));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(result.getOrder()));
+    }
+
+    private Account fetchAccount(String accountId) {
         try {
-            account = restTemplate.getForObject(
-                accountsServiceUrl + "/{accountId}",
-                Account.class,
-                accountId
-            );
+            return restTemplate.getForObject(accountsServiceUrl + "/{accountId}", Account.class, accountId);
         } catch (RestClientException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "Account not found: " + accountId));
+            return null;
         }
-        
-        try {
-            instrument = restTemplate.getForObject(
-                instrumentsServiceUrl + "/{symbol}",
-                Instrument.class,
-                symbol
-            );
-        } catch (RestClientException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "Instrument not found: " + symbol));
-        }
+    }
 
-        if (account == null || instrument == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "Account or Instrument not found"));
-        }
-
+    private Instrument fetchInstrument(String symbol) throws InstrumentNotFoundException {
         try {
-            OrderResult result = orderProcessor.processOrder(
-                account,
-                instrument,
-                request.side(),
-                request.quantity(),
-                request.price(),
-                request.idempotencyKey()
-            );
-            if (!result.isSuccess()) {
-                return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(Map.of(
-                        "error", result.getMessage(),
-                        "orderId", result.getOrder().getOrderId(),
-                        "orderStatus", result.getOrder().getOrderStatus()
-                    ));
+            Instrument instrument = restTemplate.getForObject(instrumentsServiceUrl + "/{symbol}", Instrument.class, symbol);
+            if (instrument == null) {
+                throw new InstrumentNotFoundException("Instrument not found: " + symbol);
             }
-            return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(result.getOrder()));
-        } catch (AccountNotActiveException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", e.getMessage()));
-        } catch (InsufficientFundsException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", e.getMessage()));
-        } catch (DuplicateOrderException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+            return instrument;
+        } catch (RestClientException e) {
+            throw new InstrumentNotFoundException("Instrument not found: " + symbol, e);
         }
     }
 

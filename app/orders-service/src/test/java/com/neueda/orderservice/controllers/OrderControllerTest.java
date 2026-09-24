@@ -9,6 +9,7 @@ import com.neueda.orderservice.enums.AccountStatus;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.services.orderServices.OrderResult;
+import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.OrderStatus;
@@ -22,7 +23,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -260,7 +260,7 @@ public class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("POST /orders returns 422 with the REJECTED order when execution fails")
+    @DisplayName("POST /orders returns 422 ORD-422 when execution fails")
     void testPlaceOrderRejected() throws Exception {
         Account account = new Account("ACC001", "John Doe", new BigDecimal("50000.00"), AccountStatus.ACTIVE);
         Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.25"), true);
@@ -275,9 +275,35 @@ public class OrderControllerTest {
             new BigDecimal("100"), new BigDecimal("150.25"), "idempotent-key-1"));
 
         assertEquals(422, response.getStatusCode().value());
-        Map<?, ?> body = (Map<?, ?>) response.getBody();
-        assertEquals("ORD001", body.get("orderId"));
-        assertEquals(OrderStatus.REJECTED, body.get("orderStatus"));
+        ErrorResponse body = (ErrorResponse) response.getBody();
+        assertEquals("ORD-422", body.errorCode());
+        assertEquals("BUY order ORD001 execution FAILED", body.message());
     }
 
+
+    @Test
+    @DisplayName("POST /orders returns 404 ACC-404 when the account lookup fails")
+    void testPlaceOrderAccountNotFound() throws Exception {
+        when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC999")))
+            .thenThrow(new org.springframework.web.client.HttpClientErrorException(org.springframework.http.HttpStatus.NOT_FOUND));
+
+        var response = orderController.placeOrder(new PlaceOrderRequest("ACC999", "AAPL", OrderSide.BUY,
+            new BigDecimal("1"), new BigDecimal("150.25"), "key-404"));
+
+        assertEquals(404, response.getStatusCode().value());
+        assertEquals("ACC-404", ((ErrorResponse) response.getBody()).errorCode());
+    }
+
+    @Test
+    @DisplayName("POST /orders throws InstrumentNotFoundException when the instrument lookup fails")
+    void testPlaceOrderInstrumentNotFound() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("50000.00"), AccountStatus.ACTIVE);
+        when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC001"))).thenReturn(account);
+        when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("NOPE")))
+            .thenThrow(new org.springframework.web.client.HttpClientErrorException(org.springframework.http.HttpStatus.NOT_FOUND));
+
+        assertThrows(com.neueda.orderservice.exceptions.InstrumentNotFoundException.class, () ->
+            orderController.placeOrder(new PlaceOrderRequest("ACC001", "NOPE", OrderSide.BUY,
+                new BigDecimal("1"), new BigDecimal("150.25"), "key-ins")));
+    }
 }
