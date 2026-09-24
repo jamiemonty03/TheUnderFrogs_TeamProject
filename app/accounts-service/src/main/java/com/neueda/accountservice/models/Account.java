@@ -16,6 +16,10 @@ public class Account {
     @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
     
+    @Column(name = "user_id")
+    @NotNull(message = "User ID cannot be null")
+    private Long userId;
+    
     @Column(name = "holder_name")
     @NotBlank(message = "Holder name cannot be null or blank")
     private String holderName;
@@ -43,9 +47,12 @@ public class Account {
 
     public Account() {}
 
-    public Account(String accountId, String holderName, BigDecimal cashBalance, AccountStatus status) {
+    public Account(String accountId, Long userId, String holderName, BigDecimal cashBalance, AccountStatus status) {
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("Account ID cannot be null or blank");
+        }
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
         }
         if (holderName == null || holderName.trim().isEmpty()) {
             throw new IllegalArgumentException("Holder name cannot be null or blank");
@@ -57,6 +64,7 @@ public class Account {
             throw new IllegalArgumentException("Account status cannot be null");
         }
         this.accountId = accountId;
+        this.userId = userId;
         this.holderName = holderName;
         this.cashBalance = cashBalance;
         this.status = status;
@@ -71,6 +79,14 @@ public class Account {
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getHolderName() {

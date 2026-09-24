@@ -7,12 +7,14 @@ import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
+import com.neueda.accountservice.config.TestSecurityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.hamcrest.Matchers.*;
 
 @WebMvcTest(AccountController.class)
+@Import(TestSecurityConfig.class)
 @DisplayName("AccountController Integration Tests")
 public class AccountControllerTest {
 
@@ -45,7 +48,7 @@ public class AccountControllerTest {
 
     @BeforeEach
     public void setUp() {
-        testAccount = new Account("ACC001", "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        testAccount = new Account("ACC001", 1L, "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
         testAccount.setVersion(1);
         testAccount.setCreatedAt(LocalDateTime.now());
         testAccount.setLastUpdated(LocalDateTime.now());
@@ -56,7 +59,7 @@ public class AccountControllerTest {
     @Test
     @DisplayName("POST /accounts: Successfully creates account and returns 201 CREATED")
     public void testCreateAccountSuccess() throws Exception {
-        Account newAccount = new Account("ACC002", "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
+        Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
         when(accountService.createAccount(any(Account.class))).thenReturn(newAccount);
 
         mockMvc.perform(post("/accounts")
@@ -118,8 +121,8 @@ public class AccountControllerTest {
     @Test
     @DisplayName("PUT /accounts/{accountId}: Successfully updates account")
     public void testUpdateAccountSuccess() throws Exception {
-        Account updateData = new Account("ACC001", "John Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
-        Account updatedAccount = new Account("ACC001", "John Updated", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        Account updateData = new Account("ACC001", 1L, "John Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
+        Account updatedAccount = new Account("ACC001", 1L, "John Updated", new BigDecimal("5000"), AccountStatus.ACTIVE);
         updatedAccount.setVersion(2);
 
         when(accountService.updateAccount(eq("ACC001"), any(Account.class))).thenReturn(updatedAccount);
@@ -138,7 +141,7 @@ public class AccountControllerTest {
     @Test
     @DisplayName("PUT /accounts/{accountId}: Returns 404 when account not found")
     public void testUpdateAccountNotFound() throws Exception {
-        Account updateData = new Account("INVALID", "Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
+        Account updateData = new Account("INVALID", 1L, "Updated", new BigDecimal("0"), AccountStatus.ACTIVE);
         when(accountService.updateAccount(eq("INVALID"), any(Account.class))).thenThrow(
                 new AccountNotFoundException("Account not found: INVALID"));
 
@@ -180,7 +183,7 @@ public class AccountControllerTest {
     @Test
     @DisplayName("POST /accounts/{accountId}/credit: Successfully credits amount to account")
     public void testCreditAccountSuccess() throws Exception {
-        Account creditedAccount = new Account("ACC001", "John Doe", new BigDecimal("6000"), AccountStatus.ACTIVE);
+        Account creditedAccount = new Account("ACC001", 1L, "John Doe", new BigDecimal("6000"), AccountStatus.ACTIVE);
         creditedAccount.setVersion(2);
 
         when(accountService.credit("ACC001", new BigDecimal("1000"))).thenReturn(creditedAccount);
@@ -249,7 +252,7 @@ public class AccountControllerTest {
     @Test
     @DisplayName("POST /accounts/{accountId}/debit: Successfully debits amount from account")
     public void testDebitAccountSuccess() throws Exception {
-        Account debitedAccount = new Account("ACC001", "John Doe", new BigDecimal("4000"), AccountStatus.ACTIVE);
+        Account debitedAccount = new Account("ACC001", 1L, "John Doe", new BigDecimal("4000"), AccountStatus.ACTIVE);
         debitedAccount.setVersion(2);
 
         when(accountService.debit("ACC001", new BigDecimal("1000"))).thenReturn(debitedAccount);

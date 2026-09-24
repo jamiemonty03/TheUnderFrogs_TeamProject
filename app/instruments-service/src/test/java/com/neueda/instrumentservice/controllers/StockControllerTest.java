@@ -14,12 +14,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.context.annotation.Import;
+import com.neueda.instrumentservice.config.SecurityConfig;
 
 import com.neueda.instrumentservice.dtos.responses.StockResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.services.StockService;
 
 @WebMvcTest(StockController.class)
+@Import(SecurityConfig.class)
+@WithMockUser
 public class StockControllerTest {
 
     @Autowired
