@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neueda.instrumentservice.mappers.InstrumentMapper">
+
+    <!-- Result Map for mapping database columns to Instrument object -->
+    <resultMap id="InstrumentResultMap" type="com.neueda.instrumentservice.models.Instrument">
+        <id column="symbol" property="symbol" />
+        <result column="name" property="name" />
+        <result column="asset_class" property="assetClass" />
+        <result column="currency" property="currency" />
+        <result column="exchange" property="exchange" />
+        <result column="tradable" property="tradable" />
+        <result column="version" property="version" />
+        <result column="created_at" property="createdAt" />
+        <result column="last_updated" property="lastUpdated" />
+        <result column="updated_by" property="updatedBy" />
+    </resultMap>
+
+    <!-- INSERT: Create a new instrument -->
+    <insert id="save" parameterType="com.neueda.instrumentservice.models.Instrument">
+        INSERT INTO instruments (symbol, name, asset_class, currency, exchange, tradable, version, created_at, last_updated, updated_by)
+        VALUES (#{symbol}, #{name}, #{assetClass}, #{currency}, #{exchange}, #{tradable}, #{version}, #{createdAt}, #{lastUpdated}, #{updatedBy})
+    </insert>
+
+    <!-- SELECT: Get instrument by symbol -->
+    <select id="findBySymbol" parameterType="String" resultMap="InstrumentResultMap">
+        SELECT * FROM instruments WHERE symbol = #{symbol}
+    </select>
+
+    <!-- SELECT: Get all instruments -->
+    <select id="findAll" resultMap="InstrumentResultMap">
+        SELECT * FROM instruments
+    </select>
+
+    <!-- SELECT: Check if instrument exists -->
+    <select id="exists" parameterType="String" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM instruments WHERE symbol = #{symbol}
+    </select>
+
+    <!-- UPDATE: Update an existing instrument -->
+    <update id="update" parameterType="com.neueda.instrumentservice.models.Instrument">
+        UPDATE instruments
+        SET name = #{name},
+            asset_class = #{assetClass},
+            currency = #{currency},
+            exchange = #{exchange},
+            tradable = #{tradable},
+            version = #{version},
+            last_updated = #{lastUpdated},
+            updated_by = #{updatedBy}
+        WHERE symbol = #{symbol}
+    </update>
+
+    <!-- DELETE: Delete an instrument by symbol -->
+    <delete id="delete" parameterType="String">
+        DELETE FROM instruments WHERE symbol = #{symbol}
+    </delete>
+
+</mapper>

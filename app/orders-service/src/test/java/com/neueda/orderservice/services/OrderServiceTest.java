@@ -1,0 +1,115 @@
+package com.neueda.orderservice.services;
+
+import com.neueda.orderservice.models.Order;
+import com.neueda.orderservice.models.Account;
+import com.neueda.orderservice.models.Instrument;
+import com.neueda.orderservice.enums.OrderSide;
+import com.neueda.orderservice.enums.AccountStatus;
+import com.neueda.orderservice.exceptions.InvalidOrderException;
+import com.neueda.orderservice.enums.OrderStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.math.BigDecimal;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
+
+@DisplayName("OrderService Integration Tests")
+public class OrderServiceTest {
+    
+    private OrderService orderService;
+
+    @Mock
+    private com.neueda.orderservice.repositories.OrderRepository orderRepository;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        orderService = new OrderService(orderRepository);
+    }
+
+    @Test
+    @DisplayName("Valid order placement creates order successfully")
+    void testPlaceOrderSuccess() throws Exception {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
+
+        Order order = orderService.placeOrder(
+            account,
+            instrument,
+            OrderSide.BUY,
+            new BigDecimal("100"),
+            new BigDecimal("150.25"),
+            "key-001"
+        );
+
+        assertNotNull(order);
+        assertEquals("AAPL", order.getSymbol());
+        assertEquals(100, order.getQuantity());
+        assertEquals(new BigDecimal("150.25"), order.getPrice());
+        assertEquals("key-001", order.getIdempotencyKey());
+        assertNotNull(order.getOrderId());
+        assertEquals(OrderStatus.NEW, order.getOrderStatus());
+        assertNotNull(order.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("Multiple orders can be placed with different idempotency keys")
+    void testPlaceOrderIdempotency() throws Exception {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
+
+        Order order1 = orderService.placeOrder(
+            account,
+            instrument,
+            OrderSide.BUY,
+            new BigDecimal("50"),
+            new BigDecimal("150.25"),
+            "key-idempotent-1"
+        );
+
+        Order order2 = orderService.placeOrder(
+            account,
+            instrument,
+            OrderSide.BUY,
+            new BigDecimal("50"),
+            new BigDecimal("150.25"),
+            "key-idempotent-2"
+        );
+
+        assertNotNull(order1, "First order should be created successfully");
+        assertNotNull(order2, "Second order should be created successfully");
+        assertEquals("AAPL", order1.getSymbol());
+        assertEquals("AAPL", order2.getSymbol());
+    }
+
+    @Test
+    @DisplayName("Fractional share quantities are rejected")
+    void rejectsFractionalQuantities() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
+
+        assertThrows(InvalidOrderException.class, () -> orderService.placeOrder(
+            account, instrument, OrderSide.BUY, new BigDecimal("1.5"),
+            new BigDecimal("150.25"), "fractional-key"
+        ));
+    }
+
+    @Test
+    @DisplayName("Sell orders require a positive price")
+    void rejectsZeroPricedSellOrders() {
+        Account account = new Account("ACC001", "John Doe", new BigDecimal("20000.00"), AccountStatus.ACTIVE);
+        Instrument instrument = new Instrument("AAPL", "Apple Inc.", new BigDecimal("150.00"), true);
+
+        assertThrows(InvalidOrderException.class, () -> orderService.placeOrder(
+            account, instrument, OrderSide.SELL, new BigDecimal("1"),
+            BigDecimal.ZERO, "zero-price-key"
+        ));
+    }
+}

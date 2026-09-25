@@ -1,0 +1,10 @@
+pandas
+numpy
+matplotlib
+yfinance
+python-dotenv
+psycopg
+pytest
+plotly
+dash
+dash-bootstrap-components

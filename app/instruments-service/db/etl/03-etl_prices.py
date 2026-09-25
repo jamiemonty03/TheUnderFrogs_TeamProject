@@ -1,0 +1,131 @@
+import psycopg
+from dotenv import load_dotenv
+import os
+from urllib.parse import urlparse
+
+load_dotenv()
+
+# Connection settings come from the service's SPRING_DATASOURCE_* variables;
+# SPRING_DATASOURCE_URL looks like jdbc:postgresql://<host>:<port>/<database>
+_datasource = urlparse(os.getenv('SPRING_DATASOURCE_URL', 'jdbc:postgresql://localhost:5432/instruments_db').removeprefix('jdbc:'))
+DB_HOST = _datasource.hostname
+DB_PORT = str(_datasource.port or 5432)
+DB_NAME = _datasource.path.lstrip('/')
+DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME', 'postgres')
+DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
+
+def get_db_connection():
+    try:
+        conn = psycopg.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        return conn
+    except psycopg.Error as e:
+        print(f"Database connection failed: {e}")
+        return None
+
+def get_raw_prices() -> list:
+    conn = get_db_connection()
+    
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT
+            r.symbol,
+            r.date,
+            r.open,
+            r.high,
+            r.low,
+            r.close,
+            r.volume
+        FROM raw_prices r 
+        LEFT JOIN clean_prices c
+            ON r.symbol = c.symbol
+            AND r.date = c.date
+        WHERE c.symbol IS NULL
+            
+    """)
+    
+    rows = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    
+    return rows
+
+def is_valid(row: tuple) -> bool:
+    
+    symbol, date, open_price, high, low, close, volume = row
+    
+    if any(val is None for val in [open_price, high, low, close, volume]):
+        return False
+    
+    try:
+        open_price = float(open_price)
+        high = float(high)
+        low = float(low)
+        close = float(close)
+        volume = float(volume)
+    except (ValueError, TypeError):
+        return False
+    
+    if any(val <= 0 for val in [open_price, high, low, close]) or volume < 0:
+        return False
+    if high < low or high < open_price or high < close:
+        return False
+    if low > open_price or low > close:
+        return False
+
+    return True
+    
+def insert_clean_price(cursor, row: tuple) -> None:
+    
+    cursor.execute("""
+        INSERT INTO clean_prices (symbol, date, open, high, low, close, volume, version, created_at, last_updated, updated_by)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, 0, NOW(), NOW(), 'system')
+        
+        ON CONFLICT (symbol, date) DO UPDATE
+        SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume,
+            last_updated = NOW(),
+            version = clean_prices.version + 1
+    """, row)
+    
+def run_etl():
+    
+    rows = get_raw_prices()
+    
+    if not rows:
+        print("No new raw prices to process.")
+        return
+    
+    conn = get_db_connection()
+    
+    cursor = conn.cursor()
+    
+    loaded = 0
+    rejected = 0
+    
+    for row in rows:
+        if is_valid(row):
+            insert_clean_price(cursor, row)
+            loaded += 1
+        else:
+            rejected += 1
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    print(f"ETL completed. Loaded: {loaded}, Rejected: {rejected}")
+    
+if __name__ == "__main__":
+    run_etl()

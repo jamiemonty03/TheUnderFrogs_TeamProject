@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neueda.instrumentservice.mappers.EtfMapper">
+
+    <resultMap id="EtfResultMap" type="com.neueda.instrumentservice.models.Etf">
+        <id column="symbol" property="symbol" />
+        <result column="name" property="name" />
+        <result column="price" property="price" />
+        <result column="trade_date" property="tradeDate" />
+        <result column="category" property="category" />
+        <result column="fund_family" property="fundFamily" />
+        <result column="legal_type" property="legalType" />
+        <result column="net_expense_ratio" property="netExpenseRatio" />
+        <result column="nav_price" property="navPrice" />
+        <result column="total_assets" property="totalAssets" />
+        <result column="net_assets" property="netAssets" />
+        <result column="ytd_return" property="ytdReturn" />
+        <result column="three_year_avg_return" property="threeYearAvgReturn" />
+        <result column="five_year_avg_return" property="fiveYearAvgReturn" />
+        <result column="beta_3_year" property="beta3Year" />
+        <result column="distribution_yield" property="distributionYield" />
+        <result column="version" property="version" />
+        <result column="created_at" property="createdAt" />
+        <result column="last_updated" property="lastUpdated" />
+        <result column="updated_by" property="updatedBy" />
+    </resultMap>
+
+    <sql id="selectEtf">
+        SELECT i.symbol, i.name, lp.close AS price, lp.trade_date,
+               ce.category, ce.fund_family, ce.legal_type, ce.net_expense_ratio,
+               ce.nav_price, ce.total_assets, ce.net_assets, ce.ytd_return,
+               ce.three_year_avg_return, ce.five_year_avg_return, ce.beta_3_year,
+               ce.distribution_yield, ce.version, ce.created_at, ce.last_updated, ce.updated_by
+        FROM clean_etfs ce
+        JOIN instruments i ON i.symbol = ce.symbol
+        LEFT JOIN LATERAL (
+            SELECT close, date::timestamp AS trade_date
+            FROM clean_prices cp
+            WHERE cp.symbol = ce.symbol
+            ORDER BY cp.date DESC
+            LIMIT 1
+        ) lp ON true
+    </sql>
+
+    <select id="findAll" resultMap="EtfResultMap">
+        <include refid="selectEtf" />
+        ORDER BY i.symbol
+    </select>
+
+    <select id="findBySymbol" parameterType="String" resultMap="EtfResultMap">
+        <include refid="selectEtf" />
+        WHERE ce.symbol = #{symbol}
+    </select>
+
+</mapper>

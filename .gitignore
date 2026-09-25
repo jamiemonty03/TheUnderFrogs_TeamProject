@@ -1,0 +1,6 @@
+target/
+starter/
+.env
+__pycache__/
+build.log
+*.log

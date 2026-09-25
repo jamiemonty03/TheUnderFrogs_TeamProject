@@ -1,0 +1,175 @@
+services:
+  accounts-db:
+    image: postgres:15-alpine
+    container_name: accounts-db
+    env_file: ./app/accounts-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - accounts_db_data:/var/lib/postgresql/data
+      - ./app/accounts-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  accounts-service:
+    build:
+      context: ./app/accounts-service
+      dockerfile: Dockerfile
+    container_name: accounts-service
+    env_file: ./app/accounts-service/.env
+    depends_on:
+      accounts-db:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+
+  instruments-db:
+    image: postgres:15-alpine
+    container_name: instruments-db
+    env_file: ./app/instruments-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - instruments_db_data:/var/lib/postgresql/data
+      - ./app/instruments-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  instruments-service:
+    build:
+      context: ./app/instruments-service
+      dockerfile: Dockerfile
+    container_name: instruments-service
+    env_file: ./app/instruments-service/.env
+    depends_on:
+      instruments-db:
+        condition: service_healthy
+    ports:
+      - "8082:8081"
+
+  orders-db:
+    image: postgres:15-alpine
+    container_name: orders-db
+    env_file: ./app/orders-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - orders_db_data:/var/lib/postgresql/data
+      - ./app/orders-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  orders-service:
+    build:
+      context: ./app/orders-service
+      dockerfile: Dockerfile
+    container_name: orders-service
+    env_file: ./app/orders-service/.env
+    depends_on:
+      orders-db:
+        condition: service_healthy
+    ports:
+      - "8083:8081"
+
+  positions-db:
+    image: postgres:15-alpine
+    container_name: positions-db
+    env_file: ./app/positions-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$SPRING_DATASOURCE_USERNAME"
+        export POSTGRES_PASSWORD="$$SPRING_DATASOURCE_PASSWORD"
+        export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5436:5432"
+    volumes:
+      - positions_db_data:/var/lib/postgresql/data
+      - ./app/positions-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$SPRING_DATASOURCE_USERNAME" -d "$${SPRING_DATASOURCE_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  positions-service:
+    build:
+      context: ./app/positions-service
+      dockerfile: Dockerfile
+    container_name: positions-service
+    env_file: ./app/positions-service/.env
+    depends_on:
+      positions-db:
+        condition: service_healthy
+    ports:
+      - "8084:8081"
+
+  python:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: underfrog-python
+    env_file: ./app/instruments-service/.env
+    depends_on:
+      instruments-db:
+        condition: service_healthy
+    ports:
+      - "0.0.0.0:8085:8080"
+    volumes:
+      - ./db:/db
+      - ./app/instruments-service/db/etl:/db/etl
+      - ./app/instruments-service/db/schema:/db/schema:ro
+    command: python /db/dashboard/dashboard_app.py
+
+volumes:
+  accounts_db_data:
+  instruments_db_data:
+  orders_db_data:
+  positions_db_data:

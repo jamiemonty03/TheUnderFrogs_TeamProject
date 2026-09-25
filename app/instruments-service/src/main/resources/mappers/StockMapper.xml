@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neueda.instrumentservice.mappers.StockMapper">
+
+    <!--
+        clean_stocks has no beta column (yfinance's beta is only captured on raw_stocks,
+        never carried through to the clean table), so Stock.beta is left unmapped/null here.
+    -->
+    <resultMap id="StockResultMap" type="com.neueda.instrumentservice.models.Stock">
+        <id column="symbol" property="symbol" />
+        <result column="name" property="name" />
+        <result column="price" property="price" />
+        <result column="trade_date" property="tradeDate" />
+        <result column="sector" property="sector" />
+        <result column="industry" property="industry" />
+        <result column="country" property="country" />
+        <result column="full_time_employees" property="fullTimeEmployees" />
+        <result column="trailing_pe" property="trailingPe" />
+        <result column="forward_pe" property="forwardPe" />
+        <result column="trailing_eps" property="trailingEps" />
+        <result column="dividend_rate" property="dividendRate" />
+        <result column="payout_ratio" property="payoutRatio" />
+        <result column="price_to_book" property="priceToBook" />
+        <result column="return_on_equity" property="returnOnEquity" />
+        <result column="market_cap" property="marketCap" />
+        <result column="shares_outstanding" property="sharesOutstanding" />
+        <result column="total_revenue" property="totalRevenue" />
+        <result column="website" property="website" />
+        <result column="version" property="version" />
+        <result column="created_at" property="createdAt" />
+        <result column="last_updated" property="lastUpdated" />
+        <result column="updated_by" property="updatedBy" />
+    </resultMap>
+
+    <sql id="selectStock">
+        SELECT i.symbol, i.name, lp.close AS price, lp.trade_date,
+               cs.sector, cs.industry, cs.country, cs.full_time_employees,
+               cs.trailing_pe, cs.forward_pe, cs.trailing_eps, cs.dividend_rate,
+               cs.payout_ratio, cs.price_to_book, cs.return_on_equity,
+               cs.market_cap, cs.shares_outstanding, cs.total_revenue, cs.website,
+               cs.version, cs.created_at, cs.last_updated, cs.updated_by
+        FROM clean_stocks cs
+        JOIN instruments i ON i.symbol = cs.symbol
+        LEFT JOIN LATERAL (
+            SELECT close, date::timestamp AS trade_date
+            FROM clean_prices cp
+            WHERE cp.symbol = cs.symbol
+            ORDER BY cp.date DESC
+            LIMIT 1
+        ) lp ON true
+    </sql>
+
+    <select id="findAll" resultMap="StockResultMap">
+        <include refid="selectStock" />
+        ORDER BY i.symbol
+    </select>
+
+    <select id="findBySymbol" parameterType="String" resultMap="StockResultMap">
+        <include refid="selectStock" />
+        WHERE cs.symbol = #{symbol}
+    </select>
+
+</mapper>

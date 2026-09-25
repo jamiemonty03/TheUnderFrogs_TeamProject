@@ -1,0 +1,224 @@
+openapi: 3.0.0
+info:
+  title: Bonds API
+  description: Bond fund fundamentals, joined with instrument reference data and latest price
+  version: 1.0.0
+  contact:
+    name: Neueda LEAP Team
+    url: https://github.com/neueda/leap
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://instruments-service.example.com
+    description: Production Server
+  - url: http://localhost:8082/api
+    description: Local Development Server
+
+tags:
+  - name: Bonds
+    description: Bond fund fundamentals
+
+paths:
+  /bonds:
+    get:
+      tags:
+        - Bonds
+      summary: List all bonds
+      description: Returns every bond fund's fundamentals, joined with instrument reference data and latest price
+      operationId: getBonds
+      responses:
+        '200':
+          description: Bonds retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BondResponse'
+
+  /bonds/{symbol}:
+    get:
+      tags:
+        - Bonds
+      summary: Retrieve a bond's fundamentals by symbol
+      operationId: getBond
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "AGG"
+      responses:
+        '200':
+          description: Bond retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BondResponse'
+              examples:
+                success:
+                  summary: Bond found
+                  value:
+                    symbol: "AGG"
+                    name: "iShares Core U.S. Aggregate Bon"
+                    price: 96.155
+                    tradeDate: "2026-09-21T00:00:00"
+                    createdAt: "2026-09-21T16:02:58.824173"
+                    lastUpdated: "2026-09-21T16:02:58.824173"
+                    category: "Intermediate Core Bond"
+                    fundFamily: "iShares"
+                    legalType: "Exchange Traded Fund"
+                    netExpenseRatio: 0.03
+                    navPrice: 95.9045
+                    totalAssets: 138317873152.0
+                    netAssets: 138317873000.0
+                    yieldToMaturity: null
+                    couponRate: null
+                    duration: null
+                    beta: 0.99
+                    ytdReturn: -0.22523
+                    threeYearAvgReturn: 0.040024
+                    fiveYearAvgReturn: -0.005067
+                    distributionYield: 0.0405
+        '404':
+          description: Instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    errorCode: "INS-404"
+                    message: "Instrument not found"
+
+components:
+  schemas:
+    BondResponse:
+      type: object
+      description: Bond fund fundamentals, joined with instrument reference data and latest price
+      properties:
+        symbol:
+          type: string
+          example: "AGG"
+        name:
+          type: string
+          example: "iShares Core U.S. Aggregate Bon"
+        price:
+          type: number
+          format: decimal
+          nullable: true
+          example: 96.155
+        tradeDate:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-09-21T00:00:00"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.824173"
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2026-09-21T16:02:58.824173"
+        category:
+          type: string
+          nullable: true
+          example: "Intermediate Core Bond"
+        fundFamily:
+          type: string
+          nullable: true
+          example: "iShares"
+        legalType:
+          type: string
+          nullable: true
+          example: "Exchange Traded Fund"
+        netExpenseRatio:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.03
+        navPrice:
+          type: number
+          format: decimal
+          example: 95.9045
+        totalAssets:
+          type: number
+          format: decimal
+          example: 138317873152.0
+        netAssets:
+          type: number
+          format: decimal
+          nullable: true
+          example: 138317873000.0
+        yieldToMaturity:
+          type: number
+          format: decimal
+          nullable: true
+          description: >
+            Individual-bond field with no data source - the ETL treats bonds as
+            fund-shaped data identical to ETFs, so this is always null.
+          example: null
+        couponRate:
+          type: number
+          format: decimal
+          nullable: true
+          description: Not currently captured by clean_bonds - always null.
+          example: null
+        duration:
+          type: number
+          format: decimal
+          nullable: true
+          description: Not currently captured by clean_bonds - always null.
+          example: null
+        beta:
+          type: number
+          format: decimal
+          nullable: true
+          description: Sourced from clean_bonds' beta_3_year column.
+          example: 0.99
+        ytdReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: -0.22523
+        threeYearAvgReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.040024
+        fiveYearAvgReturn:
+          type: number
+          format: decimal
+          nullable: true
+          example: -0.005067
+        distributionYield:
+          type: number
+          format: decimal
+          nullable: true
+          example: 0.0405
+      required:
+        - symbol
+        - name
+        - navPrice
+        - totalAssets
+
+    ErrorResponse:
+      type: object
+      description: Error response object
+      properties:
+        errorCode:
+          type: string
+          description: Unique error code identifier
+          example: "INS-404"
+        message:
+          type: string
+          description: Detailed error message
+          example: "Instrument not found"
+      required:
+        - errorCode
+        - message

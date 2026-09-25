@@ -1,0 +1,102 @@
+package com.neueda.orderservice.services;
+
+import java.math.BigDecimal;
+import com.neueda.orderservice.models.Account;
+import com.neueda.orderservice.models.Instrument;
+import com.neueda.orderservice.enums.OrderSide;
+import com.neueda.orderservice.exceptions.AccountNotActiveException;
+import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
+import com.neueda.orderservice.exceptions.InsufficientFundsException;
+import com.neueda.orderservice.exceptions.InsufficientHoldingsException;
+import com.neueda.orderservice.exceptions.InvalidOrderException;
+import com.neueda.orderservice.exceptions.TradingException;
+
+public class OrderValidationService {
+
+    public OrderValidationService() {
+    }
+
+    public void validateAccount(Account account) throws AccountNotActiveException, InvalidOrderException {
+        if (account == null) {
+            throw new InvalidOrderException("Account cannot be null");
+        }
+        if (!account.isActive()) {
+            throw new AccountNotActiveException(
+                "Cannot place order: Account " + account.getAccountId() + 
+                " status is " + account.getStatus()
+            );
+        }
+    }
+
+    public void validateInstrument(Instrument instrument) 
+            throws InstrumentNotFoundException, TradingException {
+        if (instrument == null) {
+            throw new InstrumentNotFoundException("Instrument not found");
+        }
+        if (!instrument.isTradable()) {
+            throw new TradingException(
+                "Instrument " + instrument.getSymbol() + 
+                " is not tradable"
+            );
+        }
+    }
+
+    public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal price)
+            throws InsufficientFundsException, InvalidOrderException {
+        validateQuantity(quantity);
+        validatePrice(price);
+        
+        BigDecimal requiredBalance = quantity.multiply(price);
+        BigDecimal availableBalance = account.getCashBalance();
+        
+        if (availableBalance.compareTo(requiredBalance) < 0) {
+            throw new InsufficientFundsException(
+                "Insufficient funds for BUY order. Required: $" + requiredBalance + 
+                ", Available: $" + availableBalance
+            );
+        }
+    }
+
+    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity, BigDecimal price)
+            throws InvalidOrderException {
+        validateQuantity(quantity);
+        validatePrice(price);
+    }
+
+    private void validateQuantity(BigDecimal quantity) throws InvalidOrderException {
+        if (quantity == null || quantity.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOrderException("Quantity must be positive");
+        }
+        if (quantity.stripTrailingZeros().scale() > 0) {
+            throw new InvalidOrderException("Quantity must be a whole number of shares");
+        }
+        if (quantity.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) > 0) {
+            throw new InvalidOrderException("Quantity exceeds the maximum supported value");
+        }
+    }
+
+    private void validatePrice(BigDecimal price) throws InvalidOrderException {
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOrderException("Price must be positive");
+        }
+    }
+
+    public void validateOrder(Account account, Instrument instrument, OrderSide side,
+                             BigDecimal quantity, BigDecimal price)
+            throws AccountNotActiveException, InstrumentNotFoundException,
+                   TradingException, InsufficientFundsException, InsufficientHoldingsException,
+                   InvalidOrderException {
+
+        validateAccount(account);
+
+        validateInstrument(instrument);
+
+        if (side == OrderSide.BUY) {
+            validateBuyOrder(account, quantity, price);
+        } else if (side == OrderSide.SELL) {
+            validateSellOrder(account, instrument.getSymbol(), quantity, price);
+        } else {
+            throw new InvalidOrderException("Invalid order side: " + side);
+        }
+    }
+}
