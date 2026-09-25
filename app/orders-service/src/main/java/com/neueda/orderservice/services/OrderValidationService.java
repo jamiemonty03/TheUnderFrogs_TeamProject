@@ -1,10 +1,8 @@
 package com.neueda.orderservice.services;
 
 import java.math.BigDecimal;
-import java.util.Optional;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
-import com.neueda.orderservice.models.Position;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.exceptions.AccountNotActiveException;
 import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
@@ -12,17 +10,10 @@ import com.neueda.orderservice.exceptions.InsufficientFundsException;
 import com.neueda.orderservice.exceptions.InsufficientHoldingsException;
 import com.neueda.orderservice.exceptions.InvalidOrderException;
 import com.neueda.orderservice.exceptions.TradingException;
-import com.neueda.orderservice.repositories.PositionRepository;
 
 public class OrderValidationService {
-    
-    private final PositionRepository positionRepository;
 
-    public OrderValidationService(PositionRepository positionRepository) {
-        if (positionRepository == null) {
-            throw new IllegalArgumentException("PositionRepository cannot be null");
-        }
-        this.positionRepository = positionRepository;
+    public OrderValidationService() {
     }
 
     public void validateAccount(Account account) throws AccountNotActiveException, InvalidOrderException {
@@ -67,25 +58,9 @@ public class OrderValidationService {
     }
 
     public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity, BigDecimal price)
-            throws InsufficientHoldingsException, InvalidOrderException {
+            throws InvalidOrderException {
         validateQuantity(quantity);
         validatePrice(price);
-        
-        Optional<Position> positionOpt = positionRepository.findByAccountIdAndSymbol(
-            account.getAccountId(), 
-            instrumentSymbol
-        );
-        
-        BigDecimal holdingQuantity = positionOpt
-            .map(Position::getQuantity)
-            .orElse(BigDecimal.ZERO);
-        
-        if (holdingQuantity.compareTo(quantity) < 0) {
-            throw new InsufficientHoldingsException(
-                "Insufficient holdings for SELL order. Required: " + quantity + 
-                " shares, Available: " + holdingQuantity + " shares of " + instrumentSymbol
-            );
-        }
     }
 
     private void validateQuantity(BigDecimal quantity) throws InvalidOrderException {

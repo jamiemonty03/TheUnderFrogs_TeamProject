@@ -7,6 +7,7 @@ import jakarta.validation.constraints.DecimalMin;
 import com.neueda.orderservice.enums.OrderSide;
 
 public record PlaceOrderRequest(
+    @NotBlank(message = "Account ID is required") String accountId,
     @NotBlank(message = "Symbol is required") String symbol,
     @NotNull(message = "Order side (BUY/SELL) is required") OrderSide side,
     @NotNull(message = "Quantity is required") @DecimalMin(value = "0.01", message = "Quantity must be greater than 0") BigDecimal quantity,

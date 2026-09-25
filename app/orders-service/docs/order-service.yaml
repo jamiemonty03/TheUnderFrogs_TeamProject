@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: Order Service
+  description: >
+    Manages order lifecycle including creation, retrieval, updates, and cancellation.
+    Provides REST endpoints for order CRUD operations and account-based order queries.
+  version: 1.0.0
+  license:
+    name: Internal use only
+
+servers:
+  - url: /v1
+
+paths:
+  /orders/{orderId}:
+    get:
+      summary: Retrieve an order by ID
+      operationId: getOrderById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The unique order identifier
+      responses:
+        '200':
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update mutable order fields
+      operationId: updateOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The unique order identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderRequest'
+      responses:
+        '200':
+          description: Order updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Cancel an order (soft delete)
+      operationId: deleteOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The unique order identifier
+      responses:
+        '204':
+          description: Order cancelled successfully
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders:
+    post:
+      summary: Place a new order
+      operationId: placeOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          description: Invalid order parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account or instrument not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/account/{accountId}:
+    get:
+      summary: Retrieve all orders for an account
+      operationId: getOrdersByAccount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The account identifier
+      responses:
+        '200':
+          description: List of orders for the account
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    OrderResponse:
+      type: object
+      required: [orderId, accountId, symbol, side, quantity, price, orderStatus, version, createdAt, lastUpdated]
+      properties:
+        orderId:
+          type: string
+          description: Unique order identifier
+        accountId:
+          type: string
+          description: Account that placed the order
+        symbol:
+          type: string
+          description: Security symbol (e.g., AAPL)
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: Order direction
+        quantity:
+          type: integer
+          description: Number of shares
+          minimum: 1
+        price:
+          type: number
+          format: decimal
+          description: Limit price per share
+        orderStatus:
+          type: string
+          enum: [NEW, FILLED, CANCELLED, REJECTED]
+          description: Current order status
+        version:
+          type: integer
+          description: Version number for optimistic locking
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+          description: Order creation timestamp
+        lastUpdated:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last modification timestamp
+        updatedBy:
+          type: string
+          nullable: true
+          description: User who last updated the order
+
+    PlaceOrderRequest:
+      type: object
+      required: [accountId, symbol, side, quantity, price, idempotencyKey]
+      properties:
+        accountId:
+          type: string
+          description: Account placing the order
+        symbol:
+          type: string
+          description: Security symbol
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: Order direction
+        quantity:
+          type: number
+          description: Number of shares (integers only)
+        price:
+          type: number
+          format: decimal
+          description: Limit price per share
+        idempotencyKey:
+          type: string
+          description: Unique key for idempotent order placement
+
+    UpdateOrderRequest:
+      type: object
+      description: Update mutable order fields (all optional - only provided fields are updated)
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          description: New quantity
+        price:
+          type: number
+          format: decimal
+          description: New limit price
+        side:
+          type: string
+          enum: [BUY, SELL]
+          description: New order side
+        orderStatus:
+          type: string
+          enum: [NEW, FILLED, CANCELLED, REJECTED]
+          description: New order status
+        updatedBy:
+          type: string
+          description: User making the update
+
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        errorCode:
+          type: string
+          nullable: true
+          description: Application-specific error code
+        message:
+          type: string
+          description: Human-readable error message
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

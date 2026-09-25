@@ -2,6 +2,7 @@ package com.neueda.positionservice.exceptions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -25,6 +26,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InsufficientHoldingsException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientHoldings(InsufficientHoldingsException ex) {
         return error(HttpStatus.CONFLICT, "POS-409", ex.getMessage());
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleConcurrentUpdate(OptimisticLockingFailureException ex) {
+        return error(HttpStatus.CONFLICT, "POS-409", "Position was changed by another request, please retry");
     }
 
     @ExceptionHandler(TradingException.class)

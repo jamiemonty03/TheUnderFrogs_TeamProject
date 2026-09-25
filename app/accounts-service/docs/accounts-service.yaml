@@ -447,7 +447,7 @@ components:
           example: 5000.00
         status:
           type: string
-          enum: [ACTIVE, SUSPENDED, INACTIVE]
+          enum: [ACTIVE, SUSPENDED, CLOSED]
           description: Current status of the account
           example: "ACTIVE"
         version:
@@ -495,7 +495,7 @@ components:
           example: 5000.00
         status:
           type: string
-          enum: [ACTIVE, SUSPENDED, INACTIVE]
+          enum: [ACTIVE, SUSPENDED, CLOSED]
           description: Initial account status
           example: "ACTIVE"
       required:
@@ -515,7 +515,7 @@ components:
           example: "Jane Smith"
         status:
           type: string
-          enum: [ACTIVE, SUSPENDED, INACTIVE]
+          enum: [ACTIVE, SUSPENDED, CLOSED]
           nullable: true
           description: Updated account status (optional)
           example: "SUSPENDED"

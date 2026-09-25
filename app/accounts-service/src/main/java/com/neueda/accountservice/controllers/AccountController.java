@@ -29,6 +29,12 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @GetMapping
+    public ResponseEntity<List<Account>> getAllAccounts() {
+        List<Account> accounts = accountService.getAllAccounts();
+        return ResponseEntity.ok(accounts);
+    }
+
     @GetMapping("/{accountId}")
     public ResponseEntity<Account> getAccount(@PathVariable String accountId) throws AccountNotFoundException {
         Account account = accountService.getAccountById(accountId);

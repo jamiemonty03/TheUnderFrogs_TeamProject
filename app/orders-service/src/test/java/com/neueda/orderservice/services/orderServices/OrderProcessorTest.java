@@ -18,8 +18,7 @@ import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.models.Position;
-import com.neueda.orderservice.repositories.InMemoryPositionRepository;
+
 import com.neueda.orderservice.services.OrderService;
 
 public class OrderProcessorTest {
@@ -31,7 +30,7 @@ public class OrderProcessorTest {
         SellOrderStrategy mockSell = mock(SellOrderStrategy.class);
         OrderProcessor processor = new OrderProcessor(orderService, mockBuy, mockSell);
         Account account = new Account("ACC-1", "Test", BigDecimal.TEN, AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
         Order buyOrder = new Order("ORDER-1", "ACC-1", "AAPL", OrderSide.BUY, 1, BigDecimal.TEN, "key-1");
 
         when(orderService.placeOrder(account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1"))
@@ -53,7 +52,7 @@ public class OrderProcessorTest {
         SellOrderStrategy mockSell = mock(SellOrderStrategy.class);
         OrderProcessor processor = new OrderProcessor(orderService, mockBuy, mockSell);
         Account account = new Account("ACC-1", "Test", BigDecimal.TEN, AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
         Order sellOrder = new Order("ORDER-2", "ACC-1", "AAPL", OrderSide.SELL, 1, BigDecimal.TEN, "key-2");
 
         when(orderService.placeOrder(account, instrument, OrderSide.SELL, BigDecimal.ONE, BigDecimal.TEN, "key-2"))
@@ -76,7 +75,7 @@ public class OrderProcessorTest {
         OrderProcessor processor = new OrderProcessor(orderService, mockBuy, mockSell);
         
         Account account = new Account("ACC-BUY", "Buyer", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
         Order buyOrder = new Order("ORDER-3", "ACC-BUY", "AAPL", OrderSide.BUY, 2, new BigDecimal("100.00"), "buy-key");
 
         when(orderService.placeOrder(account, instrument, OrderSide.BUY, new BigDecimal("2"), new BigDecimal("100.00"), "buy-key"))
@@ -102,7 +101,7 @@ public class OrderProcessorTest {
         OrderProcessor processor = new OrderProcessor(orderService, mockBuy, mockSell);
         
         Account account = new Account("ACC-SELL", "Seller", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
-        Instrument instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
         Order sellOrder = new Order("ORDER-4", "ACC-SELL", "AAPL", OrderSide.SELL, 2, new BigDecimal("100.00"), "sell-key");
 
         when(orderService.placeOrder(account, instrument, OrderSide.SELL, new BigDecimal("2"), new BigDecimal("100.00"), "sell-key"))

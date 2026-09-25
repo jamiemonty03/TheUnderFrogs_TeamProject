@@ -18,8 +18,8 @@ import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
-import com.neueda.orderservice.services.BuyOrderStrategy;
-import com.neueda.orderservice.services.OrderResult;
+import com.neueda.orderservice.services.orderServices.BuyOrderStrategy;
+import com.neueda.orderservice.services.orderServices.OrderResult;
 
 class BuyOrderStrategyTest {
 
@@ -29,12 +29,12 @@ class BuyOrderStrategyTest {
     @BeforeEach
     void setUp() {
         account = new Account("ACC-1", "Test", new BigDecimal("1000.00"), AccountStatus.ACTIVE);
-        instrument = new Instrument("AAPL", "Apple", "EQUITY", "USD", "NASDAQ", true);
+        instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
     }
 
     @Test
     void testOrderExecution() {
-        // BuyOrderStrategy requires AccountService and PositionService dependencies
+        // BuyOrderStrategy requires AccountsClient and PositionService dependencies
         // In a microservices architecture, these would be external service clients
         // This test is marked as a placeholder for integration testing
         // where external services can be properly mocked or stubbed

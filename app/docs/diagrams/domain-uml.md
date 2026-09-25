@@ -141,7 +141,7 @@ classDiagram
     class AccountStatus:::account {
         <<enumeration>>
         ACTIVE
-        INACTIVE
+        CLOSED
         SUSPENDED
     }
 

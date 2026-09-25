@@ -2,6 +2,7 @@ package com.neueda.positionservice.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.neueda.positionservice.dtos.requests.CreatePositionRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
@@ -48,7 +50,6 @@ class PositionServiceTest {
         
         assertEquals(new BigDecimal("150"), position.getQuantity());
         assertEquals(new BigDecimal("53.3333"), position.getAverageCost());
-        assertEquals(1, position.getVersion());
     }
 
     @Test
@@ -73,7 +74,6 @@ class PositionServiceTest {
         
         assertEquals(new BigDecimal("70"), position.getQuantity());
         assertEquals(originalCost, position.getAverageCost());
-        assertEquals(1, position.getVersion());
     }
 
     @Test
@@ -180,7 +180,7 @@ class PositionServiceTest {
         stubExisting();
 
         Position result = positionService.patchPosition("ACC-1", "AAPL",
-            new UpdatePositionRequest(null, new BigDecimal("160.00"), null));
+            new UpdatePositionRequest(null, new BigDecimal("160.00")));
 
         assertEquals(new BigDecimal("100"), result.getQuantity());
         assertEquals(new BigDecimal("160.00"), result.getAverageCost());
@@ -192,7 +192,7 @@ class PositionServiceTest {
         stubExisting();
 
         Position result = positionService.patchPosition("ACC-1", "AAPL",
-            new UpdatePositionRequest(new BigDecimal("120"), null, null));
+            new UpdatePositionRequest(new BigDecimal("120"), null));
 
         assertEquals(new BigDecimal("120"), result.getQuantity());
         assertEquals(new BigDecimal("150.50"), result.getAverageCost());
@@ -204,7 +204,7 @@ class PositionServiceTest {
         when(repository.findById(new PositionId("ACC-1", "MSFT"))).thenReturn(Optional.empty());
 
         assertThrows(PositionNotFoundException.class, () -> positionService.patchPosition("ACC-1", "MSFT",
-            new UpdatePositionRequest(new BigDecimal("10"), null, null)));
+            new UpdatePositionRequest(new BigDecimal("10"), null)));
     }
 
     @Test
@@ -218,5 +218,32 @@ class PositionServiceTest {
         assertEquals(0, result.getQuantity().compareTo(BigDecimal.ZERO));
         verify(repository).deleteById(new PositionId("ACC-1", "AAPL"));
         verify(repository, never()).save(any(Position.class));
+    }
+
+    // Tests (createPosition)
+
+    @Test
+    @DisplayName("createPosition: Saves a new position when none exists")
+    void testCreatePositionNew() {
+        when(repository.findById(new PositionId("ACC-1", "MSFT"))).thenReturn(Optional.empty());
+        when(repository.save(any(Position.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Position result = positionService.createPosition(
+            new CreatePositionRequest("ACC-1", "MSFT", new BigDecimal("5"), new BigDecimal("300")));
+
+        assertEquals(new BigDecimal("5"), result.getQuantity());
+    }
+
+    @Test
+    @DisplayName("createPosition: Updates the existing position instead of replacing it")
+    void testCreatePositionUpdatesExisting() {
+        Position existing = stubExisting();
+
+        Position result = positionService.createPosition(
+            new CreatePositionRequest("ACC-1", "AAPL", new BigDecimal("40"), new BigDecimal("155")));
+
+        assertSame(existing, result);
+        assertEquals(new BigDecimal("40"), result.getQuantity());
+        assertEquals(new BigDecimal("155"), result.getAverageCost());
     }
 }

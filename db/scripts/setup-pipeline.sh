@@ -89,7 +89,7 @@ fi
 if [[ "$STAGE" == "all" || "$STAGE" == "containers" ]]; then
     echo -e "${YELLOW}Starting Docker containers...${NC}"
     docker-compose down --remove-orphans 2>/dev/null || true
-    docker-compose up -d || error_exit "Failed to start Docker containers"
+    docker-compose up -d --build || error_exit "Failed to start Docker containers"
     echo -e "${GREEN}✓ Docker compose up complete${NC}\n"
 
     echo -e "${YELLOW}Waiting for databases to be ready...${NC}"
