@@ -57,6 +57,7 @@ class InstrumentsClientTest {
 
         assertTrue(instrument.isPresent());
         assertEquals("AAPL", instrument.get().symbol());
+        assertEquals("Equity", instrument.get().assetClass());
         assertTrue(instrument.get().tradable());
         instrumentsService.verify();
     }
