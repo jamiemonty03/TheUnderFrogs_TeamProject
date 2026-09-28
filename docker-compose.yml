@@ -110,6 +110,8 @@ services:
     depends_on:
       orders-db:
         condition: service_healthy
+      kafka-init:
+        condition: service_healthy
     ports:
       - "8083:8081"
 
@@ -154,7 +156,8 @@ services:
   kafka:
     image: apache/kafka:3.9.1
     ports:
-      - "127.0.0.1:9094:9094"
+      - "127.0.0.1:9094:9094" 
+    container_name: kafka
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -174,6 +177,17 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+    
+  kafka-init:
+    image: apache/kafka:3.9.1
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./kafka/create-topics.sh:/create-topics.sh:ro
+    entrypoint: ["bash", "/create-topics.sh"]
+    restart: "no"
     
   python:
     build:
