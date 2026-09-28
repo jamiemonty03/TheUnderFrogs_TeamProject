@@ -8,3 +8,5 @@ server:
 service:
   orders:
     url: ${ORDERS_URL:http://orders-service:8081/api/orders}
+  instruments:
+    url: ${INSTRUMENTS_URL:http://instruments-service:8081/api/instruments}
