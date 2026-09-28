@@ -111,7 +111,7 @@ services:
       orders-db:
         condition: service_healthy
       kafka-init:
-        condition: service_healthy
+        condition: service_completed_successfully
     ports:
       - "8083:8081"
 
