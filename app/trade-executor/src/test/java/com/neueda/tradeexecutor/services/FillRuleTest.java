@@ -10,11 +10,12 @@ import org.junit.jupiter.api.Test;
 import com.neueda.tradeexecutor.dtos.FillDecision;
 import com.neueda.tradeexecutor.dtos.OrderDto;
 import com.neueda.tradeexecutor.enums.OrderSide;
+import com.neueda.tradeexecutor.enums.OrderStatus;
 
 class FillRuleTest {
 
     private static OrderDto order(OrderSide side, String limit) {
-        return new OrderDto("AAPL", side, new BigDecimal(limit));
+        return new OrderDto("ORD-1", "ACC-1", "AAPL", side, 10, new BigDecimal(limit), OrderStatus.NEW);
     }
 
     // BUY
