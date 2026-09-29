@@ -2,12 +2,9 @@ package com.neueda.orderservice.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -15,6 +12,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,11 +26,16 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.repositories.OrderRepository;
+import com.neueda.orderservice.events.OrderEventEnvelope;
+import com.neueda.orderservice.events.OrderPlacedPayload;
+import com.neueda.orderservice.enums.OrderSide;
+import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -38,6 +45,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -47,8 +56,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Records the pre-Kafka HTTP behavior of POST /orders through the real
- * controller, processor, strategy, service, and repository chain.
+ * Characterizes POST /orders through the real controller, processor, service, and repository chain.
  */
 @Testcontainers
 @SpringBootTest(
@@ -94,6 +102,15 @@ class OrderPlacementCharacterisationTest {
     private OrderRepository orderRepository;
 
     @Autowired
+    private OrderProcessor orderProcessor;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @MockBean
+    private KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Value("${jwt.secret}")
@@ -102,6 +119,7 @@ class OrderPlacementCharacterisationTest {
     @BeforeEach
     void clearOrders() {
         downstream.reset();
+        reset(kafkaTemplate);
         jdbcTemplate.update("DELETE FROM orders");
     }
 
@@ -116,39 +134,31 @@ class OrderPlacementCharacterisationTest {
     }
 
     @Test
-    void validBuyReturnsCreatedFilledOrderAndDebitsAccount() throws Exception {
+    void validBuyReturnsNewOrderAndPublishesPlacementEvent() throws Exception {
         String token = createToken();
         expectAccountAndInstrumentLookups(token, "1000.00");
-        downstream.expect(requestTo(ACCOUNTS_URL + "/" + ACCOUNT_ID + "/debit"))
-                .andExpect(method(POST))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(content().json("{\"amount\":100.00}"))
-                .andRespond(withSuccess(accountJson("900.00"), MediaType.APPLICATION_JSON));
-
-        ResponseEntity<String> response = postOrder(token, orderRequest("BUY", "buy-" + UUID.randomUUID()));
+        String idempotencyKey = "buy-" + UUID.randomUUID();
+        ResponseEntity<String> response = postOrder(token, orderRequest("BUY", idempotencyKey));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         JsonNode body = objectMapper.readTree(response.getBody());
         assertCreatedOrderResponse(body, "BUY");
         assertThat(orderRepository.findAllByOrderByCreatedAtDesc()).hasSize(1);
+        assertPublishedOrderEvent(body.path("orderId").asText(), idempotencyKey, OrderSide.BUY);
     }
 
     @Test
-    void validSellReturnsCreatedFilledOrderAndCreditsAccount() throws Exception {
+    void validSellReturnsNewOrderAndPublishesPlacementEvent() throws Exception {
         String token = createToken();
         expectAccountAndInstrumentLookups(token, "1000.00");
-        downstream.expect(requestTo(ACCOUNTS_URL + "/" + ACCOUNT_ID + "/credit"))
-                .andExpect(method(POST))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(content().json("{\"amount\":100.00}"))
-                .andRespond(withSuccess(accountJson("1100.00"), MediaType.APPLICATION_JSON));
-
-        ResponseEntity<String> response = postOrder(token, orderRequest("SELL", "sell-" + UUID.randomUUID()));
+        String idempotencyKey = "sell-" + UUID.randomUUID();
+        ResponseEntity<String> response = postOrder(token, orderRequest("SELL", idempotencyKey));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         JsonNode body = objectMapper.readTree(response.getBody());
         assertCreatedOrderResponse(body, "SELL");
         assertThat(orderRepository.findAllByOrderByCreatedAtDesc()).hasSize(1);
+        assertPublishedOrderEvent(body.path("orderId").asText(), idempotencyKey, OrderSide.SELL);
     }
 
     @Test
@@ -203,21 +213,15 @@ class OrderPlacementCharacterisationTest {
     }
 
     @Test
-    void failedBuyExecutionReturnsUnprocessableEntityOrd422() throws Exception {
+    void orderPlacementDoesNotCallAccountSettlement() throws Exception {
         String token = createToken();
         expectAccountAndInstrumentLookups(token, "1000.00");
-        downstream.expect(requestTo(ACCOUNTS_URL + "/" + ACCOUNT_ID + "/debit"))
-                .andExpect(method(POST))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(content().json("{\"amount\":100.00}"))
-                .andRespond(withServerError());
+        ResponseEntity<String> response = postOrder(token, orderRequest("BUY", "no-settlement-" + UUID.randomUUID()));
 
-        ResponseEntity<String> response = postOrder(token, orderRequest("BUY", "failed-" + UUID.randomUUID()));
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        assertThat(objectMapper.readTree(response.getBody()).path("errorCode").asText()).isEqualTo("ORD-422");
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(objectMapper.readTree(response.getBody()).path("orderStatus").asText()).isEqualTo("NEW");
         assertThat(orderRepository.findAllByOrderByCreatedAtDesc()).hasSize(1);
-        assertThat(orderRepository.findAllByOrderByCreatedAtDesc().get(0).getOrderStatus()).isEqualTo(com.neueda.orderservice.enums.OrderStatus.REJECTED);
+        verify(kafkaTemplate).send(eq("orders"), eq(ACCOUNT_ID), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -225,11 +229,6 @@ class OrderPlacementCharacterisationTest {
         String token = createToken();
         String idempotencyKey = "duplicate-" + UUID.randomUUID();
         expectAccountAndInstrumentLookups(token, "1000.00");
-        downstream.expect(requestTo(ACCOUNTS_URL + "/" + ACCOUNT_ID + "/debit"))
-                .andExpect(method(POST))
-                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
-                .andExpect(content().json("{\"amount\":100.00}"))
-                .andRespond(withSuccess(accountJson("900.00"), MediaType.APPLICATION_JSON));
         expectAccountAndInstrumentLookups(token, "1000.00");
 
         ResponseEntity<String> first = postOrder(token, orderRequest("BUY", idempotencyKey));
@@ -239,6 +238,10 @@ class OrderPlacementCharacterisationTest {
         assertThat(duplicate.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(objectMapper.readTree(duplicate.getBody()).path("errorCode").asText()).isEqualTo("ORD-409");
         assertThat(orderRepository.findAllByOrderByCreatedAtDesc()).hasSize(1);
+        assertPublishedOrderEvent(
+                orderRepository.findAllByOrderByCreatedAtDesc().get(0).getOrderId(),
+                idempotencyKey,
+                OrderSide.BUY);
     }
 
     @Test
@@ -271,12 +274,52 @@ class OrderPlacementCharacterisationTest {
         assertThat(body.path("side").asText()).isEqualTo(side);
         assertThat(body.path("quantity").asInt()).isEqualTo(2);
         assertThat(body.path("price").decimalValue()).isEqualByComparingTo("50.00");
-        // S7-3 intentionally changes this baseline business status from FILLED to NEW.
-        assertThat(body.path("orderStatus").asText()).isEqualTo("FILLED");
+        assertThat(body.path("orderStatus").asText()).isEqualTo("NEW");
         assertThat(body.path("version").asInt()).isZero();
         assertThat(body.path("createdAt").asText()).isNotBlank();
         assertThat(body.path("lastUpdated").asText()).isNotBlank();
         assertThat(body.path("updatedBy").asText()).isEqualTo("SYSTEM");
+    }
+
+    private void assertPublishedOrderEvent(String expectedOrderId, String idempotencyKey, OrderSide side) {
+        ArgumentCaptor<OrderEventEnvelope> eventCaptor = ArgumentCaptor.forClass(OrderEventEnvelope.class);
+        verify(kafkaTemplate).send(eq("orders"), eq(ACCOUNT_ID), eventCaptor.capture());
+        OrderEventEnvelope<?> envelope = eventCaptor.getValue();
+        assertThat(envelope.eventId()).isNotBlank();
+        assertThat(envelope.eventType()).isEqualTo("ORDER_PLACED");
+        assertThat(envelope.occurredAt()).isNotNull();
+        assertThat(envelope.payload()).isInstanceOf(OrderPlacedPayload.class);
+        OrderPlacedPayload payload = (OrderPlacedPayload) envelope.payload();
+        assertThat(payload.orderId()).isEqualTo(expectedOrderId);
+        assertThat(payload.accountId()).isEqualTo(ACCOUNT_ID);
+        assertThat(payload.symbol()).isEqualTo(SYMBOL);
+        assertThat(payload.side()).isEqualTo(side);
+        assertThat(payload.quantity()).isEqualTo(2);
+        assertThat(payload.price()).isEqualByComparingTo("50.00");
+        assertThat(payload.idempotencyKey()).isEqualTo(idempotencyKey);
+    }
+
+    @Test
+    void rolledBackOrderPublishesNoKafkaEvent() {
+        long existingOrders = orderRepository.count();
+        transactionTemplate.executeWithoutResult(status -> {
+            try {
+                orderProcessor.processOrder(
+                        new com.neueda.orderservice.models.Account(
+                                ACCOUNT_ID, "Alice Johnson", new java.math.BigDecimal("1000.00"),
+                                com.neueda.orderservice.enums.AccountStatus.ACTIVE),
+                        new com.neueda.orderservice.models.Instrument(
+                                SYMBOL, "Apple Inc.", new java.math.BigDecimal("50.00"), true),
+                        OrderSide.BUY, new java.math.BigDecimal("2"),
+                        new java.math.BigDecimal("50.00"), "rollback-" + UUID.randomUUID());
+                status.setRollbackOnly();
+            } catch (Exception exception) {
+                throw new IllegalStateException(exception);
+            }
+        });
+
+        assertThat(orderRepository.count()).isEqualTo(existingOrders);
+        verifyNoInteractions(kafkaTemplate);
     }
 
     private void expectAccountAndInstrumentLookups(String token, String cashBalance) {
