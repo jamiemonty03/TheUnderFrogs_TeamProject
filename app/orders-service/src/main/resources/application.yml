@@ -1,6 +1,6 @@
 spring:
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -30,6 +30,3 @@ service:
     url: ${ACCOUNTS_SERVICE_URL:http://accounts-service:8081/api/accounts}
   instruments:
     url: ${INSTRUMENTS_SERVICE_URL:http://instruments-service:8081/api/instruments}
-
-orders:
-  topic: ${ORDERS_TOPIC:orders}

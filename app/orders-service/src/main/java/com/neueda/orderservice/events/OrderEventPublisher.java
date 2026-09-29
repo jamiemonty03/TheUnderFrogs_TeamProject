@@ -1,9 +1,5 @@
 package com.neueda.orderservice.events;
 
-import java.time.Instant;
-import java.util.UUID;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -14,22 +10,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class OrderEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final String ordersTopic;
 
-    public OrderEventPublisher(
-            KafkaTemplate<String, Object> kafkaTemplate,
-            @Value("${orders.topic:orders}") String ordersTopic) {
+    public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
-        this.ordersTopic = ordersTopic;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publishOrderPlaced(OrderPlacedApplicationEvent event) {
-        OrderEventEnvelope<OrderPlacedPayload> envelope = new OrderEventEnvelope<>(
-                UUID.randomUUID().toString(),
-                "ORDER_PLACED",
-                Instant.now(),
-                event.getPayload());
-        kafkaTemplate.send(ordersTopic, event.getPayload().accountId(), envelope);
+        OrderPlacedPayload payload = event.getPayload();
+        EventEnvelope<OrderPlacedPayload> envelope =
+                EventEnvelope.of(EventTypes.ORDER_PLACED, payload.accountId(), payload);
+        kafkaTemplate.send(Topics.ORDERS, envelope.key(), envelope);
     }
 }

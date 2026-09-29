@@ -22,7 +22,7 @@ public record EventEnvelope<T>(
         }
     }
 
-        public static <T> EventEnvelope<T> of(String eventType, String key, T payload) {
+    public static <T> EventEnvelope<T> of(String eventType, String key, T payload) {
         return new EventEnvelope<>(UUID.randomUUID().toString(), eventType, Instant.now(), key, payload);
     }
 

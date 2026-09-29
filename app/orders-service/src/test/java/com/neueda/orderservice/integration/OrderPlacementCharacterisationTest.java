@@ -26,8 +26,9 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.repositories.OrderRepository;
-import com.neueda.orderservice.events.OrderEventEnvelope;
+import com.neueda.orderservice.events.EventEnvelope;
 import com.neueda.orderservice.events.OrderPlacedPayload;
+import com.neueda.orderservice.events.Topics;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import org.junit.jupiter.api.AfterEach;
@@ -221,7 +222,7 @@ class OrderPlacementCharacterisationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(objectMapper.readTree(response.getBody()).path("orderStatus").asText()).isEqualTo("NEW");
         assertThat(orderRepository.findAllByOrderByCreatedAtDesc()).hasSize(1);
-        verify(kafkaTemplate).send(eq("orders"), eq(ACCOUNT_ID), org.mockito.ArgumentMatchers.any());
+        verify(kafkaTemplate).send(eq(Topics.ORDERS), eq(ACCOUNT_ID), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -282,12 +283,13 @@ class OrderPlacementCharacterisationTest {
     }
 
     private void assertPublishedOrderEvent(String expectedOrderId, String idempotencyKey, OrderSide side) {
-        ArgumentCaptor<OrderEventEnvelope> eventCaptor = ArgumentCaptor.forClass(OrderEventEnvelope.class);
-        verify(kafkaTemplate).send(eq("orders"), eq(ACCOUNT_ID), eventCaptor.capture());
-        OrderEventEnvelope<?> envelope = eventCaptor.getValue();
+        ArgumentCaptor<EventEnvelope> eventCaptor = ArgumentCaptor.forClass(EventEnvelope.class);
+        verify(kafkaTemplate).send(eq(Topics.ORDERS), eq(ACCOUNT_ID), eventCaptor.capture());
+        EventEnvelope<?> envelope = eventCaptor.getValue();
         assertThat(envelope.eventId()).isNotBlank();
-        assertThat(envelope.eventType()).isEqualTo("ORDER_PLACED");
+        assertThat(envelope.eventType()).isEqualTo(com.neueda.orderservice.events.EventTypes.ORDER_PLACED);
         assertThat(envelope.occurredAt()).isNotNull();
+        assertThat(envelope.key()).isEqualTo(ACCOUNT_ID);
         assertThat(envelope.payload()).isInstanceOf(OrderPlacedPayload.class);
         OrderPlacedPayload payload = (OrderPlacedPayload) envelope.payload();
         assertThat(payload.orderId()).isEqualTo(expectedOrderId);
