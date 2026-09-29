@@ -188,7 +188,20 @@ services:
       - ./kafka/create-topics.sh:/create-topics.sh:ro
     entrypoint: ["bash", "/create-topics.sh"]
     restart: "no"
-    
+
+  trade-executor:
+    build:
+      context: ./app/trade-executor
+      dockerfile: Dockerfile
+    container_name: trade-executor
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      orders-service:
+        condition: service_started
+      instruments-service:
+        condition: service_started
+
   python:
     build:
       context: ./db

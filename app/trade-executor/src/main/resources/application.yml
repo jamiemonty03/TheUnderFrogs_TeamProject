@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: trade-executor
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    consumer:
+      group-id: trade-executor
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: manual
+server:
+  address: 0.0.0.0
+  port: 8081
+
+service:
+  orders:
+    url: ${ORDERS_URL:http://orders-service:8081/api/orders}
+  instruments:
+    url: ${INSTRUMENTS_URL:http://instruments-service:8081/api/instruments}
+  prices:
+    url: ${PRICES_URL:http://instruments-service:8081/api}
