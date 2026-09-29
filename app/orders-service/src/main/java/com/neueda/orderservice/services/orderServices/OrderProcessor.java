@@ -14,7 +14,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Validates and persists a new order, then registers its event for after-commit publication. */
 @Component
 public class OrderProcessor {
 

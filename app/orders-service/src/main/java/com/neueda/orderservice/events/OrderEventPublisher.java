@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-/** Sends placement events only after the order transaction has committed. */
 @Component
 public class OrderEventPublisher {
 
