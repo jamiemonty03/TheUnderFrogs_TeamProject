@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.neueda.orderservice.controllers.OrderController;
 import com.neueda.orderservice.repositories.OrderRepository;
+import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
 
 @WebMvcTest(OrderController.class)
@@ -35,6 +36,9 @@ class OrderSecurityTest {
 
     @MockBean
     private RestTemplate restTemplate;
+
+    @MockBean
+    private OrderCancellationService orderCancellationService;
 
     @Test
     @DisplayName("Requests without a bearer token are rejected with 401")

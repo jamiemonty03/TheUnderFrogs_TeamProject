@@ -13,6 +13,9 @@ import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.OrderStatus;
+import com.neueda.orderservice.exceptions.OrderNotCancellableException;
+import com.neueda.orderservice.exceptions.OrderNotFoundException;
+import com.neueda.orderservice.services.OrderCancellationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -49,14 +54,17 @@ public class OrderControllerTest {
     
     @Mock
     private OrderProcessor orderProcessor;
-    
+
+    @Mock
+    private OrderCancellationService orderCancellationService;
+
     private Order testOrder1;
     private Order testOrder2;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        orderController = new OrderController(orderProcessor, orderRepository, restTemplate);
+        orderController = new OrderController(orderProcessor, orderRepository, restTemplate, orderCancellationService);
 
         testOrder1 = new Order(
             "ORD001",
@@ -203,39 +211,29 @@ public class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /orders/{orderId} soft-deletes order (sets status CANCELLED)")
-    void testDeleteOrderSuccess() {
-        var deleteResponse = orderController.deleteOrder("ORD001");
-        assertTrue(deleteResponse.getStatusCode().is2xxSuccessful());
-        
-        var getResponse = orderController.getOrderById("ORD001");
-        assertTrue(getResponse.getStatusCode().is2xxSuccessful());
-        assertEquals(OrderStatus.CANCELLED, getResponse.getBody().orderStatus());
+    @DisplayName("DELETE /orders/{orderId} cancels through the cancellation service and returns 204")
+    void testDeleteOrderSuccess() throws Exception {
+        var response = orderController.deleteOrder("ORD001");
+
+        assertEquals(204, response.getStatusCode().value());
+        verify(orderCancellationService).cancel("ORD001");
     }
 
     @Test
-    @DisplayName("DELETE /orders/{orderId} returns 404 for non-existent order")
-    void testDeleteOrderNotFound() {
-        var response = orderController.deleteOrder("NONEXISTENT");
-        assertTrue(response.getStatusCode().is4xxClientError());
+    @DisplayName("DELETE /orders/{orderId} passes a not-found order up to the exception handler (404)")
+    void testDeleteOrderNotFound() throws Exception {
+        doThrow(new OrderNotFoundException("NONEXISTENT")).when(orderCancellationService).cancel("NONEXISTENT");
+
+        assertThrows(OrderNotFoundException.class, () -> orderController.deleteOrder("NONEXISTENT"));
     }
 
     @Test
-    @DisplayName("DELETE /orders/{orderId} increments version on soft-delete")
-    void testDeleteOrderVersionIncrement() {
-        int initialVersion = testOrder1.getVersion();
-        
-        orderController.deleteOrder("ORD001");
-        var getResponse = orderController.getOrderById("ORD001");
-        assertEquals(initialVersion + 1, getResponse.getBody().version());
-    }
+    @DisplayName("DELETE /orders/{orderId} passes an order that is no longer NEW up to the exception handler (409)")
+    void testDeleteOrderNotCancellable() throws Exception {
+        doThrow(new OrderNotCancellableException("ORD001", OrderStatus.FILLED))
+                .when(orderCancellationService).cancel("ORD001");
 
-    @Test
-    @DisplayName("DELETE /orders/{orderId} updates lastUpdated timestamp")
-    void testDeleteOrderLastUpdatedTimestamp() {
-        orderController.deleteOrder("ORD001");
-        var getResponse = orderController.getOrderById("ORD001");
-        assertNotNull(getResponse.getBody().lastUpdated());
+        assertThrows(OrderNotCancellableException.class, () -> orderController.deleteOrder("ORD001"));
     }
 
     @Test
