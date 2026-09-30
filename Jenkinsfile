@@ -44,14 +44,6 @@ pipeline {
             }
         }
 
-
-
-        stage('Check SonarQube connection') {
-            steps {
-                sh 'curl --verbose --show-error --fail --connect-timeout 5 --max-time 15 http://10.9.79.41:8088/api/system/status'
-            }
-        }
-
         stage('SonarQube Analysis - Accounts Service') {
             steps {
                 withSonarQubeEnv('SonarQube') {
