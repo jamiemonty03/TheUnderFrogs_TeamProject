@@ -33,6 +33,7 @@ import com.neueda.orderservice.controllers.OrderController;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import com.neueda.orderservice.services.OrderCancellationService;
+import com.neueda.orderservice.services.OrderStatusService;
 
 @WebMvcTest(OrderController.class)
 @Import(SecurityConfig.class)
@@ -51,6 +52,9 @@ class ServiceTokenSecurityTest {
 
     @MockBean
     private OrderCancellationService orderCancellationService;
+
+    @MockBean
+    private OrderStatusService orderStatusService;
 
     @MockBean
     private OrderRepository orderRepository;
