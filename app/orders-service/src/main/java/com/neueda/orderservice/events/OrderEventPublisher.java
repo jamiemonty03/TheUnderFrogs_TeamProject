@@ -21,4 +21,12 @@ public class OrderEventPublisher {
                 EventEnvelope.of(EventTypes.ORDER_PLACED, payload.accountId(), payload);
         kafkaTemplate.send(Topics.ORDERS, envelope.key(), envelope);
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void publishOrderCancelled(OrderCancelledApplicationEvent event) {
+        OrderCancelledPayload payload = event.getPayload();
+        EventEnvelope<OrderCancelledPayload> envelope =
+                EventEnvelope.of(EventTypes.ORDER_CANCELLED, payload.accountId(), payload);
+        kafkaTemplate.send(Topics.TRADE_EVENTS, envelope.key(), envelope);
+    }
 }
