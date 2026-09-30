@@ -25,6 +25,10 @@ import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.exceptions.TradingException;
 import com.neueda.orderservice.services.OrderCancellationService;
+import com.neueda.orderservice.dtos.requests.UpdateOrderStatusRequest;
+import com.neueda.orderservice.exceptions.OrderStatusConflictException;
+import com.neueda.orderservice.services.OrderStatusService;
+
 
 @RestController
 @RequestMapping("/orders")
@@ -34,6 +38,8 @@ public class OrderController {
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
     private final OrderCancellationService orderCancellationService;
+    private final OrderStatusService orderStatusService;
+
 
     @Value("${service.accounts.url:http://accounts-service:8081/api/accounts}")
     private String accountsServiceUrl;
@@ -42,11 +48,12 @@ public class OrderController {
     private String instrumentsServiceUrl;
 
     public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate,
-            OrderCancellationService orderCancellationService) {
+            OrderCancellationService orderCancellationService, OrderStatusService orderStatusService) {
         this.orderProcessor = orderProcessor;
         this.orderRepository = orderRepository;
         this.restTemplate = restTemplate;
         this.orderCancellationService = orderCancellationService;
+        this.orderStatusService = orderStatusService;
     }
 
     @GetMapping
@@ -152,6 +159,16 @@ public class OrderController {
         order.setVersion(order.getVersion() + 1);
 
         orderRepository.save(order);
+        return ResponseEntity.ok(toOrderResponse(order));
+    }
+
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<OrderResponse> updateOrderStatus(
+            @PathVariable String orderId,
+            @Valid @RequestBody UpdateOrderStatusRequest request)
+            throws OrderNotFoundException, OrderStatusConflictException {
+        Order order = orderStatusService.changeStatus(
+                orderId, request.expectedStatus(), request.newStatus(), request.reason());
         return ResponseEntity.ok(toOrderResponse(order));
     }
 
