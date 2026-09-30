@@ -1,5 +1,7 @@
 package com.neueda.tradeexecutor.clients;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -26,5 +28,16 @@ public class InstrumentsClient {
         } catch (HttpClientErrorException.NotFound e) {
             return Optional.empty();
         }
+    }
+
+    public List<String> getTradableSymbols() {
+        InstrumentDto[] instruments = restTemplate.getForObject(instrumentsServiceUrl, InstrumentDto[].class);
+        if (instruments == null) {
+            return List.of();
+        }
+        return Arrays.stream(instruments)
+                .filter(InstrumentDto::tradable)
+                .map(InstrumentDto::symbol)
+                .toList();
     }
 }
