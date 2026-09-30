@@ -84,7 +84,7 @@ class OrderExecutionServiceTest {
         OrderDto order = buyOrder(OrderStatus.NEW);
         when(ordersClient.getOrder("ORD-1")).thenReturn(order);
         when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
-        when(priceSource.getPrice(AAPL)).thenReturn(Optional.empty());
+        when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.empty());
 
         executionService.execute("ORD-1");
 
@@ -96,7 +96,7 @@ class OrderExecutionServiceTest {
         OrderDto order = buyOrder(OrderStatus.NEW);
         when(ordersClient.getOrder("ORD-1")).thenReturn(order);
         when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
-        when(priceSource.getPrice(AAPL)).thenReturn(Optional.of(new BigDecimal("148.50")));
+        when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(new BigDecimal("148.50")));
 
         executionService.execute("ORD-1");
 
@@ -108,7 +108,7 @@ class OrderExecutionServiceTest {
         OrderDto order = buyOrder(OrderStatus.NEW);
         when(ordersClient.getOrder("ORD-1")).thenReturn(order);
         when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
-        when(priceSource.getPrice(AAPL)).thenReturn(Optional.of(new BigDecimal("151.00")));
+        when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(new BigDecimal("151.00")));
 
         executionService.execute("ORD-1");
 
