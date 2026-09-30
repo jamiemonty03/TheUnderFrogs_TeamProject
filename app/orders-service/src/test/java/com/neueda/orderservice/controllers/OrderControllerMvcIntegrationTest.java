@@ -3,6 +3,7 @@ package com.neueda.orderservice.controllers;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -31,10 +32,13 @@ import com.neueda.orderservice.config.SecurityConfig;
 import com.neueda.orderservice.enums.AccountStatus;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.OrderStatus;
+import com.neueda.orderservice.exceptions.OrderNotCancellableException;
+import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.models.Account;
 import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.repositories.OrderRepository;
+import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import com.neueda.orderservice.services.orderServices.OrderResult;
 
@@ -53,6 +57,9 @@ class OrderControllerMvcIntegrationTest {
 
     @MockBean
     private RestTemplate restTemplate;
+
+    @MockBean
+    private OrderCancellationService orderCancellationService;
 
     private Order order;
 
@@ -160,12 +167,31 @@ class OrderControllerMvcIntegrationTest {
     }
 
     @Test
-    void deleteOrderReturnsNoContentWhenOrderExists() throws Exception {
-        when(orderRepository.findById("order-1")).thenReturn(Optional.of(order));
-
+    void deleteOrderReturnsNoContentWhenOrderIsCancelled() throws Exception {
         mockMvc.perform(delete("/orders/order-1").with(jwt()))
                 .andExpect(status().isNoContent());
 
-        verify(orderRepository).save(order);
+        verify(orderCancellationService).cancel("order-1");
+    }
+
+    @Test
+    void deleteOrderReturnsConflictWithCurrentStatusWhenNoLongerNew() throws Exception {
+        doThrow(new OrderNotCancellableException("order-1", OrderStatus.FILLED))
+                .when(orderCancellationService).cancel("order-1");
+
+        mockMvc.perform(delete("/orders/order-1").with(jwt()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ORD-409"))
+                .andExpect(jsonPath("$.message").value("Order order-1 cannot be cancelled: status is FILLED"));
+    }
+
+    @Test
+    void deleteOrderReturnsNotFoundWhenOrderDoesNotExist() throws Exception {
+        doThrow(new OrderNotFoundException("missing"))
+                .when(orderCancellationService).cancel("missing");
+
+        mockMvc.perform(delete("/orders/missing").with(jwt()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("ORD-404"));
     }
 }
