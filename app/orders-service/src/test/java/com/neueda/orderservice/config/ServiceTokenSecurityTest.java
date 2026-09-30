@@ -32,6 +32,7 @@ import org.springframework.web.client.RestTemplate;
 import com.neueda.orderservice.controllers.OrderController;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
+import com.neueda.orderservice.services.OrderCancellationService;
 
 @WebMvcTest(OrderController.class)
 @Import(SecurityConfig.class)
@@ -47,6 +48,9 @@ class ServiceTokenSecurityTest {
 
     @MockBean
     private OrderProcessor orderProcessor;
+
+    @MockBean
+    private OrderCancellationService orderCancellationService;
 
     @MockBean
     private OrderRepository orderRepository;
