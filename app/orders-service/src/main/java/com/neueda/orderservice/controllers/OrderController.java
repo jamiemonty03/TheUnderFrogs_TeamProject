@@ -20,9 +20,11 @@ import com.neueda.orderservice.dtos.requests.PlaceOrderRequest;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
 import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
-import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
+import com.neueda.orderservice.exceptions.OrderNotCancellableException;
+import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.exceptions.TradingException;
+import com.neueda.orderservice.services.OrderCancellationService;
 
 @RestController
 @RequestMapping("/orders")
@@ -31,17 +33,20 @@ public class OrderController {
     private final OrderProcessor orderProcessor;
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
-    
+    private final OrderCancellationService orderCancellationService;
+
     @Value("${service.accounts.url:http://accounts-service:8081/api/accounts}")
     private String accountsServiceUrl;
     
     @Value("${service.instruments.url:http://instruments-service:8081/api/instruments}")
     private String instrumentsServiceUrl;
 
-    public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate) {
+    public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate,
+            OrderCancellationService orderCancellationService) {
         this.orderProcessor = orderProcessor;
         this.orderRepository = orderRepository;
         this.restTemplate = restTemplate;
+        this.orderCancellationService = orderCancellationService;
     }
 
     @GetMapping
@@ -151,19 +156,9 @@ public class OrderController {
     }
 
     @DeleteMapping("/{orderId}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable String orderId) {
-        Optional<Order> existingOrder = orderRepository.findById(orderId);
-        if (existingOrder.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Order order = existingOrder.get();
-        order.setOrderStatus(OrderStatus.CANCELLED);
-        order.setLastUpdated(java.time.LocalDateTime.now());
-        order.setVersion(order.getVersion() + 1);
-        order.setUpdatedBy("SYSTEM");
-
-        orderRepository.save(order);
+    public ResponseEntity<Void> deleteOrder(@PathVariable String orderId)
+            throws OrderNotFoundException, OrderNotCancellableException {
+        orderCancellationService.cancel(orderId);
         return ResponseEntity.noContent().build();
     }
 
