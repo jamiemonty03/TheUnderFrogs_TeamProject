@@ -52,7 +52,7 @@ public class OrderExecutionService {
             return FillDecision.reject("Instrument " + order.symbol() + " is not tradable");
         }
 
-        BigDecimal marketPrice = priceSource.getPrice(instrument.get()).orElse(null);
+        BigDecimal marketPrice = priceSource.getPrice(instrument.get(), order.side()).orElse(null);
         return FillRule.decide(order, marketPrice);
     }
 }
