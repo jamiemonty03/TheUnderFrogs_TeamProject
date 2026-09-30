@@ -209,7 +209,8 @@ class TradeDataETL:
                 "INSERT INTO analytics.etl_dead_letter "
                 "(batch_id, source_table, source_row, reason) "
                 "VALUES (%s, %s, %s, %s)",
-                (self.batch_id, 'orders', json.dumps(source_row), reason)
+                # default=str keeps Decimal prices exact (as strings) instead of failing to serialise
+                (self.batch_id, 'orders', json.dumps(source_row, default=str), reason)
             )
             self.row_count_dead_lettered += 1
             cursor.close()
@@ -400,13 +401,15 @@ class TradeDataETL:
                 if is_valid:
                     valid_orders.append(order)
                 else:
+                    order_id, idempotency_key, account_id, symbol, side, quantity, price, order_status, created_at, version = order
                     order_dict = {
-                        'order_id': order[0],
-                        'account_id': order[2],
-                        'symbol': order[3],
-                        'quantity': order[4],
-                        'price': order[5],
-                        'order_status': order[7]
+                        'order_id': order_id,
+                        'account_id': account_id,
+                        'symbol': symbol,
+                        'side': side,
+                        'quantity': quantity,
+                        'price': price,
+                        'order_status': order_status
                     }
                     self.record_dead_letter(order_dict, reason)
                     logger.warning(f"Dead-lettering order {order[0]}: {reason}")

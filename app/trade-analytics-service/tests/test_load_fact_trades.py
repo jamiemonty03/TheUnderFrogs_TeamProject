@@ -383,6 +383,16 @@ class TestDeadLettering:
         assert 'INSERT INTO analytics.etl_dead_letter' in call_args[0][0]
         assert mock_etl.row_count_dead_lettered == 1
 
+    def test_dead_letter_keeps_decimal_price_exact(self, mock_etl):
+        from decimal import Decimal
+        mock_cursor = MagicMock()
+        mock_etl.analytics_db.get_cursor.return_value = mock_cursor
+
+        mock_etl.record_dead_letter({'order_id': 'order-123', 'price': Decimal('190.25')}, 'reason')
+
+        source_row_json = mock_cursor.execute.call_args[0][1][2]
+        assert json.loads(source_row_json)['price'] == '190.25'
+
     def test_dead_letter_contains_full_row_as_json(self, mock_etl):
         mock_cursor = MagicMock()
         mock_etl.analytics_db.get_cursor.return_value = mock_cursor
@@ -736,6 +746,16 @@ class TestRunWatermarkAndCommit:
             mock_etl.run()
 
         record_dead_letter.assert_called_once()
+        source_row, reason = record_dead_letter.call_args[0]
+        assert source_row == {
+            'order_id': 'order-bad',
+            'account_id': 'ACC-001',
+            'symbol': 'AAPL',
+            'side': 'BUY',
+            'quantity': 10,
+            'price': 100.0,
+            'order_status': 'NEW'
+        }
         upsert_dimensions.assert_not_called()
         merge_facts.assert_not_called()
         update_watermark.assert_called_once_with(bad[8])

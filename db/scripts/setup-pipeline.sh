@@ -41,7 +41,7 @@ check_prerequisites() {
     fi
     
     [ -f "docker-compose.yml" ] || error_exit "docker-compose.yml not found in current directory"
-    for svc in accounts instruments orders positions; do
+    for svc in accounts instruments orders positions trade-analytics; do
         [ -f "app/$svc-service/.env" ] || error_exit "app/$svc-service/.env missing (copy it from .env.example and set the password)"
     done
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
