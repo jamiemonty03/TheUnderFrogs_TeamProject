@@ -12,6 +12,9 @@ import com.neueda.accountservice.services.AccountService;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
+import com.neueda.accountservice.dtos.requests.CashMovementRequest;
+import com.neueda.accountservice.dtos.requests.ReversalRequest;
+
 
 @RestController
 @RequestMapping("/accounts")
@@ -58,19 +61,29 @@ public class AccountController {
     @PostMapping("/{accountId}/credit")
     public ResponseEntity<Account> creditAccount(
             @PathVariable String accountId,
-            @RequestBody Map<String, BigDecimal> request) throws AccountNotFoundException, AccountNotActiveException {
-        BigDecimal amount = request.get("amount");
-        Account updated = accountService.credit(accountId, amount);
+            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException {
+        Account updated = request.orderId() == null
+            ? accountService.credit(accountId, request.amount())
+            : accountService.credit(accountId, request.amount(), request.orderId());
         return ResponseEntity.ok(updated);
     }
 
     @PostMapping("/{accountId}/debit")
     public ResponseEntity<Account> debitAccount(
             @PathVariable String accountId,
-            @RequestBody Map<String, BigDecimal> request) throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
-        BigDecimal amount = request.get("amount");
-        Account updated = accountService.debit(accountId, amount);
+            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+        Account updated = request.orderId() == null
+            ? accountService.debit(accountId, request.amount())
+            : accountService.debit(accountId, request.amount(), request.orderId());
         return ResponseEntity.ok(updated);
     }
+
+    @PostMapping("/{accountId}/reversal")
+    public ResponseEntity<Account> reverseMovement(
+            @PathVariable String accountId,
+            @Valid @RequestBody ReversalRequest request) throws AccountNotFoundException, InsufficientFundsException {
+        return ResponseEntity.ok(accountService.reverse(accountId, request.orderId()));
+    }
+
 }
 

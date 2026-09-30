@@ -1,7 +1,7 @@
 package com.neueda.accountservice.repositories;
 
 import java.math.BigDecimal;
-import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -24,5 +24,6 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, Inte
                        @Param("accountId") String accountId,
                        @Param("amount") BigDecimal amount);
 
-    Optional<CashMovement> findByOrderIdAndMovementType(String orderId, MovementType movementType);
+    List<CashMovement> findByOrderId(String orderId);
+
 }

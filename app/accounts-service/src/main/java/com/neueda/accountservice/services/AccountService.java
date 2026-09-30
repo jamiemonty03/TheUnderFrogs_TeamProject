@@ -11,14 +11,21 @@ import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
+import org.springframework.transaction.annotation.Transactional;
+import com.neueda.accountservice.enums.MovementType;
+import com.neueda.accountservice.models.CashMovement;
+import com.neueda.accountservice.repositories.CashMovementRepository;
+
 
 @Service
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final CashMovementRepository cashMovementRepository;
 
-    public AccountService(AccountRepository accountRepository) {
+    public AccountService(AccountRepository accountRepository, CashMovementRepository cashMovementRepository) {
         this.accountRepository = accountRepository;
+        this.cashMovementRepository = cashMovementRepository;
     }
 
     public Account createAccount(Account account) {
@@ -76,49 +83,118 @@ public class AccountService {
         accountRepository.deleteById(accountId);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Account credit(String accountId, BigDecimal amount) throws AccountNotActiveException, AccountNotFoundException {
+        return credit(accountId, amount, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Account credit(String accountId, BigDecimal amount, String orderId)
+            throws AccountNotActiveException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Credit amount must be positive");
         }
-        
+
         Account account = getAccountById(accountId);
-        
+
+        if (isRepeat(orderId, MovementType.CREDIT, accountId, amount)) {
+            return account;
+        }
+
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException("Cannot credit an inactive account");
         }
-        
-        account.setCashBalance(account.getCashBalance().add(amount));
-        account.setLastUpdated(LocalDateTime.now());
-        account.setVersion(account.getVersion() + 1);
-        
-        accountRepository.save(account);
-        return account;
+
+        return applyChange(account, amount);
     }
 
-    public Account debit(String accountId, BigDecimal amount) 
+    @Transactional(rollbackFor = Exception.class)
+    public Account debit(String accountId, BigDecimal amount)
+            throws AccountNotActiveException, InsufficientFundsException, AccountNotFoundException {
+        return debit(accountId, amount, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Account debit(String accountId, BigDecimal amount, String orderId)
             throws AccountNotActiveException, InsufficientFundsException, AccountNotFoundException {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Debit amount must be positive");
         }
-        
+
         Account account = getAccountById(accountId);
-        
+
+        if (isRepeat(orderId, MovementType.DEBIT, accountId, amount)) {
+            return account;
+        }
+
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new AccountNotActiveException("Cannot debit an inactive account");
         }
-        
+
         if (account.getCashBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(
-                "Insufficient funds. Balance: " + account.getCashBalance() + 
+                "Insufficient funds. Balance: " + account.getCashBalance() +
                 ", Requested: " + amount
             );
         }
-        
-        account.setCashBalance(account.getCashBalance().subtract(amount));
+
+        return applyChange(account, amount.negate());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Account reverse(String accountId, String orderId)
+            throws AccountNotFoundException, InsufficientFundsException {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Order ID is required for a reversal");
+        }
+
+        Account account = getAccountById(accountId);
+
+        List<CashMovement> originals = cashMovementRepository.findByOrderId(orderId).stream()
+            .filter(movement -> movement.getMovementType() != MovementType.REVERSAL)
+            .toList();
+
+        if (originals.isEmpty()) {
+            return account;
+        }
+        if (originals.size() > 1) {
+            throw new IllegalArgumentException("Order " + orderId + " has more than one cash movement to reverse");
+        }
+
+        CashMovement original = originals.get(0);
+        if (!original.getAccountId().equals(accountId)) {
+            throw new IllegalArgumentException("Order " + orderId + " belongs to a different account");
+        }
+
+        if (isRepeat(orderId, MovementType.REVERSAL, accountId, original.getAmount())) {
+            return account;
+        }
+
+        BigDecimal change = original.getMovementType() == MovementType.DEBIT
+            ? original.getAmount()
+            : original.getAmount().negate();
+
+        if (account.getCashBalance().add(change).compareTo(BigDecimal.ZERO) < 0) {
+            throw new InsufficientFundsException(
+                "Insufficient funds to reverse order " + orderId + ". Balance: " + account.getCashBalance()
+            );
+        }
+
+        return applyChange(account, change);
+    }
+
+    private boolean isRepeat(String orderId, MovementType type, String accountId, BigDecimal amount) {
+        return orderId != null
+            && cashMovementRepository.insertIfAbsent(orderId, type.name(), accountId, amount) == 0;
+    }
+
+    private Account applyChange(Account account, BigDecimal change) {
+        account.setCashBalance(account.getCashBalance().add(change));
         account.setLastUpdated(LocalDateTime.now());
         account.setVersion(account.getVersion() + 1);
-        
+
         accountRepository.save(account);
         return account;
     }
+
 }
