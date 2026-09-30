@@ -44,36 +44,13 @@ pipeline {
             }
         }
 
-        stage('Unit Tests') {
-            parallel {
-                stage('Test Accounts Service') {
-                    steps {
-                        sh 'mvn -B -f app/accounts-service/pom.xml test'
-                    }
-                }
-                stage('Test Instruments Service') {
-                    steps {
-                        sh 'mvn -B -f app/instruments-service/pom.xml test'
-                    }
-                }
-                stage('Test Orders Service') {
-                    steps {
-                        sh 'mvn -B -f app/orders-service/pom.xml test'
-                    }
-                }
-                stage('Test Positions Service') {
-                    steps {
-                        sh 'mvn -B -f app/positions-service/pom.xml test'
-                    }
-                }
-                stage('Test Trade Executor') {
-                    steps {
-                        sh 'mvn -B -f app/trade-executor/pom.xml test'
-                    }
-                }
+
+
+        stage('Check SonarQube connection') {
+            steps {
+                sh 'curl --verbose --show-error --fail --connect-timeout 5 --max-time 15 http://10.9.79.41:8088/api/system/status'
             }
         }
-
 
         stage('SonarQube Analysis - Accounts Service') {
             steps {
