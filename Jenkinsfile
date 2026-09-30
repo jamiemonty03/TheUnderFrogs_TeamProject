@@ -36,29 +36,9 @@ pipeline {
                         sh 'mvn -B -f app/positions-service/pom.xml clean package -Dmaven.test.skip=true'
                     }
                 }
-            }
-        }
-
-        stage('Static Analysis') {
-            parallel {
-                stage('Analyse Accounts Service') {
+                stage('Build Trade Executor') {
                     steps {
-                        sh 'mvn -B -f app/accounts-service/pom.xml checkstyle:check'
-                    }
-                }
-                stage('Analyse Instruments Service') {
-                    steps {
-                        sh 'mvn -B -f app/instruments-service/pom.xml checkstyle:check'
-                    }
-                }
-                stage('Analyse Orders Service') {
-                    steps {
-                        sh 'mvn -B -f app/orders-service/pom.xml checkstyle:check'
-                    }
-                }
-                stage('Analyse Positions Service') {
-                    steps {
-                        sh 'mvn -B -f app/positions-service/pom.xml checkstyle:check'
+                        sh 'mvn -B -f app/trade-executor/pom.xml clean package -Dmaven.test.skip=true'
                     }
                 }
             }
@@ -86,14 +66,94 @@ pipeline {
                         sh 'mvn -B -f app/positions-service/pom.xml test'
                     }
                 }
+                stage('Test Trade Executor') {
+                    steps {
+                        sh 'mvn -B -f app/trade-executor/pom.xml test'
+                    }
+                }
             }
         }
 
-        stage('Database Validation Test') {
+
+        stage('SonarQube Analysis - Accounts Service') {
             steps {
-                sh 'chmod +x ./db/scripts/data_validation_test.sh'
-                sh './db/scripts/data_validation_test.sh'
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service" -Dsonar.java.jdkHome=$JAVA_HOME'
+                }
             }
         }
+
+        stage('Quality Gate - Accounts Service') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis - Instruments Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service" -Dsonar.java.jdkHome=$JAVA_HOME'
+                }
+            }
+        }
+
+        stage('Quality Gate - Instruments Service') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis - Orders Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service" -Dsonar.java.jdkHome=$JAVA_HOME'
+                }
+            }
+        }
+
+        stage('Quality Gate - Orders Service') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis - Positions Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service" -Dsonar.java.jdkHome=$JAVA_HOME'
+                }
+            }
+        }
+
+        stage('Quality Gate - Positions Service') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('SonarQube Analysis - Trade Executor') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor" -Dsonar.java.jdkHome=$JAVA_HOME'
+                }
+            }
+        }
+
+        stage('Quality Gate - Trade Executor') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
     }
 }

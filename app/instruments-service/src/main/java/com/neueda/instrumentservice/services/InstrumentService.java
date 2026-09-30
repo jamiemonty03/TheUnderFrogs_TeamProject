@@ -48,7 +48,7 @@ public class InstrumentService {
         }
         instrumentMapper.delete(symbol);
         if (trackedTickerMapper.deactivate(symbol) == 0) {
-            log.warn("Deleted instrument {} had no tracked_tickers row to deactivate", symbol);
+            log.warn("Deleted instrument had no tracked_tickers row to deactivate");
         }
     }
 

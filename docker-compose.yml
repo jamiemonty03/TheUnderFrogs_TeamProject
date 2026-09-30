@@ -153,6 +153,16 @@ services:
     ports:
       - "8084:8081"
   
+  sonarqube:
+    image: sonarqube:community
+    profiles: ["quality"]
+    ports:
+      - "8088:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
   kafka:
     image: apache/kafka:3.9.1
     ports:
@@ -238,3 +248,12 @@ volumes:
   instruments_db_data:
   orders_db_data:
   positions_db_data:
+  sonarqube_data:
+    name: sonarqube_data
+    external: true
+  sonarqube_extensions:
+    name: sonarqube_extensions
+    external: true
+  sonarqube_logs:
+    name: sonarqube_logs
+    external: true
