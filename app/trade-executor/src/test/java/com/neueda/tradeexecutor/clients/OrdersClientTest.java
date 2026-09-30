@@ -16,6 +16,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.OrderDto;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 import com.neueda.tradeexecutor.enums.OrderSide;
 import com.neueda.tradeexecutor.enums.OrderStatus;
 
@@ -84,6 +85,6 @@ class OrdersClientTest {
         ordersService.expect(requestTo(ORDERS_URL + "/MISSING"))
                 .andRespond(withResourceNotFound());
 
-        assertThrows(HttpClientErrorException.NotFound.class, () -> ordersClient.getOrder("MISSING"));
+        assertThrows(UnknownOrderException.class, () -> ordersClient.getOrder("MISSING"));
     }
 }

@@ -3,6 +3,8 @@ package com.neueda.tradeexecutor.clients;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 import com.neueda.tradeexecutor.dtos.OrderDto;
 
 @Component
@@ -18,6 +20,10 @@ public class OrdersClient {
     }
 
     public OrderDto getOrder(String orderId) {
-        return restTemplate.getForObject(ordersServiceUrl + "/{orderId}", OrderDto.class, orderId);
+        try {
+            return restTemplate.getForObject(ordersServiceUrl + "/{orderId}", OrderDto.class, orderId);
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new UnknownOrderException(orderId, e);
+        }
     }
 }
