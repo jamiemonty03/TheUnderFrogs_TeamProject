@@ -189,6 +189,16 @@ services:
     entrypoint: ["bash", "/create-topics.sh"]
     restart: "no"
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8086:8086"  
+    environment:
+      SERVER_PORT: 8086
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+
   trade-executor:
     build:
       context: ./app/trade-executor
