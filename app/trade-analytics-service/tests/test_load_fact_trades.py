@@ -463,7 +463,6 @@ class TestIncrementalLoad:
         mock_cursor.fetchall.side_effect = [[new_order], []]
         mock_etl.orders_db.get_cursor = MagicMock(return_value=mock_cursor)
 
-        # nothing is still NEW in FACT_TRADES
         analytics_cursor = MagicMock()
         analytics_cursor.fetchall.return_value = []
         mock_etl.analytics_db.get_cursor = MagicMock(return_value=analytics_cursor)
@@ -506,7 +505,6 @@ class TestIncrementalLoad:
         mock_cursor.fetchall.side_effect = [[new_order], [reprocess_order]]
         mock_etl.orders_db.get_cursor = MagicMock(return_value=mock_cursor)
 
-        # order-789 is still NEW in FACT_TRADES (analytics DB)
         analytics_cursor = MagicMock()
         analytics_cursor.fetchall.return_value = [('order-789',)]
         mock_etl.analytics_db.get_cursor = MagicMock(return_value=analytics_cursor)
@@ -517,7 +515,6 @@ class TestIncrementalLoad:
         assert orders[0][0] == 'order-456'
         assert orders[1][0] == 'order-789'
 
-        # the still-NEW keys come from analytics and are passed to the orders-db query
         assert 'analytics.fact_trades' in analytics_cursor.execute.call_args[0][0]
         reprocess_params = mock_cursor.execute.call_args_list[-1][0][1]
         assert reprocess_params == (['order-789'], watermark)
@@ -697,7 +694,6 @@ class TestRunWatermarkAndCommit:
         return (order_id, 'idem-' + order_id, 'ACC-001', 'AAPL', 'BUY', 10, 100.0, status, created_at, 0)
 
     def test_watermark_never_moves_backwards(self, mock_etl):
-        # Only re-processed NEW orders, all older than the current watermark
         watermark = datetime(2026, 9, 27, 15, 0, 0)
         old_order = self._order('order-old', datetime(2026, 9, 26, 15, 0, 0), status='FILLED')
 
@@ -728,7 +724,6 @@ class TestRunWatermarkAndCommit:
              patch.object(mock_etl, 'update_watermark') as update_watermark:
             mock_etl.run()
 
-        # moves past the dead-lettered order so it isn't dead-lettered again next run
         update_watermark.assert_called_once_with(bad[8])
 
     def test_all_invalid_still_commits_dead_letters(self, mock_etl):

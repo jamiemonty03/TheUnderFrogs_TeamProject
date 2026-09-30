@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- etl_dead_letter: Audit table for rows that fail quality validation
--- Captures invalid rows with context for investigation and replay
 CREATE TABLE IF NOT EXISTS analytics.etl_dead_letter (
     dead_letter_id SERIAL PRIMARY KEY,
     batch_id VARCHAR(50) NOT NULL,

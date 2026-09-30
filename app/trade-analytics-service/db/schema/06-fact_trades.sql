@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- FACT_TRADES: Central fact table for all trades
--- trade_key is order_id and serves as PK for merge operations (upsert on status changes)
 CREATE TABLE IF NOT EXISTS analytics.FACT_TRADES (
     trade_key CHAR(36) PRIMARY KEY,
     account_key INT NOT NULL REFERENCES analytics.DIM_ACCOUNT(account_key),

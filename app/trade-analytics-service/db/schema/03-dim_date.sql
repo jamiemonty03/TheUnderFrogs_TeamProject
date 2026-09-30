@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- DIM_DATE: Date dimension for time-based reporting
--- Populated with all dates from orders and can be extended as needed
 CREATE TABLE IF NOT EXISTS analytics.DIM_DATE (
     date_key INT PRIMARY KEY,
     date_value DATE NOT NULL UNIQUE,

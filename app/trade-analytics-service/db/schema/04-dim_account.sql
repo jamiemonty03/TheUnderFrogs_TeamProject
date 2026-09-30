@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- DIM_ACCOUNT: Account dimension from accounts-db
--- Stores account attributes for slicing and dicing trades
 CREATE TABLE IF NOT EXISTS analytics.DIM_ACCOUNT (
     account_key SERIAL PRIMARY KEY,
     account_id VARCHAR(32) NOT NULL UNIQUE,

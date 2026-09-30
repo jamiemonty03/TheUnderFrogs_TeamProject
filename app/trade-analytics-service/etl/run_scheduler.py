@@ -8,11 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 def run_once():
-    # New instance per run so each batch gets its own batch_id and row counts
     try:
         TradeDataETL().run()
     except Exception as e:
-        # Keep the scheduler alive; the next run retries from the same watermark
         logger.error(f"ETL run failed: {e}")
 
 

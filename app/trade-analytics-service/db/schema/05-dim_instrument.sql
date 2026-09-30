@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- DIM_INSTRUMENT: Instrument dimension from instruments-db
--- Stores instrument attributes for trade classification
 CREATE TABLE IF NOT EXISTS analytics.DIM_INSTRUMENT (
     instrument_key SERIAL PRIMARY KEY,
     symbol VARCHAR(10) NOT NULL UNIQUE,

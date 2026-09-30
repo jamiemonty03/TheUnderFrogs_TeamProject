@@ -416,15 +416,12 @@ class TradeDataETL:
             
             logger.info(f"Extracted {len(orders)} orders, {len(valid_orders)} valid, {self.row_count_dead_lettered} dead-lettered")
 
-            # Still fall through to the commit when every order failed, so the dead letters are saved
             if valid_orders:
                 self.upsert_dimensions(valid_orders)
                 self.merge_facts(valid_orders)
             else:
                 logger.info("All extracted orders failed validation")
 
-            # Count dead-lettered orders too so they aren't re-extracted, and never move backwards
-            # (re-processed NEW orders are older than the current watermark)
             new_watermark = max([high_watermark] + [order[8] for order in orders])
             self.update_watermark(new_watermark)
             

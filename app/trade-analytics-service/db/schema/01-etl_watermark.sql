@@ -1,7 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- etl_watermark: Tracks the high watermark for incremental loads
--- Stores the last successfully processed created_at timestamp from orders
 CREATE TABLE IF NOT EXISTS analytics.etl_watermark (
     watermark_id SERIAL PRIMARY KEY,
     high_watermark TIMESTAMP NOT NULL,
