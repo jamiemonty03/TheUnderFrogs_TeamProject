@@ -7,6 +7,7 @@ import static org.springframework.test.util.ReflectionTestUtils.invokeMethod;
 import static org.mockito.Mockito.mock;
 
 import org.junit.jupiter.api.Test;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;

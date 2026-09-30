@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
-import com.neueda.tradeexecutor.config.UnknownOrderException;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 import com.neueda.tradeexecutor.dtos.OrderDto;
 
 @Component

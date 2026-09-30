@@ -22,6 +22,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.util.backoff.ExponentialBackOff;
 import com.neueda.tradeexecutor.events.Topics;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 
 @Configuration
 public class KafkaConsumerConfig {

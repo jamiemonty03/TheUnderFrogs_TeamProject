@@ -16,7 +16,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.OrderDto;
-import com.neueda.tradeexecutor.config.UnknownOrderException;
+import com.neueda.tradeexecutor.exceptions.UnknownOrderException;
 import com.neueda.tradeexecutor.enums.OrderSide;
 import com.neueda.tradeexecutor.enums.OrderStatus;
 

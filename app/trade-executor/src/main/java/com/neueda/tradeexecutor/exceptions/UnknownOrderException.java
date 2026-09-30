@@ -1,4 +1,4 @@
-package com.neueda.tradeexecutor.config;
+package com.neueda.tradeexecutor.exceptions;
 
 public class UnknownOrderException extends RuntimeException {
     public UnknownOrderException(String orderId, Throwable cause) {
