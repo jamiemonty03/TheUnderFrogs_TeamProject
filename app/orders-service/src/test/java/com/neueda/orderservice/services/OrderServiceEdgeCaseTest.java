@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 
@@ -46,6 +47,7 @@ class OrderServiceEdgeCaseTest {
     @Test
     @DisplayName("Re-using an idempotency key throws DuplicateOrderException and saves only once")
     void rejectsDuplicateIdempotencyKey() throws Exception {
+        when(orderRepository.existsByIdempotencyKey("dup-key")).thenReturn(false, true);
         orderService.placeOrder(account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "dup-key");
 
         DuplicateOrderException ex = assertThrows(DuplicateOrderException.class, () ->
@@ -59,6 +61,7 @@ class OrderServiceEdgeCaseTest {
     @DisplayName("getOrderByIdempotencyKey finds placed orders and is empty for unknown keys")
     void lookupByIdempotencyKey() throws Exception {
         Order placed = orderService.placeOrder(account, instrument, OrderSide.SELL, BigDecimal.ONE, BigDecimal.TEN, "key-1");
+        when(orderRepository.findByIdempotencyKey("key-1")).thenReturn(java.util.Optional.of(placed));
 
         assertSame(placed, orderService.getOrderByIdempotencyKey("key-1").orElseThrow());
         assertTrue(orderService.getOrderByIdempotencyKey("unknown").isEmpty());

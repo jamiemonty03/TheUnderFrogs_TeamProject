@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "event-envelope.schema.json",
+  "title": "EventEnvelope",
+  "description": "The standard wrapper for every Kafka message on the platform. Matches the Java record com.neueda.orderservice.events.EventEnvelope. The five fields are the same on every event; payload holds the event-specific data.",
+  "type": "object",
+  "required": ["eventId", "eventType", "occurredAt", "key", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "description": "Unique ID for this event (a UUID). Consumers use it to skip duplicate deliveries.",
+      "type": "string",
+      "minLength": 1
+    },
+    "eventType": {
+      "description": "What happened. Must be one of the values in EventTypes.java.",
+      "type": "string",
+      "enum": ["ORDER_PLACED", "ORDER_FILLED", "ORDER_REJECTED", "ORDER_CANCELLED", "PRICE_UPDATED"]
+    },
+    "occurredAt": {
+      "description": "When the event happened, as an ISO-8601 UTC timestamp.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "key": {
+      "description": "The Kafka message key: the accountId for the orders and trade-events topics, the symbol for market-data.",
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "description": "The event-specific data, e.g. the order details or the price update.",
+      "type": "object"
+    }
+  },
+  "examples": [
+    {
+      "eventId": "7f3c9a2e-1b4d-4c8e-9a6f-2d5e8b1c3a70",
+      "eventType": "ORDER_PLACED",
+      "occurredAt": "2026-09-28T10:15:00Z",
+      "key": "ACC0001",
+      "payload": {
+        "orderId": "ORD-123",
+        "symbol": "ACME",
+        "side": "BUY",
+        "quantity": 100,
+        "price": 25.50
+      }
+    }
+  ]
+}

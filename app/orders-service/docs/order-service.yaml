@@ -131,7 +131,7 @@ paths:
               $ref: '#/components/schemas/PlaceOrderRequest'
       responses:
         '201':
-          description: Order created successfully
+          description: Order accepted with status NEW; execution proceeds asynchronously
           content:
             application/json:
               schema:
@@ -220,7 +220,7 @@ components:
         orderStatus:
           type: string
           enum: [NEW, FILLED, CANCELLED, REJECTED]
-          description: Current order status
+          description: Current order status; newly placed orders are NEW while awaiting execution
         version:
           type: integer
           description: Version number for optimistic locking
