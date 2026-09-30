@@ -81,3 +81,26 @@ To list the topics and their settings:
 ```bash
 docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe
 ```
+
+
+## Inspecting and replaying `orders.DLT`
+
+The Trade Executor sends malformed events, invalid order payloads, and unknown order IDs to `orders.DLT` immediately. Other processing failures are retried after 1, 2, 4, and 8 seconds (about 15 seconds total); the record is then sent to the DLT. Processing is bounded, so the consumer resumes the partition after recovering a failed record.
+
+DLT records preserve the original key and payload. Spring Kafka adds `kafka_dlt-exception-fqcn` and `kafka_dlt-exception-message` headers with the failure type and reason; `x-attempt-count` records the attempt number (1 for immediate permanent failures). Inspect a record from the host with:
+
+```bash
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 --topic orders.DLT --from-beginning \
+  --property print.key=true --property print.headers=true
+```
+
+After investigating and fixing the cause, replay selected records by producing their original JSON payload and key back to `orders` (use the host listener `localhost:9094`). For example, copy the payload and key from the DLT output, then run:
+
+```bash
+docker compose exec -T kafka /opt/kafka/bin/kafka-console-producer.sh \
+  --bootstrap-server localhost:9092 --topic orders \
+  --property parse.key=true --property key.separator=:
+```
+
+Enter one `key:payload` record per line, then press Ctrl-D. Replay only after confirming the failure is resolved; settlement calls are idempotent, so replaying a partially settled order is safe.
