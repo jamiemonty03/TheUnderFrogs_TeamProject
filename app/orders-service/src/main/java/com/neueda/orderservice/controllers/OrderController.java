@@ -146,9 +146,6 @@ public class OrderController {
         if (request.side() != null) {
             order.setSide(request.side());
         }
-        if (request.orderStatus() != null) {
-            order.setOrderStatus(request.orderStatus());
-        }
         if (request.updatedBy() != null) {
             order.setUpdatedBy(request.updatedBy());
         } else {

@@ -31,6 +31,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -178,6 +179,31 @@ class OrderStatusIntegrationTest {
         assertThat(row(orderId).get("order_status")).isEqualTo("FILLED");
     }
 
+    @Test
+    @DisplayName("PUT with orderStatus returns 422 and leaves the status unchanged")
+    void putCannotChangeStatus() throws Exception {
+        String orderId = insertOrder("NEW");
+
+        MockHttpServletResponse response = put(orderId, "{\"orderStatus\": \"FILLED\"}");
+
+        assertThat(response.getStatus()).isEqualTo(422);
+        assertThat(objectMapper.readTree(response.getContentAsString()).get("errorCode").asText()).isEqualTo("VAL-422");
+        assertThat(row(orderId).get("order_status")).isEqualTo("NEW");
+    }
+
+    @Test
+    @DisplayName("PUT without orderStatus still updates the other fields")
+    void putStillUpdatesOtherFields() throws Exception {
+        String orderId = insertOrder("NEW");
+
+        MockHttpServletResponse response = put(orderId, "{\"quantity\": 25}");
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT quantity FROM orders WHERE order_id = ?", Integer.class, orderId)).isEqualTo(25);
+        assertThat(row(orderId).get("order_status")).isEqualTo("NEW");
+    }
+
     private String insertOrder(String status) {
         String orderId = UUID.randomUUID().toString();
         jdbcTemplate.update("""
@@ -210,6 +236,15 @@ class OrderStatusIntegrationTest {
                 .andReturn()
                 .getResponse();
         return new ResponseEntity<>(response.getContentAsString(), HttpStatus.valueOf(response.getStatus()));
+    }
+
+    private MockHttpServletResponse put(String orderId, String body) throws Exception {
+        return mockMvc.perform(MockMvcRequestBuilders.put("/orders/{orderId}", orderId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + createToken("status-test-user", null))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn()
+                .getResponse();
     }
 
     private JsonNode json(ResponseEntity<String> response) throws Exception {

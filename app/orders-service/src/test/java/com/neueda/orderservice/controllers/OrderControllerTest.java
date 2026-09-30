@@ -161,13 +161,13 @@ public class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /orders/{orderId} updates order status successfully")
-    void testUpdateOrderStatusSuccess() {
+    @DisplayName("PUT /orders/{orderId} does not change order status")
+    void testUpdateOrderDoesNotChangeStatus() {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(null, null, null, OrderStatus.FILLED, "system");
-        
+
         var response = orderController.updateOrder("ORD001", updateRequest);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertEquals(OrderStatus.FILLED, response.getBody().orderStatus());
+        assertEquals(OrderStatus.NEW, response.getBody().orderStatus());
         assertEquals("system", response.getBody().updatedBy());
     }
 
