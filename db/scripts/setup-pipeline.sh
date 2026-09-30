@@ -41,7 +41,7 @@ check_prerequisites() {
     fi
     
     [ -f "docker-compose.yml" ] || error_exit "docker-compose.yml not found in current directory"
-    for svc in accounts instruments orders positions; do
+    for svc in accounts instruments orders positions trade-analytics; do
         [ -f "app/$svc-service/.env" ] || error_exit "app/$svc-service/.env missing (copy it from .env.example and set the password)"
     done
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
@@ -54,7 +54,7 @@ if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     echo "Stages:"
     echo "  all         Full setup: build → containers → tables → populate (default)"
     echo "  build       Build Maven jars only"
-    echo "  containers  Spin up Docker containers only"
+    echo "  containers  Spin up Docker containers only (trade-analytics-service starts after populate)"
     echo "  tables      Create tables only (containers must be running)"
     echo "  populate    Populate data only (containers and tables must exist)"
     echo ""
@@ -89,7 +89,8 @@ fi
 if [[ "$STAGE" == "all" || "$STAGE" == "containers" ]]; then
     echo -e "${YELLOW}Starting Docker containers...${NC}"
     docker-compose down --remove-orphans 2>/dev/null || true
-    docker-compose up -d --build || error_exit "Failed to start Docker containers"
+
+    docker-compose up -d --build --scale trade-analytics-service=0 || error_exit "Failed to start Docker containers"
     echo -e "${GREEN}✓ Docker compose up complete${NC}\n"
 
     echo -e "${YELLOW}Waiting for databases to be ready...${NC}"
@@ -224,6 +225,26 @@ else
 fi
 
 rm -f "$trades_file" "$positions_file"
+
+    echo ""
+    echo -e "${YELLOW}Starting trade analytics ETL...${NC}"
+
+    ANALYTICS_READY=false
+    for i in {1..30}; do
+        if docker exec trade-analytics-db sh -c 'pg_isready -U "$ANALYTICS_DB_USERNAME"' > /dev/null 2>&1; then
+            ANALYTICS_READY=true
+            break
+        fi
+        sleep 2
+    done
+    [ "$ANALYTICS_READY" = true ] || error_exit "trade-analytics-db failed to start after 60 seconds"
+
+    docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -v ON_ERROR_STOP=1 -c "TRUNCATE analytics.fact_trades, analytics.dim_account, analytics.dim_instrument, analytics.dim_date, analytics.etl_dead_letter, analytics.etl_watermark RESTART IDENTITY;"' \
+        || error_exit "Failed to reset analytics tables"
+    echo -e "${GREEN}✓ Analytics tables reset${NC}"
+
+    docker-compose up -d trade-analytics-service || error_exit "Failed to start trade-analytics-service"
+    echo -e "${GREEN}✓ trade-analytics-service started${NC}"
 
     echo ""
 fi

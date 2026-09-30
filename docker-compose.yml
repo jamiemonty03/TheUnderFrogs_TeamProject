@@ -233,8 +233,49 @@ services:
       - ./app/instruments-service/db/schema:/db/schema:ro
     command: python /db/dashboard/dashboard_app.py
 
+  trade-analytics-db:
+    image: postgres:15-alpine
+    container_name: trade-analytics-db
+    env_file: ./app/trade-analytics-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$ANALYTICS_DB_USERNAME"
+        export POSTGRES_PASSWORD="$$ANALYTICS_DB_PASSWORD"
+        export POSTGRES_DB="$${ANALYTICS_DB_URL##*/}";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5437:5432"
+    volumes:
+      - trade_analytics_db_data:/var/lib/postgresql/data
+      - ./app/trade-analytics-service/db:/db:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$ANALYTICS_DB_USERNAME" -d "$${ANALYTICS_DB_URL##*/}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  trade-analytics-service:
+    build:
+      context: ./app/trade-analytics-service
+      dockerfile: Dockerfile
+    container_name: trade-analytics-service
+    env_file: ./app/trade-analytics-service/.env
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      accounts-db:
+        condition: service_healthy
+      instruments-db:
+        condition: service_healthy
+      trade-analytics-db:
+        condition: service_healthy
+
 volumes:
   accounts_db_data:
   instruments_db_data:
   orders_db_data:
   positions_db_data:
+  trade_analytics_db_data:
