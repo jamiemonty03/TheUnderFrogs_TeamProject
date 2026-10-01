@@ -8,6 +8,7 @@ import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.repositories.PositionRepository;
+import com.neueda.positionservice.repositories.PositionMovementRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,11 +28,14 @@ public class PositionServiceEdgeCasesTest {
     @Mock
     private PositionRepository repository;
 
+    @Mock
+    private PositionMovementRepository movementRepository;
+
     private PositionService service;
 
     @BeforeEach
     public void setUp() {
-        service = new PositionService(repository);
+        service = new PositionService(repository, movementRepository);
     }
 
     @Test

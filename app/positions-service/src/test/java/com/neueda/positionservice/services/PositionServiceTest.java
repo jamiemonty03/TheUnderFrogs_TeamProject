@@ -29,12 +29,16 @@ import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.repositories.PositionRepository;
+import com.neueda.positionservice.repositories.PositionMovementRepository;
 
 @ExtendWith(MockitoExtension.class)
 class PositionServiceTest {
 
     @Mock
     private PositionRepository repository;
+
+    @Mock
+    private PositionMovementRepository movementRepository;
 
     @InjectMocks
     private PositionService positionService;
