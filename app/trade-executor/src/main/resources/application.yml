@@ -23,6 +23,10 @@ service:
     url: ${INSTRUMENTS_URL:http://instruments-service:8081/api/instruments}
   prices:
     url: ${PRICES_URL:http://instruments-service:8081/api}
+  accounts:
+    url: ${ACCOUNTS_URL:http://accounts-service:8081/api/accounts}
+  positions:
+    url: ${POSITIONS_URL:http://positions-service:8081/api/positions}
 
 jwt:
   secret: ${JWT_SECRET}
