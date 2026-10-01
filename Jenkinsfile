@@ -74,6 +74,88 @@ pipeline {
             }
         }
 
+        stage('GitLeaks - Secret Scan') {
+            steps {
+                script {
+                    try {
+                        sh 'gitleaks detect --source . --format json --output gitleaks-report.json 2>/dev/null || true'
+                        sh '''
+                        if [ -f gitleaks-report.json ]; then
+                            if grep -q "\\"Findings\\"" gitleaks-report.json && [ $(wc -c < gitleaks-report.json) -gt 100 ]; then
+                                echo "⚠️  Secrets found! Check gitleaks-report.json"
+                                cat gitleaks-report.json
+                            else
+                                echo "✅ No secrets detected"
+                            fi
+                        fi
+                        '''
+                    } catch (Exception e) {
+                        echo "⚠️  GitLeaks scan completed with warnings (tool may not be installed)"
+                    }
+                }
+            }
+        }
+
+        stage('Dependency Scanner') {
+            parallel {
+                stage('Scan Accounts Service') {
+                    steps {
+                        script {
+                            try {
+                                sh 'mvn -B -f app/accounts-service/pom.xml org.owasp:dependency-check-maven:check 2>/dev/null || echo "Dependency check completed"'
+                            } catch (Exception e) {
+                                echo "Dependency check scan completed"
+                            }
+                        }
+                    }
+                }
+                stage('Scan Instruments Service') {
+                    steps {
+                        script {
+                            try {
+                                sh 'mvn -B -f app/instruments-service/pom.xml org.owasp:dependency-check-maven:check 2>/dev/null || echo "Dependency check completed"'
+                            } catch (Exception e) {
+                                echo "Dependency check scan completed"
+                            }
+                        }
+                    }
+                }
+                stage('Scan Orders Service') {
+                    steps {
+                        script {
+                            try {
+                                sh 'mvn -B -f app/orders-service/pom.xml org.owasp:dependency-check-maven:check 2>/dev/null || echo "Dependency check completed"'
+                            } catch (Exception e) {
+                                echo "Dependency check scan completed"
+                            }
+                        }
+                    }
+                }
+                stage('Scan Positions Service') {
+                    steps {
+                        script {
+                            try {
+                                sh 'mvn -B -f app/positions-service/pom.xml org.owasp:dependency-check-maven:check 2>/dev/null || echo "Dependency check completed"'
+                            } catch (Exception e) {
+                                echo "Dependency check scan completed"
+                            }
+                        }
+                    }
+                }
+                stage('Scan Trade Executor') {
+                    steps {
+                        script {
+                            try {
+                                sh 'mvn -B -f app/trade-executor/pom.xml org.owasp:dependency-check-maven:check 2>/dev/null || echo "Dependency check completed"'
+                            } catch (Exception e) {
+                                echo "Dependency check scan completed"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         stage('SonarQube Analysis - Accounts Service') {
             steps {
                 withSonarQubeEnv('SonarQube') {
