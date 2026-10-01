@@ -1,6 +1,7 @@
 package com.neueda.orderservice.services;
 
 import com.neueda.orderservice.models.ClientTrade;
+import com.neueda.orderservice.models.PositionStep;
 import com.neueda.orderservice.repositories.ClientTradeRepository;
 import com.neueda.orderservice.enums.OrderSide;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,14 +11,15 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,18 +50,18 @@ public class ClientTradeServiceTest {
     void testGetAccountHistory() {
         String accountId = "ACC001";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, "MSFT", OrderSide.SELL, new BigDecimal("50"), new BigDecimal("300"), LocalDateTime.now())
+            new ClientTrade(accountId, "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, "MSFT", OrderSide.SELL, new BigDecimal("50"), new BigDecimal("300"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountId(accountId)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdOrderByTradeDateDescTradeIdDesc(accountId)).thenReturn(trades);
 
         List<ClientTrade> result = clientTradeService.getAccountHistory(accountId);
 
         assertEquals(2, result.size());
         assertEquals("AAPL", result.get(0).getSymbol());
         assertEquals("MSFT", result.get(1).getSymbol());
-        verify(clientTradeRepository).findByAccountId(accountId);
+        verify(clientTradeRepository).findByAccountIdOrderByTradeDateDescTradeIdDesc(accountId);
     }
 
     @Test
@@ -84,16 +86,16 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.BUY, new BigDecimal("50"), new BigDecimal("155"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("50"), new BigDecimal("155"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         List<ClientTrade> result = clientTradeService.getSymbolHistory(accountId, symbol);
 
         assertEquals(2, result.size());
-        verify(clientTradeRepository).findByAccountAndSymbol(accountId, symbol);
+        verify(clientTradeRepository).findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol);
     }
 
     @Test
@@ -118,12 +120,12 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.BUY, new BigDecimal("50"), new BigDecimal("155"), LocalDateTime.now()),
-            new ClientTrade("T3", accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("50"), new BigDecimal("155"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getHistoricalBuyQuantity(accountId, symbol);
 
@@ -136,10 +138,10 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.SELL, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getHistoricalBuyQuantity(accountId, symbol);
 
@@ -152,12 +154,12 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDateTime.now()),
-            new ClientTrade("T3", accountId, symbol, OrderSide.SELL, new BigDecimal("20"), new BigDecimal("165"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("20"), new BigDecimal("165"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getHistoricalSellQuantity(accountId, symbol);
 
@@ -170,12 +172,12 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.BUY, new BigDecimal("200"), new BigDecimal("160"), LocalDateTime.now()),
-            new ClientTrade("T3", accountId, symbol, OrderSide.SELL, new BigDecimal("50"), new BigDecimal("170"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("200"), new BigDecimal("160"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("50"), new BigDecimal("170"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getWeightedAverageCost(accountId, symbol);
 
@@ -192,10 +194,10 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.SELL, new BigDecimal("50"), new BigDecimal("170"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("50"), new BigDecimal("170"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getWeightedAverageCost(accountId, symbol);
 
@@ -208,7 +210,7 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(Collections.emptyList());
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(Collections.emptyList());
 
         BigDecimal result = clientTradeService.getWeightedAverageCost(accountId, symbol);
 
@@ -220,12 +222,12 @@ public class ClientTradeServiceTest {
     void testReconcileWithPositionPass() {
         String accountId = "ACC001";
         String symbol = "AAPL";
-        List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDateTime.now())
+        List<ClientTrade> trades = newestFirst(
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         boolean result = clientTradeService.reconcileWithPosition(accountId, symbol, new BigDecimal("70"));
 
@@ -237,12 +239,12 @@ public class ClientTradeServiceTest {
     void testReconcileWithPositionFail() {
         String accountId = "ACC001";
         String symbol = "AAPL";
-        List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDateTime.now())
+        List<ClientTrade> trades = newestFirst(
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.SELL, new BigDecimal("30"), new BigDecimal("160"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         boolean result = clientTradeService.reconcileWithPosition(accountId, symbol, new BigDecimal("50"));
 
@@ -260,7 +262,7 @@ public class ClientTradeServiceTest {
     @Test
     @DisplayName("Save trade persists to repository")
     void testSaveTrade() {
-        ClientTrade trade = new ClientTrade("T1", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now());
+        ClientTrade trade = new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now());
         when(clientTradeRepository.save(trade)).thenReturn(trade);
 
         ClientTrade result = clientTradeService.saveTrade(trade);
@@ -281,14 +283,15 @@ public class ClientTradeServiceTest {
     @Test
     @DisplayName("Get trade by ID retrieves from repository")
     void testGetTradeById() {
-        ClientTrade trade = new ClientTrade("T1", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDateTime.now());
-        when(clientTradeRepository.findById("T1")).thenReturn(Optional.of(trade));
+        ClientTrade trade = new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150"), LocalDate.now());
+        trade.setTradeId(1);
+        when(clientTradeRepository.findById(1)).thenReturn(Optional.of(trade));
 
-        Optional<ClientTrade> result = clientTradeService.getTradeById("T1");
+        Optional<ClientTrade> result = clientTradeService.getTradeById(1);
 
         assertTrue(result.isPresent());
-        assertEquals("T1", result.get().getTradeId());
-        verify(clientTradeRepository).findById("T1");
+        assertEquals(1, result.get().getTradeId());
+        verify(clientTradeRepository).findById(1);
     }
 
     @Test
@@ -299,23 +302,27 @@ public class ClientTradeServiceTest {
         );
     }
 
-    @Test
-    @DisplayName("Get trade by ID throws for blank ID")
-    void testGetTradeByIdBlank() {
-        assertThrows(IllegalArgumentException.class, () ->
-            clientTradeService.getTradeById("  ")
-        );
-    }
 
     @Test
     @DisplayName("Delete trade removes from repository")
     void testDeleteTrade() {
-        when(clientTradeRepository.delete("T1")).thenReturn(true);
+        when(clientTradeRepository.existsById(1)).thenReturn(true);
 
-        boolean result = clientTradeService.deleteTrade("T1");
+        boolean result = clientTradeService.deleteTrade(1);
 
         assertTrue(result);
-        verify(clientTradeRepository).delete("T1");
+        verify(clientTradeRepository).deleteById(1);
+    }
+
+    @Test
+    @DisplayName("Delete trade returns false and deletes nothing when trade is missing")
+    void testDeleteTradeMissing() {
+        when(clientTradeRepository.existsById(99)).thenReturn(false);
+
+        boolean result = clientTradeService.deleteTrade(99);
+
+        assertFalse(result);
+        verify(clientTradeRepository, never()).deleteById(99);
     }
 
     @Test
@@ -326,13 +333,6 @@ public class ClientTradeServiceTest {
         );
     }
 
-    @Test
-    @DisplayName("Delete trade throws for blank ID")
-    void testDeleteTradeBlank() {
-        assertThrows(IllegalArgumentException.class, () ->
-            clientTradeService.deleteTrade("  ")
-        );
-    }
 
     @Test
     @DisplayName("Weighted average cost handles fractional results correctly")
@@ -340,11 +340,11 @@ public class ClientTradeServiceTest {
         String accountId = "ACC001";
         String symbol = "AAPL";
         List<ClientTrade> trades = Arrays.asList(
-            new ClientTrade("T1", accountId, symbol, OrderSide.BUY, new BigDecimal("3"), new BigDecimal("100.00"), LocalDateTime.now()),
-            new ClientTrade("T2", accountId, symbol, OrderSide.BUY, new BigDecimal("1"), new BigDecimal("101.00"), LocalDateTime.now())
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("3"), new BigDecimal("100.00"), LocalDate.now()),
+            new ClientTrade(accountId, symbol, OrderSide.BUY, new BigDecimal("1"), new BigDecimal("101.00"), LocalDate.now())
         );
 
-        when(clientTradeRepository.findByAccountAndSymbol(accountId, symbol)).thenReturn(trades);
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol)).thenReturn(trades);
 
         BigDecimal result = clientTradeService.getWeightedAverageCost(accountId, symbol);
 
@@ -365,5 +365,81 @@ public class ClientTradeServiceTest {
         assertThrows(IllegalArgumentException.class, () ->
             clientTradeService.getAccountHistory("   ")
         );
+    }
+
+    private ClientTrade trade(OrderSide side, String quantity) {
+        return new ClientTrade("ACC001", "AAPL", side, new BigDecimal(quantity), new BigDecimal("150"), LocalDate.now());
+    }
+
+    // Trades are given oldest first; the repository returns them newest first
+    private void givenAaplHistory(ClientTrade... trades) {
+        when(clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc("ACC001", "AAPL"))
+            .thenReturn(newestFirst(trades));
+    }
+
+    private List<ClientTrade> newestFirst(ClientTrade... trades) {
+        List<ClientTrade> list = new ArrayList<>(Arrays.asList(trades));
+        Collections.reverse(list);
+        return list;
+    }
+
+    private List<BigDecimal> quantitiesAfter(List<PositionStep> steps) {
+        return steps.stream().map(PositionStep::quantityAfter).toList();
+    }
+
+    @Test
+    @DisplayName("Position history: one buy of 10 reaches 10")
+    void testPositionHistorySingleBuy() {
+        givenAaplHistory(trade(OrderSide.BUY, "10"));
+
+        List<PositionStep> steps = clientTradeService.getPositionHistory("ACC001", "AAPL");
+
+        assertEquals(List.of(new BigDecimal("10")), quantitiesAfter(steps));
+        assertTrue(clientTradeService.reconcileWithPosition("ACC001", "AAPL", new BigDecimal("10")));
+    }
+
+    @Test
+    @DisplayName("Position history: buy 20, sell 10 reaches 10")
+    void testPositionHistoryBuyThenSell() {
+        givenAaplHistory(trade(OrderSide.BUY, "20"), trade(OrderSide.SELL, "10"));
+
+        List<PositionStep> steps = clientTradeService.getPositionHistory("ACC001", "AAPL");
+
+        assertEquals(List.of(new BigDecimal("20"), new BigDecimal("10")), quantitiesAfter(steps));
+        assertTrue(clientTradeService.reconcileWithPosition("ACC001", "AAPL", new BigDecimal("10")));
+    }
+
+    @Test
+    @DisplayName("Position history: buy 15, three sells of 5 reaches 0")
+    void testPositionHistoryBuyThenThreeSells() {
+        givenAaplHistory(trade(OrderSide.BUY, "15"), trade(OrderSide.SELL, "5"),
+            trade(OrderSide.SELL, "5"), trade(OrderSide.SELL, "5"));
+
+        List<PositionStep> steps = clientTradeService.getPositionHistory("ACC001", "AAPL");
+
+        assertEquals(List.of(new BigDecimal("15"), new BigDecimal("10"), new BigDecimal("5"), new BigDecimal("0")),
+            quantitiesAfter(steps));
+        assertTrue(clientTradeService.reconcileWithPosition("ACC001", "AAPL", BigDecimal.ZERO));
+        assertFalse(clientTradeService.reconcileWithPosition("ACC001", "AAPL", new BigDecimal("10")));
+    }
+
+    @Test
+    @DisplayName("Position history is empty when there are no trades")
+    void testPositionHistoryEmpty() {
+        givenAaplHistory();
+
+        assertTrue(clientTradeService.getPositionHistory("ACC001", "AAPL").isEmpty());
+        assertTrue(clientTradeService.reconcileWithPosition("ACC001", "AAPL", BigDecimal.ZERO));
+    }
+
+    @Test
+    @DisplayName("Reconcile fails when history sells shares not yet held, even if the net matches")
+    void testReconcileFailsWhenHistoryGoesShort() {
+        givenAaplHistory(trade(OrderSide.SELL, "10"), trade(OrderSide.BUY, "20"));
+
+        List<PositionStep> steps = clientTradeService.getPositionHistory("ACC001", "AAPL");
+
+        assertEquals(List.of(new BigDecimal("-10"), new BigDecimal("10")), quantitiesAfter(steps));
+        assertFalse(clientTradeService.reconcileWithPosition("ACC001", "AAPL", new BigDecimal("10")));
     }
 }
