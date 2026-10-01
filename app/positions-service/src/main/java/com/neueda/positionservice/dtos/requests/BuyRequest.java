@@ -12,5 +12,11 @@ public record BuyRequest(
 
     @NotNull(message = "Price must not be null")
     @DecimalMin("0.01")
-    BigDecimal price
-) {}
+    BigDecimal price,
+
+    String orderId
+) {
+    public BuyRequest(Integer quantity, BigDecimal price) {
+        this(quantity, price, null);
+    }
+}

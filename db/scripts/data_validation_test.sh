@@ -6,10 +6,10 @@ echo "Checking existing database containers and required tables..."
 
 # Each target is: service name | container name | required tables.
 DB_TARGETS=(
-    "accounts|accounts-db|accounts"
+    "accounts|accounts-db|accounts cash_movements"
     "instruments|instruments-db|instruments"
     "orders|orders-db|orders client_trades"
-    "positions|positions-db|positions"
+    "positions|positions-db|positions position_movements"
 )
 
 for target in "${DB_TARGETS[@]}"; do

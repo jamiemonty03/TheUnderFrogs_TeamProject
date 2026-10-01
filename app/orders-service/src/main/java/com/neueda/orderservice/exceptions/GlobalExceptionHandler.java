@@ -7,6 +7,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.neueda.orderservice.dtos.responses.StatusConflictResponse;
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -39,6 +41,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateOrder(DuplicateOrderException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("ORD-409", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleOrderNotFound(OrderNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("ORD-404", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrderNotCancellableException.class)
+    public ResponseEntity<ErrorResponse> handleOrderNotCancellable(OrderNotCancellableException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("ORD-409", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OrderStatusConflictException.class)
+    public ResponseEntity<StatusConflictResponse> handleStatusConflict(OrderStatusConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new StatusConflictResponse("ORD-409", ex.getMessage(), ex.getCurrentStatus()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

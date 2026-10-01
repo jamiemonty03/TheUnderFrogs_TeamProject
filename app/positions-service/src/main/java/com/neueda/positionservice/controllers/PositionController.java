@@ -9,6 +9,7 @@ import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.dtos.requests.ReversalRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -58,11 +59,21 @@ public class PositionController {
 
     @PostMapping("/{accountId}/{symbol}/buy")
     public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid BuyRequest request) {
-        return positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price());
+        return request.orderId() == null
+            ? positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price())
+            : positionService.updatePositionAfterBuy(accountId, symbol, request.quantity(), request.price(), request.orderId());
     }
 
     @PostMapping("/{accountId}/{symbol}/sell")
     public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid SellRequest request) throws InsufficientHoldingsException {
-        return positionService.updatePositionAfterSell(accountId, symbol, request.quantity());
+        return request.orderId() == null
+            ? positionService.updatePositionAfterSell(accountId, symbol, request.quantity())
+            : positionService.updatePositionAfterSell(accountId, symbol, request.quantity(), request.orderId());
     }
+
+    @PostMapping("/{accountId}/{symbol}/reversal")
+    public Position reversePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReversalRequest request) throws InsufficientHoldingsException {
+        return positionService.reverse(accountId, symbol, request.orderId());
+    }
+
 }
