@@ -47,6 +47,9 @@ paths:
 
     put:
       summary: Update mutable order fields
+      description: >
+        Updates quantity, price, side and updatedBy. The order status cannot be changed here:
+        sending orderStatus returns 422. Use PATCH /orders/{orderId}/status instead.
       operationId: updateOrder
       security:
         - bearerAuth: []
@@ -77,11 +80,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
-          description: Validation failed
+          description: Validation failed, including an attempt to change orderStatus (errorCode VAL-422)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: VAL-422
+                message: "orderStatus cannot be changed with PUT; use PATCH /orders/{id}/status"
         '401':
           description: Unauthorized
           content:
@@ -122,6 +128,74 @@ paths:
               example:
                 errorCode: ORD-409
                 message: "Order 0adf7599-df9d-4176-93b6-3a555e54415d cannot be cancelled: status is FILLED"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{orderId}/status:
+    patch:
+      summary: Change an order's status, only if it is still in the expected status
+      description: >
+        Applies a single guarded update (UPDATE ... WHERE order_id = ? AND order_status = expectedStatus),
+        so when two callers race exactly one succeeds. The only allowed changes are NEW to FILLED,
+        NEW to REJECTED and NEW to CANCELLED. A repeated change returns 409 with the current status,
+        so a caller that receives 409 with currentStatus equal to newStatus can treat the change as already done.
+        This is the only way to change an order's status.
+      operationId: updateOrderStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: The unique order identifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderStatusRequest'
+            example:
+              expectedStatus: NEW
+              newStatus: FILLED
+              reason: "Filled by trade executor"
+      responses:
+        '200':
+          description: Status changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '404':
+          description: Order not found (errorCode ORD-404)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The order is no longer in expectedStatus; nothing is changed (errorCode ORD-409)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusConflictResponse'
+              example:
+                errorCode: ORD-409
+                message: "Order 0adf7599-df9d-4176-93b6-3a555e54415d is FILLED, expected NEW"
+                currentStatus: FILLED
+        '422':
+          description: The change is not allowed, or the request is invalid (errorCode VAL-422)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: VAL-422
+                message: "Status change FILLED -> NEW is not allowed"
         '401':
           description: Unauthorized
           content:
@@ -278,7 +352,9 @@ components:
 
     UpdateOrderRequest:
       type: object
-      description: Update mutable order fields (all optional - only provided fields are updated)
+      description: >
+        Update mutable order fields (all optional - only provided fields are updated).
+        orderStatus must be left out; status only changes through PATCH /orders/{orderId}/status.
       properties:
         quantity:
           type: integer
@@ -295,7 +371,8 @@ components:
         orderStatus:
           type: string
           enum: [NEW, FILLED, CANCELLED, REJECTED]
-          description: New order status
+          nullable: true
+          description: Not allowed - sending any value returns 422. Use PATCH /orders/{orderId}/status.
         updatedBy:
           type: string
           description: User making the update
@@ -311,6 +388,38 @@ components:
         message:
           type: string
           description: Human-readable error message
+
+    UpdateOrderStatusRequest:
+      type: object
+      required: [expectedStatus, newStatus]
+      properties:
+        expectedStatus:
+          type: string
+          enum: [NEW, FILLED, CANCELLED, REJECTED]
+          description: The status the order must currently have; only NEW is allowed
+        newStatus:
+          type: string
+          enum: [NEW, FILLED, CANCELLED, REJECTED]
+          description: The status to change to; must be FILLED, REJECTED or CANCELLED
+        reason:
+          type: string
+          nullable: true
+          description: Why the status is changing; logged for audit
+
+    StatusConflictResponse:
+      type: object
+      required: [errorCode, message, currentStatus]
+      properties:
+        errorCode:
+          type: string
+          description: Always ORD-409
+        message:
+          type: string
+          description: Human-readable error message
+        currentStatus:
+          type: string
+          enum: [NEW, FILLED, CANCELLED, REJECTED]
+          description: The order's status at the time of the request
 
   securitySchemes:
     bearerAuth:

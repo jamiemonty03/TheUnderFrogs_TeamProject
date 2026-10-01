@@ -7,10 +7,10 @@ echo "Starting data validation test..."
 # Each microservice owns its own database container: "service|container|required tables"
 # Credentials and the database name come from app/<service>-service/.env (SPRING_DATASOURCE_*)
 DB_TARGETS=(
-    "accounts|accounts-db|accounts"
+    "accounts|accounts-db|accounts cash_movements"
     "instruments|instruments-db|instruments"
     "orders|orders-db|orders client_trades"
-    "positions|positions-db|positions"
+    "positions|positions-db|positions position_movements"
 )
 DB_CONTAINERS="accounts-db instruments-db orders-db positions-db"
 
