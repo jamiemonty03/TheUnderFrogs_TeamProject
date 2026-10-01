@@ -234,7 +234,7 @@ services:
     command: python /db/dashboard/dashboard_app.py
 
   sonarqube:
-    image: sonarqube:community
+    image: sonarqube:9.9.0-community
     container_name: sonarqube
     profiles: [quality]
     ports:
