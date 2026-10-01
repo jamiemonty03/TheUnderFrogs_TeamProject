@@ -152,16 +152,6 @@ services:
         condition: service_healthy
     ports:
       - "8084:8081"
-  
-  sonarqube:
-    image: sonarqube:community
-    profiles: ["quality"]
-    ports:
-      - "8088:9000"
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-      - sonarqube_logs:/opt/sonarqube/logs
 
   kafka:
     image: apache/kafka:3.9.1
@@ -243,17 +233,24 @@ services:
       - ./app/instruments-service/db/schema:/db/schema:ro
     command: python /db/dashboard/dashboard_app.py
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    profiles: [quality]
+    ports:
+      - "0.0.0.0:8088:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
 volumes:
   accounts_db_data:
   instruments_db_data:
   orders_db_data:
   positions_db_data:
   sonarqube_data:
-    name: sonarqube_data
-    external: true
   sonarqube_extensions:
-    name: sonarqube_extensions
-    external: true
   sonarqube_logs:
-    name: sonarqube_logs
-    external: true
