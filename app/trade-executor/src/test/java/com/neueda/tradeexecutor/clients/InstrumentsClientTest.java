@@ -10,6 +10,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,5 +90,20 @@ class InstrumentsClientTest {
                 .andRespond(withServerError());
 
         assertThrows(HttpServerErrorException.class, () -> instrumentsClient.getInstrument("AAPL"));
+    }
+
+    @Test
+    void getTradableSymbolsReturnsOnlyTradableInstruments() {
+        instrumentsService.expect(requestTo(INSTRUMENTS_URL))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("""
+                        [
+                          {"symbol":"AAPL","name":"Apple Inc.","assetClass":"Equity","currency":"USD","exchange":"NasdaqGS","tradable":true},
+                          {"symbol":"OLD","name":"Delisted Co","assetClass":"Equity","currency":"USD","exchange":"NYSE","tradable":false},
+                          {"symbol":"SPY","name":"SPDR S&P 500","assetClass":"ETF","currency":"USD","exchange":"NYSEArca","tradable":true}
+                        ]
+                        """, MediaType.APPLICATION_JSON));
+
+        assertEquals(List.of("AAPL", "SPY"), instrumentsClient.getTradableSymbols());
     }
 }

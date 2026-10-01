@@ -8,9 +8,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.InstrumentDto;
 import com.neueda.tradeexecutor.dtos.PriceDto;
+import com.neueda.tradeexecutor.enums.OrderSide;
 import com.neueda.tradeexecutor.services.PriceSource;
 
-// Stand-in price source: the last price instruments-service stored, until a live price feed exists
 @Component
 public class InstrumentsPriceSource implements PriceSource {
 
@@ -24,7 +24,7 @@ public class InstrumentsPriceSource implements PriceSource {
     }
 
     @Override
-    public Optional<BigDecimal> getPrice(InstrumentDto instrument) {
+    public Optional<BigDecimal> getPrice(InstrumentDto instrument, OrderSide side) {
         String path = pathFor(instrument.assetClass());
         if (path == null) {
             return Optional.empty();

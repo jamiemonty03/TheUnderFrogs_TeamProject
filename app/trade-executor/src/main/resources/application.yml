@@ -28,6 +28,13 @@ service:
   positions:
     url: ${POSITIONS_URL:http://positions-service:8081/api/positions}
 
+alpaca:
+  key-id: ${ALPACA_KEY_ID:}
+  secret-key: ${ALPACA_SECRET_KEY:}
+
+market-data:
+  poll-interval-ms: ${MARKET_DATA_POLL_INTERVAL_MS:5000}
+
 jwt:
   secret: ${JWT_SECRET}
 

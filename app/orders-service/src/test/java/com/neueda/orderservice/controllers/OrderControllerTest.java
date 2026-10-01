@@ -16,6 +16,7 @@ import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.services.OrderCancellationService;
+import com.neueda.orderservice.services.OrderStatusService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,13 +59,16 @@ public class OrderControllerTest {
     @Mock
     private OrderCancellationService orderCancellationService;
 
+    @Mock
+    private OrderStatusService orderStatusService;
+
     private Order testOrder1;
     private Order testOrder2;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        orderController = new OrderController(orderProcessor, orderRepository, restTemplate, orderCancellationService);
+        orderController = new OrderController(orderProcessor, orderRepository, restTemplate, orderCancellationService, orderStatusService);
 
         testOrder1 = new Order(
             "ORD001",
@@ -157,13 +161,13 @@ public class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /orders/{orderId} updates order status successfully")
-    void testUpdateOrderStatusSuccess() {
+    @DisplayName("PUT /orders/{orderId} does not change order status")
+    void testUpdateOrderDoesNotChangeStatus() {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(null, null, null, OrderStatus.FILLED, "system");
-        
+
         var response = orderController.updateOrder("ORD001", updateRequest);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertEquals(OrderStatus.FILLED, response.getBody().orderStatus());
+        assertEquals(OrderStatus.NEW, response.getBody().orderStatus());
         assertEquals("system", response.getBody().updatedBy());
     }
 

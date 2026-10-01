@@ -19,6 +19,7 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.InstrumentDto;
+import com.neueda.tradeexecutor.enums.OrderSide;
 
 class InstrumentsPriceSourceTest {
 
@@ -56,7 +57,7 @@ class InstrumentsPriceSourceTest {
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(priceJson("AAPL", "148.50"), MediaType.APPLICATION_JSON));
 
-        Optional<BigDecimal> price = priceSource.getPrice(instrument("AAPL", "Equity"));
+        Optional<BigDecimal> price = priceSource.getPrice(instrument("AAPL", "Equity"), OrderSide.BUY);
 
         assertEquals(0, new BigDecimal("148.50").compareTo(price.orElseThrow()));
         instrumentsService.verify();
@@ -67,7 +68,7 @@ class InstrumentsPriceSourceTest {
         instrumentsService.expect(requestTo(PRICES_URL + "/etfs/SPY"))
                 .andRespond(withSuccess(priceJson("SPY", "520.10"), MediaType.APPLICATION_JSON));
 
-        Optional<BigDecimal> price = priceSource.getPrice(instrument("SPY", "ETF"));
+        Optional<BigDecimal> price = priceSource.getPrice(instrument("SPY", "ETF"), OrderSide.BUY);
 
         assertEquals(0, new BigDecimal("520.10").compareTo(price.orElseThrow()));
         instrumentsService.verify();
@@ -78,7 +79,7 @@ class InstrumentsPriceSourceTest {
         instrumentsService.expect(requestTo(PRICES_URL + "/bonds/BND"))
                 .andRespond(withSuccess(priceJson("BND", "72.35"), MediaType.APPLICATION_JSON));
 
-        Optional<BigDecimal> price = priceSource.getPrice(instrument("BND", "Bond"));
+        Optional<BigDecimal> price = priceSource.getPrice(instrument("BND", "Bond"), OrderSide.BUY);
 
         assertEquals(0, new BigDecimal("72.35").compareTo(price.orElseThrow()));
         instrumentsService.verify();
@@ -89,7 +90,7 @@ class InstrumentsPriceSourceTest {
         instrumentsService.expect(requestTo(PRICES_URL + "/stocks/AAPL"))
                 .andRespond(withResourceNotFound());
 
-        Optional<BigDecimal> price = priceSource.getPrice(instrument("AAPL", "Equity"));
+        Optional<BigDecimal> price = priceSource.getPrice(instrument("AAPL", "Equity"), OrderSide.BUY);
 
         assertTrue(price.isEmpty());
     }
@@ -100,12 +101,12 @@ class InstrumentsPriceSourceTest {
                 .andRespond(withServerError());
 
         assertThrows(HttpServerErrorException.class,
-                () -> priceSource.getPrice(instrument("AAPL", "Equity")));
+                () -> priceSource.getPrice(instrument("AAPL", "Equity"), OrderSide.BUY));
     }
 
     @Test
     void returnsEmptyWithoutCallingForUnknownAssetClass() {
-        Optional<BigDecimal> price = priceSource.getPrice(instrument("GOLD", "Commodity"));
+        Optional<BigDecimal> price = priceSource.getPrice(instrument("GOLD", "Commodity"), OrderSide.BUY);
 
         assertTrue(price.isEmpty());
         // verify() fails if any request was made

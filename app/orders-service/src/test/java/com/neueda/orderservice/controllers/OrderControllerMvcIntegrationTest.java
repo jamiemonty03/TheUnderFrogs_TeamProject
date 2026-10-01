@@ -39,6 +39,7 @@ import com.neueda.orderservice.models.Instrument;
 import com.neueda.orderservice.models.Order;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.services.OrderCancellationService;
+import com.neueda.orderservice.services.OrderStatusService;
 import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import com.neueda.orderservice.services.orderServices.OrderResult;
 
@@ -60,6 +61,9 @@ class OrderControllerMvcIntegrationTest {
 
     @MockBean
     private OrderCancellationService orderCancellationService;
+
+    @MockBean
+    private OrderStatusService orderStatusService;
 
     private Order order;
 
