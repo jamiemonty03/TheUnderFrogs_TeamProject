@@ -78,27 +78,27 @@ pipeline {
             parallel {
                 stage('Scan Accounts Service') {
                     steps {
-                        sh 'mvn -B -f app/accounts-service/pom.xml dependency:tree > accounts-service-dependencies.txt'
+                        sh 'mvn -B -f app/accounts-service/pom.xml dependency:analyze'
                     }
                 }
                 stage('Scan Instruments Service') {
                     steps {
-                        sh 'mvn -B -f app/instruments-service/pom.xml dependency:tree > instruments-service-dependencies.txt'
+                        sh 'mvn -B -f app/instruments-service/pom.xml dependency:analyze'
                     }
                 }
                 stage('Scan Orders Service') {
                     steps {
-                        sh 'mvn -B -f app/orders-service/pom.xml dependency:tree > orders-service-dependencies.txt'
+                        sh 'mvn -B -f app/orders-service/pom.xml dependency:analyze'
                     }
                 }
                 stage('Scan Positions Service') {
                     steps {
-                        sh 'mvn -B -f app/positions-service/pom.xml dependency:tree > positions-service-dependencies.txt'
+                        sh 'mvn -B -f app/positions-service/pom.xml dependency:analyze'
                     }
                 }
                 stage('Scan Trade Executor') {
                     steps {
-                        sh 'mvn -B -f app/trade-executor/pom.xml dependency:tree > trade-executor-dependencies.txt'
+                        sh 'mvn -B -f app/trade-executor/pom.xml dependency:analyze'
                     }
                 }
             }
