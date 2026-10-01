@@ -107,7 +107,7 @@ public class ExceptionHandlerTest {
         
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("VAL-400", response.getBody().errorCode());
+        assertEquals("VAL-422", response.getBody().errorCode());
         assertTrue(response.getBody().message().contains("Default message"));
     }
 
@@ -124,6 +124,6 @@ public class ExceptionHandlerTest {
         
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("VAL-400", response.getBody().errorCode());
+        assertEquals("VAL-422", response.getBody().errorCode());
     }
 }
