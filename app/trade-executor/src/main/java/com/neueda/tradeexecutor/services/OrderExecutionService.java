@@ -33,6 +33,11 @@ public class OrderExecutionService {
     public void execute(String orderId) {
         OrderDto order = ordersClient.getOrder(orderId);
 
+        if (order.orderStatus() == OrderStatus.CANCELLED) {
+            settlementService.compensateCancelled(order);
+            return;
+        }
+
         if (order.orderStatus() != OrderStatus.NEW) {
             log.info("Skipping order {}: status is {}", orderId, order.orderStatus());
             return;
