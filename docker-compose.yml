@@ -107,6 +107,8 @@ services:
       dockerfile: Dockerfile
     container_name: orders-service
     env_file: ./app/orders-service/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: json-logs
     depends_on:
       orders-db:
         condition: service_healthy
