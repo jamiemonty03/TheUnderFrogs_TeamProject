@@ -38,7 +38,7 @@ message. Steps that already happened are skipped, missing steps are completed, a
 |---|---|---|---|---|
 | FILL + BUY | debit cash | add position | `NEW → FILLED` | publish `ORDER_FILLED` |
 | FILL + SELL | reduce position | credit cash | `NEW → FILLED` | publish `ORDER_FILLED` |
-| REJECT | nothing moves | nothing moves | `NEW → REJECTED` | publish `ORDER_REJECTED` |
+| REJECT | reverse anything an earlier attempt moved (normally a no-op) | | `NEW → REJECTED` | publish `ORDER_REJECTED` |
 
 The amount is `fillPrice × quantity`, rounded to 2 decimal places.
 
@@ -140,9 +140,11 @@ Anything else is left alone so it reaches the Kafka error handler.
 
 | Situation | Reverse | Final status | Publish |
 |---|---|---|---|
+| Decision is REJECT | position, then cash (no-ops unless an earlier attempt moved something) | `REJECTED` | `ORDER_REJECTED` |
 | Step 1 refused | nothing (nothing moved) | `REJECTED` | `ORDER_REJECTED` |
 | Step 2 refused | step 1 | `REJECTED` | `ORDER_REJECTED` |
 | Status PATCH 409, order is `CANCELLED` | position, then cash | `CANCELLED` (unchanged) | nothing, because its already published `ORDER_CANCELLED` |
+| Order already `CANCELLED` when an attempt starts (cancelled during retries or after a crash) | position, then cash | `CANCELLED` (unchanged) | nothing |
 | Status PATCH 409, order is `FILLED` or `REJECTED` | nothing | unchanged | nothing (duplicate delivery) |
 | Temporary failure anywhere | nothing | stays `NEW` | nothing; Kafka redelivers |
 
@@ -237,7 +239,7 @@ These are open questions for the team, not settled design:
   sends the message to `orders.DLT`. If a service is down longer than that mid-saga, the order stays `NEW` with a
   partial movement until someone replays it from the DLT.
 - **The decision is recalculated on redelivery.** If the price moves between attempts, the published `fillPrice` can
-  differ from the amount actually debited on the first attempt (the repeat debit is a no-op). In the worst case the
-  decision flips from FILL to REJECT, leaving the first attempt's movement in place.
+  differ from the amount actually debited on the first attempt (the repeat debit is a no-op). If the decision flips
+  from FILL to REJECT, the REJECT path reverses the earlier attempt's movement before marking the order REJECTED.
 - **positions-service returns 409 for two things**: insufficient holdings and an optimistic-lock clash. The executor
   treats both as a rejection, so a lock clash rejects a sell that a retry would have filled.

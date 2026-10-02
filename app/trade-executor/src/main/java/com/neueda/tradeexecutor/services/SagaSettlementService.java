@@ -37,7 +37,11 @@ public class SagaSettlementService implements SettlementService {
 
     @Override
     public void settle(OrderDto order, FillDecision decision) {
+        log.info("Settling order {}: {} {} {} {}", order.orderId(), order.side(), order.quantity(), order.symbol(),
+                decision.filled() ? "FILL @ " + decision.fillPrice() : "REJECT (" + decision.reason() + ")");
+
         if (!decision.filled()) {
+            reverseMovements(order);
             complete(order, OrderStatus.REJECTED, null, decision.reason());
             return;
         }
@@ -51,6 +55,12 @@ public class SagaSettlementService implements SettlementService {
         }
 
         complete(order, OrderStatus.FILLED, decision.fillPrice(), null);
+    }
+
+    @Override
+    public void compensateCancelled(OrderDto order) {
+        reverseMovements(order);
+        log.info("Order {} is CANCELLED; any earlier movements reversed", order.orderId());
     }
 
     private void moveCashAndShares(OrderDto order, BigDecimal fillPrice) {
@@ -75,7 +85,6 @@ public class SagaSettlementService implements SettlementService {
         }
     }
 
-    
     private void complete(OrderDto order, OrderStatus status, BigDecimal fillPrice, String reason) {
         StatusUpdateResult result = ordersClient.updateStatus(order.orderId(), status, reason);
         if (result.updated()) {
@@ -86,23 +95,19 @@ public class SagaSettlementService implements SettlementService {
         resolveConflict(order, result.currentStatus());
     }
 
-    // 409 on the status change: someone else already moved the order out of NEW.
     private void resolveConflict(OrderDto order, OrderStatus current) {
         switch (current) {
             case FILLED, REJECTED ->
                 log.info("Order {} already {}; duplicate delivery, nothing to publish", order.orderId(), current);
             case CANCELLED -> {
-                // S7-13 won the race and already published ORDER_CANCELLED. Undo anything this run moved.
                 reverseMovements(order);
                 log.info("Order {} was cancelled mid-settlement; movements reversed", order.orderId());
             }
-            // 409 but still NEW shouldn't happen. Retryable, so Kafka tries again.
             case NEW -> throw new IllegalStateException("Status update for order " + order.orderId()
                     + " conflicted but the order is still NEW");
         }
     }
 
-    // Reversals are no-ops for movements that never happened, so this is safe whichever steps completed
     private void reverseMovements(OrderDto order) {
         positionsClient.reverse(order.accountId(), order.symbol(), order.orderId());
         accountsClient.reverse(order.accountId(), order.orderId());

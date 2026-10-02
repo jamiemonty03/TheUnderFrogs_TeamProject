@@ -136,12 +136,35 @@ class SagaSettlementServiceTest {
 
         saga.settle(order(OrderSide.BUY), FillDecision.reject("Instrument AAPL is not tradable"));
 
-        verifyNoInteractions(accountsClient, positionsClient);
+        InOrder steps = inOrder(positionsClient, accountsClient, ordersClient);
+        steps.verify(positionsClient).reverse("ACC-1", "AAPL", "ORD-1");
+        steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Instrument AAPL is not tradable");
+        verify(accountsClient, never()).debit(anyString(), anyString(), any());
+        verify(accountsClient, never()).credit(anyString(), anyString(), any());
+        verify(positionsClient, never()).addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+        verify(positionsClient, never()).reducePosition(anyString(), anyString(), anyString(), anyInt());
         verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Instrument AAPL is not tradable");
         OrderOutcomePayload outcome = publishedOutcome();
         assertEquals(OrderStatus.REJECTED, outcome.status());
         assertNull(outcome.fillPrice());
         assertEquals("Instrument AAPL is not tradable", outcome.reason());
+    }
+
+    @Test
+    void redeliveryThatFlipsToRejectUndoesTheEarlierAttemptsDebit() {
+        doThrow(unavailable()).when(positionsClient)
+                .addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+        assertThrows(HttpServerErrorException.class, () -> saga.settle(order(OrderSide.BUY), FILL));
+        statusUpdates(OrderStatus.REJECTED);
+
+        saga.settle(order(OrderSide.BUY), FillDecision.reject("Market price 160.00 is above BUY limit 150.00"));
+
+        InOrder steps = inOrder(accountsClient, ordersClient);
+        steps.verify(accountsClient).debit("ACC-1", "ORD-1", AMOUNT);
+        steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Market price 160.00 is above BUY limit 150.00");
+        assertEquals(OrderStatus.REJECTED, publishedOutcome().status());
     }
 
     @Test
@@ -242,6 +265,15 @@ class SagaSettlementServiceTest {
         steps.verify(positionsClient).reverse("ACC-1", "AAPL", "ORD-1");
         steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
         verifyNoInteractions(publisher);
+    }
+
+    @Test
+    void compensateCancelledReversesBothMovementsWithoutTouchingStatusOrPublishing() {
+        saga.compensateCancelled(order(OrderSide.BUY));
+
+        verify(positionsClient).reverse("ACC-1", "AAPL", "ORD-1");
+        verify(accountsClient).reverse("ACC-1", "ORD-1");
+        verifyNoInteractions(ordersClient, publisher);
     }
 
     @Test

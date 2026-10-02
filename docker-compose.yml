@@ -215,6 +215,10 @@ services:
         condition: service_started
       instruments-service:
         condition: service_started
+      accounts-service:
+        condition: service_started
+      positions-service:
+        condition: service_started
 
   python:
     build:
