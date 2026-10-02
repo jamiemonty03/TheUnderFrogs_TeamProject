@@ -1,5 +1,10 @@
 package com.neueda.orderservice.services;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +19,8 @@ import com.neueda.orderservice.repositories.OrderRepository;
 
 @Service
 public class OrderCancellationService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderCancellationService.class);
 
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -32,8 +39,12 @@ public class OrderCancellationService {
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
 
         if (updated == 0) {
+            log.warn("Order not cancellable {} {}", kv("orderId", orderId), kv("currentStatus", order.getOrderStatus()));
             throw new OrderNotCancellableException(orderId, order.getOrderStatus());
         }
+
+        log.info("Order cancelled {} {} {}", kv("orderId", orderId), kv("accountId", order.getAccountId()),
+                kv("symbol", order.getSymbol()));
 
         eventPublisher.publishEvent(new OrderCancelledApplicationEvent(this, new OrderCancelledPayload(
                 order.getOrderId(),

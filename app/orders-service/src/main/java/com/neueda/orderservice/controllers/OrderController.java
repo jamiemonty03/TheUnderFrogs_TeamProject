@@ -1,5 +1,10 @@
 package com.neueda.orderservice.controllers;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
@@ -33,6 +38,8 @@ import com.neueda.orderservice.services.OrderStatusService;
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
     private final OrderProcessor orderProcessor;
     private final OrderRepository orderRepository;
@@ -83,8 +90,14 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
+        log.info("Order placement received {} {} {} {} {}", kv("accountId", request.accountId()),
+            kv("symbol", request.symbol()), kv("side", request.side()), kv("quantity", request.quantity()),
+            kv("price", request.price()));
+
         Account account = fetchAccount(request.accountId());
         if (account == null) {
+            log.warn("Order rejected {} {} {}", kv("status", 404), kv("errorCode", "ACC-404"),
+                kv("accountId", request.accountId()));
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("ACC-404", "Account not found: " + request.accountId()));
         }
@@ -99,16 +112,25 @@ public class OrderController {
             request.idempotencyKey()
         );
         if (!result.isSuccess()) {
+            log.warn("Order rejected {} {} {}", kv("status", 422), kv("errorCode", "ORD-422"),
+                kv("reason", result.getMessage()));
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse("ORD-422", result.getMessage()));
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(result.getOrder()));
+
+        Order order = result.getOrder();
+        log.info("Order placed {} {} {} {} {} {}", kv("orderId", order.getOrderId()),
+            kv("accountId", order.getAccountId()), kv("symbol", order.getSymbol()), kv("side", order.getSide()),
+            kv("quantity", order.getQuantity()), kv("orderStatus", order.getOrderStatus()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(order));
     }
 
     private Account fetchAccount(String accountId) {
         try {
             return restTemplate.getForObject(accountsServiceUrl + "/{accountId}", Account.class, accountId);
         } catch (RestClientException e) {
+            log.warn("Accounts service lookup failed {} {}", kv("accountId", accountId),
+                kv("error", e.getClass().getSimpleName()));
             return null;
         }
     }
