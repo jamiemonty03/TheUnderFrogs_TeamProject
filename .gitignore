@@ -4,3 +4,9 @@ starter/
 __pycache__/
 build.log
 *.log
+
+*/dist
+*/node_modules
+app/auth-service/build
+*.tsbuildinfo
+
