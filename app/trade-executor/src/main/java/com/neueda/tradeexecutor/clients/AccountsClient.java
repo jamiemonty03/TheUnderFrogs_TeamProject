@@ -8,11 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-// Cash movements, all keyed by orderId (S7-5a): repeating a call with the same orderId is a no-op.
 @Component
 public class AccountsClient {
 
-    // 400 insufficient funds, 403 account not active, 404 no such account
     private static final Set<Integer> BUSINESS_STATUSES = Set.of(400, 403, 404);
 
     private final RestTemplate restTemplate;

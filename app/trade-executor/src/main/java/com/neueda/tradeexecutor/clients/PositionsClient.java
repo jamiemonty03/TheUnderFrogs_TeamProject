@@ -8,12 +8,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-// Position movements, all keyed by orderId (S7-5a): repeating a call with the same orderId is a no-op.
+
 @Component
 public class PositionsClient {
 
-    // 400 bad request, 404 no position to sell, 409 insufficient holdings.
-    // positions-service also uses 409 for optimistic-lock clashes, which S7-5a should split out.
+
     private static final Set<Integer> BUSINESS_STATUSES = Set.of(400, 404, 409);
 
     private final RestTemplate restTemplate;

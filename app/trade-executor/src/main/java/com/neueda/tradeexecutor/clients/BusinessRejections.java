@@ -7,7 +7,7 @@ import com.neueda.tradeexecutor.exceptions.SettlementRejectedException;
 
 final class BusinessRejections {
 
-    private record ErrorBody(String code, String message) {}
+    private record ErrorBody(String errorCode, String message) {}
 
     private BusinessRejections() {
     }
