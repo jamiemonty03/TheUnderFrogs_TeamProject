@@ -2,6 +2,7 @@ package com.neueda.accountservice.services;
 
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.repositories.AccountRepository;
+import com.neueda.accountservice.repositories.CashMovementRepository;
 import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
@@ -25,13 +26,16 @@ public class AccountServiceTest {
     
     @Mock
     private AccountRepository accountRepository;
+    @Mock
+    private CashMovementRepository cashMovementRepository;
+
     
     private AccountService accountService;
     private Account account;
     
     @BeforeEach
     public void setUp() {
-        accountService = new AccountService(accountRepository);
+        accountService = new AccountService(accountRepository, cashMovementRepository);
         account = new Account("ACC001", 1L, "John Doe", new BigDecimal("5000"), AccountStatus.ACTIVE);
         account.setVersion(1);
         account.setCreatedAt(LocalDateTime.now());

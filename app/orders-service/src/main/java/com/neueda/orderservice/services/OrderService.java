@@ -15,16 +15,13 @@ import com.neueda.orderservice.repositories.OrderRepository;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Optional;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class OrderService {
     
     private final OrderValidationService validationService;
     private final OrderRepository orderRepository;
-    private final Map<String, Order> ordersByIdempotencyKey = new ConcurrentHashMap<>();
 
     public OrderService(OrderRepository orderRepository) {
         if (orderRepository == null) {
@@ -35,11 +32,10 @@ public class OrderService {
     }
 
     private synchronized Order createOrder(Order order) throws DuplicateOrderException {
-        if (ordersByIdempotencyKey.containsKey(order.getIdempotencyKey())) {
+        if (orderRepository.existsByIdempotencyKey(order.getIdempotencyKey())) {
             throw new DuplicateOrderException(order.getIdempotencyKey(), "idempotencyKey");
         }
         orderRepository.save(order);
-        ordersByIdempotencyKey.put(order.getIdempotencyKey(), order);
         return order;
     }
 
@@ -75,6 +71,6 @@ public class OrderService {
     }
 
     public Optional<Order> getOrderByIdempotencyKey(String idempotencyKey) {
-        return Optional.ofNullable(ordersByIdempotencyKey.get(idempotencyKey));
+        return orderRepository.findByIdempotencyKey(idempotencyKey);
     }
 }
