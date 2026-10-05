@@ -41,8 +41,8 @@ check_prerequisites() {
     fi
     
     [ -f "docker-compose.yml" ] || error_exit "docker-compose.yml not found in current directory"
-    for svc in accounts instruments orders positions trade-analytics; do
-        [ -f "app/$svc-service/.env" ] || error_exit "app/$svc-service/.env missing (copy it from .env.example and set the password)"
+    for svc in accounts-service instruments-service orders-service positions-service trade-analytics-service trade-executor; do
+        [ -f "app/$svc/.env" ] || error_exit "app/$svc/.env missing (copy it from .env.example and set the password / JWT_SECRET)"
     done
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
 }
@@ -75,9 +75,9 @@ check_prerequisites
 # ==========================================
 if [[ "$STAGE" == "all" || "$STAGE" == "build" ]]; then
     echo -e "${YELLOW}Building Java services...${NC}"
-    for svc in accounts instruments orders positions; do
-        mvn -q -B -f app/$svc-service/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed for $svc-service"
-        echo -e "${GREEN}✓ Built $svc-service${NC}"
+    for svc in accounts-service instruments-service orders-service positions-service trade-executor; do
+        mvn -q -B -f app/$svc/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed for $svc"
+        echo -e "${GREEN}✓ Built $svc${NC}"
     done
     echo ""
     [ "$STAGE" == "build" ] && exit 0
@@ -246,6 +246,36 @@ rm -f "$trades_file" "$positions_file"
     docker-compose up -d trade-analytics-service || error_exit "Failed to start trade-analytics-service"
     echo -e "${GREEN}✓ trade-analytics-service started${NC}"
 
+    echo ""
+fi
+
+# ==========================================
+# VERIFY
+# ==========================================
+if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
+    echo -e "${YELLOW}Verifying setup...${NC}"
+
+    ROW_COUNTS="SELECT table_schema || '.' || table_name || ': ' ||
+        (xpath('/row/c/text()', query_to_xml(format('SELECT COUNT(*) AS c FROM %I.%I', table_schema, table_name), false, true, '')))[1]::text
+        FROM information_schema.tables
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_type = 'BASE TABLE'
+        ORDER BY 1;"
+
+    for container in accounts-db instruments-db orders-db positions-db; do
+        echo -e "${GREEN}$container${NC}"
+        db_psql "$container" -Atc "$ROW_COUNTS" | sed 's/^/    /' || error_exit "Could not read tables in $container"
+    done
+    echo -e "${GREEN}trade-analytics-db${NC}"
+    docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -Atc "$1"' _ "$ROW_COUNTS" \
+        | sed 's/^/    /' || error_exit "Could not read tables in trade-analytics-db"
+
+    echo -e "${GREEN}Kafka topics${NC}"
+    docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe 2>/dev/null \
+        | grep -o '^Topic: [^[:space:]]*.*PartitionCount: [0-9]*' | sed 's/TopicId: [^[:space:]]*//; s/^/    /' \
+        || error_exit "Kafka topics not available"
+
+    echo -e "${GREEN}Containers${NC}"
+    docker-compose ps --format '{{.Name}}\t{{.Status}}' | sed 's/^/    /'
     echo ""
 fi
 

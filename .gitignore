@@ -10,3 +10,5 @@ build.log
 app/auth-service/build
 *.tsbuildinfo
 
+.pytest_cache/
+tests/reports/

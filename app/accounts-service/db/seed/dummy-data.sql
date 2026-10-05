@@ -9,7 +9,8 @@ INSERT INTO users (username, email, password, full_name, is_active, version, cre
 ('grace',  'grace.kim@example.com',     '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Grace Kim', TRUE, 0, NOW(), NOW(), 'SYSTEM'),
 ('henry',  'henry.chen@example.com',    '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Henry Chen', TRUE, 0, NOW(), NOW(), 'SYSTEM'),
 ('isla',   'isla.brown@example.com',    '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Isla Brown', TRUE, 0, NOW(), NOW(), 'SYSTEM'),
-('jack',   'jack.turner@example.com',   '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Jack Turner', TRUE, 0, NOW(), NOW(), 'SYSTEM')
+('jack',   'jack.turner@example.com',   '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Jack Turner', TRUE, 0, NOW(), NOW(), 'SYSTEM'),
+('demo',   'demo.trader@example.com',   '$2a$10$tEN44im3u450Nu8rjYmV2./rNJUmlmQsl8jIAmoJjbOWRMXILuxfW', 'Demo Trader', TRUE, 0, NOW(), NOW(), 'SYSTEM')
 ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO accounts (account_id, user_id, holder_name, cash_balance, status, version, created_at, last_updated, updated_by)
@@ -24,7 +25,8 @@ FROM (VALUES
     ('ACC0007', 'grace',  'Grace Kim',     12750.30::NUMERIC(18,2), 'ACTIVE'),
     ('ACC0008', 'henry',  'Henry Chen',       800.00::NUMERIC(18,2), 'ACTIVE'),
     ('ACC0009', 'isla',   'Isla Brown',    33000.00::NUMERIC(18,2), 'ACTIVE'),
-    ('ACC0010', 'jack',   'Jack Turner',    6100.45::NUMERIC(18,2), 'SUSPENDED')
+    ('ACC0010', 'jack',   'Jack Turner',    6100.45::NUMERIC(18,2), 'SUSPENDED'),
+    ('ACC0011', 'demo',   'Demo Trader',  100000.00::NUMERIC(18,2), 'ACTIVE')
 ) AS seed(account_id, username, holder_name, cash_balance, status)
 JOIN users ON users.username = seed.username
 ON CONFLICT (account_id) DO UPDATE SET
