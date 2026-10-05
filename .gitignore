@@ -4,3 +4,5 @@ starter/
 __pycache__/
 build.log
 *.log
+.pytest_cache/
+tests/reports/
