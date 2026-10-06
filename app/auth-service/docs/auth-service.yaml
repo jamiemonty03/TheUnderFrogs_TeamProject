@@ -290,9 +290,15 @@ components:
           example: john@example.com
         password:
           type: string
-          minLength: 6
-          description: Account password (minimum 6 characters)
-          example: MySecurePass123
+          minLength: 12
+          maxLength: 128
+          description: Account password (12 to 128 characters, not blank)
+          example: correct-horse-battery
+        full_name:
+          type: string
+          maxLength: 255
+          description: Full name
+          example: John Doe
 
     LoginRequest:
       type: object
@@ -374,7 +380,7 @@ components:
         - id
         - username
         - email
-        - role
+        - roles
         - is_active
         - created_at
         - updated_at
@@ -393,10 +399,22 @@ components:
           format: email
           description: User email
           example: john@example.com
-        role:
+        full_name:
           type: string
-          description: User role
-          example: user
+          nullable: true
+          description: Full name
+          example: John Doe
+        roles:
+          type: array
+          items:
+            type: string
+          description: User roles
+          example: [USER]
+        account_id:
+          type: string
+          nullable: true
+          description: Linked trading account ID
+          example: ACC0001
         is_active:
           type: boolean
           description: User account status
@@ -411,6 +429,10 @@ components:
           format: date-time
           description: Last update timestamp
           example: 2024-10-06T10:30:00Z
+        version:
+          type: integer
+          description: Version for optimistic locking
+          example: 0
 
     ErrorResponse:
       type: object
