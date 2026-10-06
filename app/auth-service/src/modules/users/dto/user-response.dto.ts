@@ -21,15 +21,29 @@ export class UserResponseDto {
     example: 'john@example.com',
   })
   email: string;
-  full_name: string | null;
-  roles: string[];
-  account_id: string | null;
 
   @ApiProperty({
-    description: 'User role',
-    example: 'user',
+    description: 'Full name',
+    type: 'string',
+    nullable: true,
+    example: 'John Doe',
   })
-  role: string;
+  full_name: string | null;
+
+  @ApiProperty({
+    description: 'User roles',
+    type: [String],
+    example: ['USER'],
+  })
+  roles: string[];
+
+  @ApiProperty({
+    description: 'Linked trading account ID',
+    type: 'string',
+    nullable: true,
+    example: 'ACC0001',
+  })
+  account_id: string | null;
 
   @ApiProperty({
     description: 'User account status',

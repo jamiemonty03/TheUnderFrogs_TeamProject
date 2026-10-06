@@ -6,9 +6,9 @@ import {
   IsUsername,
   NotBlank,
   PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   Trim,
 } from '../../users/dto/validation';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -55,14 +55,21 @@ export class RegisterDto {
   email: string;
 
   @ApiProperty({
-    description: 'Account password (minimum 6 characters)',
-    minLength: 6,
-    example: 'MySecurePass123',
+    description: `Account password (${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters)`,
+    minLength: PASSWORD_MIN_LENGTH,
+    maxLength: PASSWORD_MAX_LENGTH,
+    example: 'correct-horse-battery',
   })
   @IsNotEmpty()
   @IsPassword()
   password: string;
 
+  @ApiProperty({
+    description: 'Full name',
+    maxLength: 255,
+    example: 'John Doe',
+    required: false,
+  })
   @IsOptional()
   @IsFullName()
   full_name?: string;

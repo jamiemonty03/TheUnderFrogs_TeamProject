@@ -1,7 +1,6 @@
 import { IsNotEmpty, IsOptional } from 'class-validator';
-import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername } from './validation';
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './validation';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -24,64 +23,48 @@ export class CreateUserDto {
   email: string;
 
   @ApiProperty({
-    description: 'Account password (minimum 6 characters)',
-    minLength: 6,
-    example: 'Password1234',
+    description: `Account password (${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters)`,
+    minLength: PASSWORD_MIN_LENGTH,
+    maxLength: PASSWORD_MAX_LENGTH,
+    example: 'correct-horse-battery',
   })
   @IsNotEmpty()
   @IsPassword()
   password: string;
 
+  @ApiProperty({
+    description: 'Full name',
+    maxLength: 255,
+    example: 'John Doe',
+    required: false,
+  })
   @IsOptional()
   @IsFullName()
   full_name?: string;
 
+  @ApiProperty({
+    description: 'User role',
+    enum: ['USER', 'ADMIN'],
+    default: 'USER',
+    example: 'USER',
+    required: false,
+  })
   @IsOptional()
   @IsRole()
   role?: string;
 }
 
 export class UpdateUserDto {
-  @IsOptional()
-  @IsUsername()
-  username?: string;
-
-  @IsOptional()
-  @IsEmailAddress()
-  email?: string;
-
-  @IsOptional()
-  @IsPassword()
-  password?: string;
-
-  @IsOptional()
-  @IsFullName()
-  full_name?: string;
-
-  @IsOptional()
-  @IsRole()
-  @ApiProperty({
-    description: 'User role',
-    default: 'user',
-    example: 'user',
-    required: false,
-  })
-  @IsString()
-  @IsOptional()
-  role?: string = 'user';
-}
-
-export class UpdateUserDto {
   @ApiProperty({
     description: 'Username',
     minLength: 3,
+    maxLength: 50,
     example: 'johndoe',
-    required: true,
+    required: false,
   })
-  @IsString()
-  @MinLength(3)
-  @IsNotEmpty()
-  username: string;
+  @IsOptional()
+  @IsUsername()
+  username?: string;
 
   @ApiProperty({
     description: 'User email address',
@@ -89,30 +72,39 @@ export class UpdateUserDto {
     example: 'john@example.com',
     required: false,
   })
-  @IsEmail()
   @IsOptional()
+  @IsEmailAddress()
   email?: string;
 
   @ApiProperty({
-    description: 'Account password (minimum 6 characters)',
-    minLength: 6,
-    example: 'Password1234',
-    required: true,
+    description: `Account password (${PASSWORD_MIN_LENGTH} to ${PASSWORD_MAX_LENGTH} characters)`,
+    minLength: PASSWORD_MIN_LENGTH,
+    maxLength: PASSWORD_MAX_LENGTH,
+    example: 'correct-horse-battery',
+    required: false,
   })
-  
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(6)
-  
-  password: string;
+  @IsOptional()
+  @IsPassword()
+  password?: string;
+
+  @ApiProperty({
+    description: 'Full name',
+    maxLength: 255,
+    example: 'John Doe',
+    required: false,
+  })
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
 
   @ApiProperty({
     description: 'User role',
-    example: 'user',
+    enum: ['USER', 'ADMIN'],
+    example: 'USER',
     required: false,
   })
-  @IsString()
   @IsOptional()
+  @IsRole()
   role?: string;
 }
 

@@ -7,11 +7,22 @@ import { load } from 'js-yaml';
 import { AppModule } from './app.module';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { JsonBodyAdapter } from './common/validation/json-body.adapter';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
 
   app.useGlobalPipes(createValidationPipe());
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  const specPath = join(__dirname, '..', 'docs', 'auth-service.yaml');
+  const document = load(readFileSync(specPath, 'utf8')) as OpenAPIObject;
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+    },
+  });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('APP_PORT', 8081);
