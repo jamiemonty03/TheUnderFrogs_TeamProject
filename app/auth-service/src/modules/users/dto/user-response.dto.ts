@@ -47,4 +47,11 @@ export class UserResponseDto {
     example: '2024-10-06T10:30:00Z',
   })
   updated_at: Date;
+
+  @ApiProperty({
+    description: 'Version for optimistic locking',
+    type: 'integer',
+    example: 1,
+  })
+  version: number;
 }

@@ -25,7 +25,7 @@ export class CreateUserDto {
   @ApiProperty({
     description: 'Account password (minimum 6 characters)',
     minLength: 6,
-    example: 'MySecurePass123',
+    example: 'Password1234',
   })
   @IsNotEmpty()
   @IsString()
@@ -48,12 +48,12 @@ export class UpdateUserDto {
     description: 'Username',
     minLength: 3,
     example: 'johndoe',
-    required: false,
+    required: true,
   })
   @IsString()
   @MinLength(3)
-  @IsOptional()
-  username?: string;
+  @IsNotEmpty()
+  username: string;
 
   @ApiProperty({
     description: 'User email address',
@@ -68,13 +68,15 @@ export class UpdateUserDto {
   @ApiProperty({
     description: 'Account password (minimum 6 characters)',
     minLength: 6,
-    example: 'MySecurePass123',
-    required: false,
+    example: 'Password1234',
+    required: true,
   })
+  
   @IsString()
+  @IsNotEmpty()
   @MinLength(6)
-  @IsOptional()
-  password?: string;
+  
+  password: string;
 
   @ApiProperty({
     description: 'User role',
