@@ -1,38 +1,49 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername } from './validation';
 
 export class CreateUserDto {
   @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
+  @IsUsername()
   username: string;
 
   @IsNotEmpty()
-  @IsEmail()
+  @IsEmailAddress()
   email: string;
 
   @IsNotEmpty()
-  @IsString()
-  @MinLength(6)
+  @IsPassword()
   password: string;
 
-  @IsString()
-  role?: string = 'user';
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
+
+  @IsOptional()
+  @IsRole()
+  role?: string;
 }
 
 export class UpdateUserDto {
-  @IsString()
-  @MinLength(3)
+  @IsOptional()
+  @IsUsername()
   username?: string;
 
-  @IsEmail()
+  @IsOptional()
+  @IsEmailAddress()
   email?: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsOptional()
+  @IsPassword()
   password?: string;
 
-  @IsString()
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
+
+  @IsOptional()
+  @IsRole()
   role?: string;
 }
 
 export { UserResponseDto, toUserResponse } from './user-response.dto';
+export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from './validation';

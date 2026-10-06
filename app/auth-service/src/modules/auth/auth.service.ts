@@ -19,6 +19,7 @@ export class AuthService {
       username: registerDto.username,
       email: registerDto.email,
       password: registerDto.password,
+      full_name: registerDto.full_name,
       role: 'USER',
     });
 

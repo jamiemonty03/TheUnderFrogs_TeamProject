@@ -16,7 +16,7 @@ export class UsersService {
   ) {}
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
-    const { username, email, password, role } = createUserDto;
+    const { username, email, password, role, full_name } = createUserDto;
 
     // Check if user already exists
     const existingUser = await this.usersRepository.findByUsername(username);
@@ -36,6 +36,7 @@ export class UsersService {
       username,
       email,
       password_hash: hashedPassword,
+      full_name: full_name ?? null,
       roles: [(role || 'USER').toUpperCase()],
     });
   }
