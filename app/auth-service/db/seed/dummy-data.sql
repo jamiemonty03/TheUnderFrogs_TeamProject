@@ -1,4 +1,4 @@
--- Seed data: test users
+
 INSERT INTO users (username, email, password, role, is_active, created_at, updated_at)
 VALUES (
     'admin',
@@ -20,3 +20,8 @@ VALUES (
     NOW(),
     NOW()
 );
+
+INSERT INTO auth (user_id, is_2fa_enabled, failed_login_attempts, created_at, updated_at)
+SELECT id, false, 0, NOW(), NOW()
+FROM users
+WHERE username IN ('admin', 'testuser');
