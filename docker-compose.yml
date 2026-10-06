@@ -227,6 +227,51 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth-db
+    env_file: ./app/auth-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$DB_USERNAME"
+        export POSTGRES_PASSWORD="$$DB_PASSWORD"
+        export POSTGRES_DB="$$DB_NAME";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /db/seed/*.sql /docker-entrypoint-initdb.d/ 2>/dev/null || true;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5438:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+      - ./app/auth-service/db:/db:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$DB_USERNAME" -d "$$DB_NAME"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: ./app/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    env_file: ./app/auth-service/.env
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    ports:
+      - "8087:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   trade-executor:
     build:
       context: ./app/trade-executor
@@ -338,3 +383,4 @@ volumes:
   sonarqube_extensions:
   sonarqube_logs:
   trade_analytics_db_data:
+  auth_db_data:
