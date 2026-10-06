@@ -1,3 +1,13 @@
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmailAddress,
+  IsFullName,
+  IsPassword,
+  IsUsername,
+  NotBlank,
+  PASSWORD_MAX_LENGTH,
+  Trim,
+} from '../../users/dto/validation';
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -7,7 +17,10 @@ export class LoginDto {
     example: 'johndoe',
   })
   @IsNotEmpty()
+  @Trim()
   @IsString()
+  @NotBlank()
+  @MaxLength(50)
   username: string;
 
   @ApiProperty({
@@ -16,6 +29,8 @@ export class LoginDto {
   })
   @IsNotEmpty()
   @IsString()
+  @NotBlank()
+  @MaxLength(PASSWORD_MAX_LENGTH)
   password: string;
 }
 
@@ -27,8 +42,7 @@ export class RegisterDto {
     example: 'johndoe',
   })
   @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
+  @IsUsername()
   username: string;
 
   @ApiProperty({
@@ -37,7 +51,7 @@ export class RegisterDto {
     example: 'john@example.com',
   })
   @IsNotEmpty()
-  @IsEmail()
+  @IsEmailAddress()
   email: string;
 
   @ApiProperty({
@@ -46,9 +60,12 @@ export class RegisterDto {
     example: 'MySecurePass123',
   })
   @IsNotEmpty()
-  @IsString()
-  @MinLength(6)
+  @IsPassword()
   password: string;
+
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
 }
 
 export class TokenResponseDto {

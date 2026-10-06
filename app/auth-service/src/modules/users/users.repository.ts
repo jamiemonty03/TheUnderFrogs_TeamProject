@@ -6,8 +6,9 @@ import { User } from './entities/user.entity';
 export interface CreateUserPayload {
   username: string;
   email: string;
-  password: string;
-  role: string;
+  password_hash: string;
+  roles: string[];
+  full_name?: string | null;
 }
 
 @Injectable()
@@ -41,6 +42,11 @@ export class UsersRepository {
   async update(id: number, user: Partial<User>): Promise<User | null> {
     await this.repository.update(id, user);
     return this.findById(id);
+  }
+
+  async updatePasswordHash(id: number, currentHash: string, newHash: string): Promise<boolean> {
+    const result = await this.repository.update({ id, password_hash: currentHash }, { password_hash: newHash });
+    return (result.affected ?? 0) > 0;
   }
 
   async delete(id: number): Promise<boolean> {

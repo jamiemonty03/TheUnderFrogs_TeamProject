@@ -16,12 +16,17 @@ describe('AuthService', () => {
     id: 1,
     username: 'testuser',
     email: 'test@example.com',
-    password: 'hashedPassword',
-    role: 'user',
+    password_hash: 'hashedPassword',
+    full_name: 'Test User',
+    roles: ['USER'],
+    account_id: null,
     is_active: true,
+    failed_attempts: 0,
+    locked_until: null,
     version: 0,
     created_at: new Date(),
     updated_at: new Date(),
+    updated_by: 'SYSTEM',
   };
 
   beforeEach(async () => {
@@ -32,8 +37,7 @@ describe('AuthService', () => {
           provide: UsersService,
           useValue: {
             createUser: jest.fn(),
-            getUserByUsername: jest.fn(),
-            validatePassword: jest.fn(),
+            verifyCredentials: jest.fn(),
           },
         },
         {
@@ -91,7 +95,7 @@ describe('AuthService', () => {
         username: registerDto.username,
         email: registerDto.email,
         password: registerDto.password,
-        role: 'user',
+        role: 'USER',
       });
     });
   });
@@ -103,16 +107,14 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(mockUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(true);
-      jest.spyOn(authRepository, 'update').mockResolvedValue({ ...mockUser });
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(mockUser);
+      jest.spyOn(authRepository, 'update').mockResolvedValue(null);
 
       const result = await service.login(loginDto);
 
       expect(result).toHaveProperty('access_token');
       expect(result.token_type).toBe('Bearer');
-      expect(usersService.getUserByUsername).toHaveBeenCalledWith('testuser');
-      expect(usersService.validatePassword).toHaveBeenCalledWith('password123', mockUser.password);
+      expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
       expect(authRepository.update).toHaveBeenCalled();
     });
 
@@ -122,10 +124,16 @@ describe('AuthService', () => {
         password: 'wrongpassword',
       };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(mockUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(false);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(authRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should give the same error for an unknown username as for a wrong password', async () => {
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
+
+      await expect(service.login({ username: 'ghost', password: 'whatever' })).rejects.toThrow('Invalid credentials');
     });
 
     it('should throw UnauthorizedException if user is inactive', async () => {
@@ -136,8 +144,7 @@ describe('AuthService', () => {
 
       const inactiveUser = { ...mockUser, is_active: false };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(inactiveUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(true);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(inactiveUser);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });

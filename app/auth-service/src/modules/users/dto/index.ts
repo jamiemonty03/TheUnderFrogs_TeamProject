@@ -1,3 +1,5 @@
+import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername } from './validation';
 import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -9,8 +11,7 @@ export class CreateUserDto {
     example: 'johndoe',
   })
   @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
+  @IsUsername()
   username: string;
 
   @ApiProperty({
@@ -19,7 +20,7 @@ export class CreateUserDto {
     example: 'john@example.com',
   })
   @IsNotEmpty()
-  @IsEmail()
+  @IsEmailAddress()
   email: string;
 
   @ApiProperty({
@@ -28,10 +29,37 @@ export class CreateUserDto {
     example: 'Password1234',
   })
   @IsNotEmpty()
-  @IsString()
-  @MinLength(6)
+  @IsPassword()
   password: string;
 
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
+
+  @IsOptional()
+  @IsRole()
+  role?: string;
+}
+
+export class UpdateUserDto {
+  @IsOptional()
+  @IsUsername()
+  username?: string;
+
+  @IsOptional()
+  @IsEmailAddress()
+  email?: string;
+
+  @IsOptional()
+  @IsPassword()
+  password?: string;
+
+  @IsOptional()
+  @IsFullName()
+  full_name?: string;
+
+  @IsOptional()
+  @IsRole()
   @ApiProperty({
     description: 'User role',
     default: 'user',
@@ -88,4 +116,5 @@ export class UpdateUserDto {
   role?: string;
 }
 
-export { UserResponseDto } from './user-response.dto';
+export { UserResponseDto, toUserResponse } from './user-response.dto';
+export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from './validation';

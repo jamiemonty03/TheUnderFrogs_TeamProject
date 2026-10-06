@@ -19,21 +19,17 @@ export class AuthService {
       username: registerDto.username,
       email: registerDto.email,
       password: registerDto.password,
-      role: 'user',
+      full_name: registerDto.full_name,
+      role: 'USER',
     });
 
-    return this.generateToken(user.id, user.username, user.role);
+    return this.generateToken(user.id, user.username, user.roles);
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
-    const user = await this.usersService.getUserByUsername(loginDto.username);
+    const user = await this.usersService.verifyCredentials(loginDto.username, loginDto.password);
 
-    const isPasswordValid = await this.usersService.validatePassword(
-      loginDto.password,
-      user.password,
-    );
-
-    if (!isPasswordValid) {
+    if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -47,7 +43,7 @@ export class AuthService {
       failed_login_attempts: 0,
     });
 
-    return this.generateToken(user.id, user.username, user.role);
+    return this.generateToken(user.id, user.username, user.roles);
   }
 
 
@@ -62,7 +58,7 @@ export class AuthService {
   private generateToken(
     userId: number,
     username: string,
-    role: string,
+    roles: string[],
   ): TokenResponseDto {
     const expiresIn = this.configService.get<number>('JWT_EXPIRATION', 86400000);
     const expiresInSeconds = Math.floor(expiresIn / 1000);
@@ -70,7 +66,7 @@ export class AuthService {
     const payload = {
       sub: userId,
       username,
-      roles: [role],
+      roles,
     };
 
     const accessToken = this.jwtService.sign(payload, {
