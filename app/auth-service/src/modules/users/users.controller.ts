@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from './dto';
+import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
 
 @Controller('users')
 export class UsersController {
@@ -8,22 +8,22 @@ export class UsersController {
 
   @Post()
   @HttpCode(201)
-  async createUser(@Body() createUserDto: CreateUserDto) {
+  async createUser(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
     return this.usersService.createUser(createUserDto);
   }
 
   @Get()
-  async getAllUsers() {
+  async getAllUsers(): Promise<UserResponseDto[]> {
     return this.usersService.getAllUsers();
   }
 
   @Get(':id')
-  async getUserById(@Param('id') id: string) {
+  async getUserById(@Param('id') id: string): Promise<UserResponseDto> {
     return this.usersService.getUserById(Number(id));
   }
 
   @Put(':id')
-  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
     return this.usersService.updateUser(Number(id), updateUserDto);
   }
 

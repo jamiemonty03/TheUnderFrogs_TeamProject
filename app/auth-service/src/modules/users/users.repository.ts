@@ -3,6 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 
+export interface CreateUserPayload {
+  username: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 @Injectable()
 export class UsersRepository {
   constructor(
@@ -10,7 +17,7 @@ export class UsersRepository {
     private readonly repository: Repository<User>,
   ) {}
 
-  async create(user: Partial<User>): Promise<User> {
+  async create(user: CreateUserPayload): Promise<User> {
     const newUser = this.repository.create(user);
     return this.repository.save(newUser);
   }

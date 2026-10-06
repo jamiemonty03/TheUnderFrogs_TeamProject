@@ -15,41 +15,75 @@
 ![ERD Diagram](app/docs/diagrams/ERD-Diagram.PNG)
 
 ## Docker Setup
-The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
+1) Create a `.env` for each service from its example (these are gitignored, never commit them):
+```
+for s in accounts-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
+  cp app/$s/.env.example app/$s/.env
+done
+```
+Then fill in the database passwords and use the **same** `JWT_SECRET` in every file.
 
-1) Create a `.env` file in the project root (this is gitignored, so it won't be committed):
+| File | Needed for |
+|---|---|
+| `app/accounts-service/.env`, `instruments-service`, `orders-service`, `positions-service` | Required |
+| `app/trade-executor/.env` | Optional (defaults work; add your own Alpaca paper keys for live prices) |
+| `app/trade-analytics-service/.env` | Optional (only for the analytics service) |
 
-2) Start the stack:
+2) Build the jars and start the core stack (waits until every service is healthy):
 ```
-docker-compose up -d
-```
-Each service runs in its own container with its own Postgres container: `accounts-db`, `instruments-db`, `orders-db`, `positions-db` (host ports 5433-5436, localhost only), each with its own named volume. Each database is initialised on first start from that service's `app/<service>/db/schema/` folder. Historical trade data is stored in `orders-db` as `client_trades`. The python ETL/dashboard container (`underfrog-python`) talks to `instruments-db`.
-
-3) Check the containers are up:
-```
-docker ps
-```
-If `docker-compose up -d` fails with a port conflict on 5432, another Postgres container is already using it. Find and stop it:
-```
-docker ps
-docker stop <container_name>
-```
-
-4) Connect to the database inside the container:
-```
-docker exec -it accounts-db psql -U postgres -d accounts_db   # or instruments-db / orders-db / positions-db
+for s in accounts-service instruments-service orders-service positions-service trade-executor; do
+  mvn -B -f app/$s/pom.xml clean package -Dmaven.test.skip=true
+done
+docker-compose up -d --build --wait accounts-service instruments-service orders-service positions-service trade-executor kafka-ui
 ```
 
-5) Tear down (add `-v` to also delete the data volume):
+3) Load the market data (daily closes the trade executor falls back to):
+```
+docker-compose up -d python trade-analytics-db
+./db/scripts/setup-pipeline.sh populate   # also starts trade-analytics-service
+
+```
+
+| Service | Host port |
+|---|---|
+| accounts-service | 8081 |
+| instruments-service | 8082 |
+| orders-service | 8083 |
+| positions-service | 8084 |
+| python dashboard | 8085 |
+| kafka-ui | 8086 |
+| kafka (external listener) | 127.0.0.1:9094 |
+| accounts / instruments / orders / positions / analytics DBs | 127.0.0.1:5433-5437 |
+
+Sprint 7 environment variables:
+
+| Variable | Service | Purpose |
+|---|---|---|
+| `KAFKA_BOOTSTRAP_SERVERS` | orders-service, trade-executor | Kafka broker, `kafka:9092` inside compose |
+| `JWT_SECRET` | all Java services | Shared signing secret, must match everywhere |
+| `SERVICE_TOKEN_TTL` | trade-executor | Lifetime of its service-to-service token |
+| `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
+| `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
+| `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
+
+4) Watch the Kafka topics (or open kafka-ui on port 8086):
+```
+docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic trade-events --from-beginning
+```
+
+5) Run the end-to-end smoke test (builds, starts, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears down):
+```
+./scripts/smoke-test-e2e.sh
+```
+Set `KEEP_UP=true` to leave the stack running afterwards.
+
+6) Tear down (add `--volumes` to also wipe the databases):
 ```
 docker-compose down
-docker-compose down -v   # also wipes the postgres_data volume
+docker-compose down --volumes
 ```
 
-> Note: `sql/dummy-data.sql` is **not** currently auto-loaded by Docker init. To seed sample data, run it manually after the container is up:
-> ```
-> docker exec -i underfrog-postgres psql -U postgres -d underfrog < sql/dummy-data.sql
-> ```
+> If a service fails with `Schema-validation: missing table`, its database volume was created from an older schema. Wipe it with `docker-compose down --volumes` and start again.
 
 ## Database Setup (manual / non-Docker)
 1) Create the database (note: underscores, not hyphens, since Postgres identifiers can't contain `-` unquoted):

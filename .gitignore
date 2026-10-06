@@ -4,3 +4,12 @@ starter/
 __pycache__/
 build.log
 *.log
+
+**/dist/
+**/node_modules/
+.vscode/
+app/auth-service/build
+*.tsbuildinfo
+
+.pytest_cache/
+tests/reports/

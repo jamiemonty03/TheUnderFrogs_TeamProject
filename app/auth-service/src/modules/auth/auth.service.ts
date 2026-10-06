@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
-import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
+import { LoginDto, RegisterDto, TokenResponseDto, TokenPayloadDto } from './dto';
 
 @Injectable()
 export class AuthService {
@@ -41,7 +41,7 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    // Update last login
+
     await this.authRepository.update(user.id, {
       last_login: new Date().toISOString(),
       failed_login_attempts: 0,
@@ -50,8 +50,8 @@ export class AuthService {
     return this.generateToken(user.id, user.username, user.role);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async validateToken(token: string): Promise<Record<string, any>> {
+
+  async validateToken(token: string): Promise<TokenPayloadDto> {
     try {
       return this.jwtService.verify(token);
     } catch {
