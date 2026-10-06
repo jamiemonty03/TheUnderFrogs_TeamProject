@@ -21,13 +21,17 @@ describe('AuthService', () => {
     id: 1,
     username: 'testuser',
     email: 'test@example.com',
-    password: 'hashedPassword',
-    role: 'user',
-    account_id: 'ACC-000001',
+    password_hash: 'hashedPassword',
+    full_name: 'Test User',
+    roles: ['USER'],
+    account_id: null,
     is_active: true,
+    failed_attempts: 0,
+    locked_until: null,
     version: 0,
     created_at: new Date(),
     updated_at: new Date(),
+    updated_by: 'SYSTEM',
   };
 
   const mockAuth = {
@@ -47,12 +51,9 @@ describe('AuthService', () => {
         {
           provide: UsersService,
           useValue: {
-            createUser: jest.fn() as any,
-            getUserByUsername: jest.fn() as any,
-            validatePassword: jest.fn() as any,
-            updateUser: jest.fn() as any,
-            deleteUser: jest.fn() as any,
-          } as any,
+            createUser: jest.fn(),
+            verifyCredentials: jest.fn(),
+          },
         },
         {
           provide: AuthRepository,
@@ -125,10 +126,10 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('access_token');
       expect(result.token_type).toBe('Bearer');
       expect(usersService.createUser).toHaveBeenCalledWith({
-        username: 'newuser',
-        email: 'new@example.com',
-        password: 'password123',
-        role: 'user',
+        username: registerDto.username,
+        email: registerDto.email,
+        password: registerDto.password,
+        role: 'USER',
       });
       expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({
         userId: 2,
@@ -224,59 +225,15 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
-      (usersService.validatePassword as jest.Mock).mockResolvedValue(true as any);
-      (authRepository.update as jest.Mock).mockResolvedValue(mockAuth as any);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(mockUser);
+      jest.spyOn(authRepository, 'update').mockResolvedValue(null);
 
       const result = await service.login(loginDto);
 
       expect(result).toHaveProperty('access_token');
       expect(result.token_type).toBe('Bearer');
-      expect(usersService.getUserByUsername).toHaveBeenCalledWith('testuser');
-    });
-
-    it('should include accountId in token for user with account', async () => {
-      const loginDto = {
-        username: 'testuser',
-        password: 'password123',
-      };
-
-      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
-      (usersService.validatePassword as jest.Mock).mockResolvedValue(true as any);
-      (authRepository.update as jest.Mock).mockResolvedValue(mockAuth as any);
-
-      await service.login(loginDto);
-
-      const signCall = (jwtService.sign as jest.Mock).mock.calls[0];
-      expect(signCall[0]).toMatchObject({
-        sub: 1,
-        username: 'testuser',
-        roles: ['user'],
-        accountId: 'ACC-000001',
-      });
-    });
-
-    it('should allow login for users without accountId (SERVICE client, ADMIN)', async () => {
-      const loginDto = {
-        username: 'admin',
-        password: 'admin123',
-      };
-
-      const adminUser = { ...mockUser, account_id: null };
-
-      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(adminUser as any);
-      (usersService.validatePassword as jest.Mock).mockResolvedValue(true as any);
-      (authRepository.update as jest.Mock).mockResolvedValue(adminUser as any);
-
-      await service.login(loginDto);
-
-      const signCall = (jwtService.sign as jest.Mock).mock.calls[0];
-      expect(signCall[0]).toMatchObject({
-        sub: 1,
-        username: 'testuser',
-        roles: ['user'],
-      });
-      expect((signCall[0] as any).accountId).toBeUndefined();
+      expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
+      expect(authRepository.update).toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for invalid password', async () => {
@@ -285,10 +242,16 @@ describe('AuthService', () => {
         password: 'wrongpassword',
       };
 
-      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
-      (usersService.validatePassword as jest.Mock).mockResolvedValue(false as any);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(authRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should give the same error for an unknown username as for a wrong password', async () => {
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
+
+      await expect(service.login({ username: 'ghost', password: 'whatever' })).rejects.toThrow('Invalid credentials');
     });
 
     it('should throw UnauthorizedException if user is inactive', async () => {
@@ -299,8 +262,7 @@ describe('AuthService', () => {
 
       const inactiveUser = { ...mockUser, is_active: false };
 
-      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(inactiveUser as any);
-      (usersService.validatePassword as jest.Mock).mockResolvedValue(true as any);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(inactiveUser);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });

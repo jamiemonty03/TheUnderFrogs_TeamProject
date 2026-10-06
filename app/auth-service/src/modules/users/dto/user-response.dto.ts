@@ -1,3 +1,4 @@
+import { User } from '../entities/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UserResponseDto {
@@ -22,10 +23,27 @@ export class UserResponseDto {
   email: string;
 
   @ApiProperty({
-    description: 'User role',
-    example: 'user',
+    description: 'Full name',
+    type: 'string',
+    nullable: true,
+    example: 'John Doe',
   })
-  role: string;
+  full_name: string | null;
+
+  @ApiProperty({
+    description: 'User roles',
+    type: [String],
+    example: ['USER'],
+  })
+  roles: string[];
+
+  @ApiProperty({
+    description: 'Linked trading account ID',
+    type: 'string',
+    nullable: true,
+    example: 'ACC0001',
+  })
+  account_id: string | null;
 
   @ApiProperty({
     description: 'User account status',
@@ -54,4 +72,19 @@ export class UserResponseDto {
     example: 1,
   })
   version: number;
+}
+
+export function toUserResponse(user: User): UserResponseDto {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    full_name: user.full_name,
+    roles: user.roles,
+    account_id: user.account_id,
+    is_active: user.is_active,
+    version: user.version,
+    created_at: user.created_at,
+    updated_at: user.updated_at,
+  };
 }

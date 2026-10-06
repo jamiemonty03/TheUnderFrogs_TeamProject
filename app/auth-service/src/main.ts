@@ -1,25 +1,20 @@
 import { NestFactory } from '@nestjs/core';
-import { HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
 import { AppModule } from './app.module';
+import { createValidationPipe } from './common/validation/validation.pipe';
+import { JsonBodyAdapter } from './common/validation/json-body.adapter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-  }));
+  app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Serve the committed spec as-is so /docs always matches docs/auth-service.yaml
   const specPath = join(__dirname, '..', 'docs', 'auth-service.yaml');
   const document = load(readFileSync(specPath, 'utf8')) as OpenAPIObject;
   SwaggerModule.setup('docs', app, document, {

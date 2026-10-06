@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, UserResponseDto } from './dto';
+import { CreateUserDto, UpdateUserDto, UserResponseDto, toUserResponse } from './dto';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 
 @Controller('users')
@@ -25,7 +25,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   async createUser(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    return this.usersService.createUser(createUserDto);
+    return toUserResponse(await this.usersService.createUser(createUserDto));
   }
 
   @Get()
@@ -39,7 +39,7 @@ export class UsersController {
     type: [UserResponseDto],
   })
   async getAllUsers(): Promise<UserResponseDto[]> {
-    return this.usersService.getAllUsers();
+    return (await this.usersService.getAllUsers()).map(toUserResponse);
   }
 
   @Get(':id')
@@ -58,7 +58,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   async getUserById(@Param('id') id: string): Promise<UserResponseDto> {
-    return this.usersService.getUserById(Number(id));
+    return toUserResponse(await this.usersService.getUserById(Number(id)));
   }
 
   @Put(':id')
@@ -77,7 +77,7 @@ export class UsersController {
     type: ErrorResponseDto,
   })
   async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
-    return this.usersService.updateUser(Number(id), updateUserDto);
+    return toUserResponse(await this.usersService.updateUser(Number(id), updateUserDto));
   }
 
   @Delete(':id')
