@@ -17,9 +17,17 @@ DB_NAME = _datasource.path.lstrip('/')
 DB_USER = os.getenv('SPRING_DATASOURCE_USERNAME', 'postgres')
 DB_PASSWORD = os.getenv('SPRING_DATASOURCE_PASSWORD', '')
 
+# Analytics database configuration (for fact_trades table)
+_analytics_datasource = urlparse(os.getenv('ANALYTICS_DB_URL', 'jdbc:postgresql://trade-analytics-db:5432/analytics_db').removeprefix('jdbc:'))
+ANALYTICS_DB_HOST = _analytics_datasource.hostname or 'trade-analytics-db'
+ANALYTICS_DB_PORT = str(_analytics_datasource.port or 5432)
+ANALYTICS_DB_NAME = _analytics_datasource.path.lstrip('/') or 'analytics_db'
+ANALYTICS_DB_USER = os.getenv('ANALYTICS_DB_USERNAME', 'postgres')
+ANALYTICS_DB_PASSWORD = os.getenv('ANALYTICS_DB_PASSWORD', '')
+
 
 def get_db_connection():
-    """Create a database connection."""
+    """Create a database connection to instruments database."""
     try:
         conn = psycopg.connect(
             host=DB_HOST,
@@ -31,6 +39,22 @@ def get_db_connection():
         return conn
     except psycopg.Error as e:
         print(f"Database connection failed: {e}")
+        return None
+
+
+def get_analytics_db_connection():
+    """Create a database connection to analytics database."""
+    try:
+        conn = psycopg.connect(
+            host=ANALYTICS_DB_HOST,
+            port=ANALYTICS_DB_PORT,
+            dbname=ANALYTICS_DB_NAME,
+            user=ANALYTICS_DB_USER,
+            password=ANALYTICS_DB_PASSWORD
+        )
+        return conn
+    except psycopg.Error as e:
+        print(f"Analytics database connection failed: {e}")
         return None
 
 
@@ -142,10 +166,10 @@ def get_live_trade_feed_data() -> pd.DataFrame:
 
 def load_trade_analytics() -> dict:
     """
-    Load trade analytics from FACT_TRADES table.
+    Load trade analytics from fact_trades table in analytics database.
     Returns dict with multiple analytics: volume_by_instrument, fills_vs_rejects, daily_volume
     """
-    conn = get_db_connection()
+    conn = get_analytics_db_connection()
     if not conn:
         return {
             'volume_by_instrument': pd.DataFrame(),
@@ -154,13 +178,14 @@ def load_trade_analytics() -> dict:
         }
     
     try:
-        # Volume by instrument
+        # Volume by instrument (join with dimension tables to get symbol)
         volume_by_instrument = pd.read_sql(
             """
-            SELECT symbol, COUNT(*) as trade_count, SUM(quantity) as total_quantity, 
-                   AVG(price) as avg_price
-            FROM fact_trades
-            GROUP BY symbol
+            SELECT di.symbol, COUNT(*) as trade_count, SUM(ft.quantity) as total_quantity, 
+                   AVG(ft.price) as avg_price
+            FROM analytics.fact_trades ft
+            JOIN analytics.dim_instrument di ON ft.instrument_key = di.instrument_key
+            GROUP BY di.symbol
             ORDER BY total_quantity DESC
             LIMIT 20
             """,
@@ -170,9 +195,9 @@ def load_trade_analytics() -> dict:
         # Fills vs Rejects by status
         fills_vs_rejects = pd.read_sql(
             """
-            SELECT status, COUNT(*) as count, SUM(quantity) as total_quantity
-            FROM fact_trades
-            GROUP BY status
+            SELECT order_status as status, COUNT(*) as count, SUM(quantity) as total_quantity
+            FROM analytics.fact_trades
+            GROUP BY order_status
             ORDER BY count DESC
             """,
             conn
@@ -181,17 +206,19 @@ def load_trade_analytics() -> dict:
         # Daily volume trend (last 30 days)
         daily_volume = pd.read_sql(
             """
-            SELECT DATE(trade_timestamp) as trade_date, 
+            SELECT dd.date_value as trade_date, 
                    COUNT(*) as trade_count,
-                   SUM(quantity) as total_quantity,
-                   AVG(price) as avg_price
-            FROM fact_trades
-            WHERE trade_timestamp >= CURRENT_DATE - INTERVAL '30 days'
-            GROUP BY DATE(trade_timestamp)
+                   SUM(ft.quantity) as total_quantity,
+                   AVG(ft.price) as avg_price
+            FROM analytics.fact_trades ft
+            JOIN analytics.dim_date dd ON ft.date_key = dd.date_key
+            WHERE dd.date_value >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY dd.date_value
             ORDER BY trade_date DESC
             """,
             conn
         )
+        
         if not daily_volume.empty:
             daily_volume['trade_date'] = pd.to_datetime(daily_volume['trade_date'])
         

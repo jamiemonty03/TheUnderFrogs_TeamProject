@@ -42,7 +42,7 @@ def create_live_tab_layout():
                 dbc.Col([
                     dbc.Card([
                         dbc.CardBody([
-                            html.H6("💹 Trade Feed from trade-events", className="card-title"),
+                            html.H6("💹 Trade Feed", className="card-title"),
                             html.Div(
                                 id='live-trade-feed-container',
                                 children=html.P(

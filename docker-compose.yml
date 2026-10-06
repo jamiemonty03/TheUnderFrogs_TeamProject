@@ -227,7 +227,9 @@ services:
       context: ./db
       dockerfile: Dockerfile
     container_name: underfrog-python
-    env_file: ./app/instruments-service/.env
+    env_file: 
+      - ./app/instruments-service/.env
+      - ./app/trade-analytics-service/.env
     depends_on:
       instruments-db:
         condition: service_healthy
@@ -235,6 +237,8 @@ services:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
+      trade-analytics-db:
+        condition: service_healthy
     ports:
       - "0.0.0.0:8085:8080"
     volumes:

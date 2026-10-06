@@ -37,7 +37,7 @@ def market_data_consumer_thread():
     conf = {
         'bootstrap.servers': KAFKA_BROKER,
         'group.id': 'dashboard-market-data',
-        'auto.offset.reset': 'latest',
+        'auto.offset.reset': 'earliest',
         'enable.auto.commit': True,
         'session.timeout.ms': 6000,
     }
@@ -64,14 +64,14 @@ def market_data_consumer_thread():
             
             try:
                 event = parse_event_envelope(msg.value().decode('utf-8'))
-                if event and 'body' in event:
-                    body = event['body']
-                    # Expected format: {symbol, price, timestamp, ...}
-                    if 'symbol' in body and 'price' in body:
-                        live_prices[body['symbol']] = {
-                            'price': float(body['price']),
-                            'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
-                            'currency': body.get('currency', 'USD'),
+                if event:
+                    # Support both formats: new format with 'payload' and legacy format with 'body'
+                    data = event.get('payload', event.get('body', {}))
+                    if 'symbol' in data and 'price' in data:
+                        live_prices[data['symbol']] = {
+                            'price': float(data['price']),
+                            'timestamp': data.get('quoteTime', datetime.utcnow().isoformat()),
+                            'currency': data.get('currency', 'USD'),
                         }
             except Exception as e:
                 print(f"Error processing market-data: {e}")
@@ -89,7 +89,7 @@ def trade_events_consumer_thread():
     conf = {
         'bootstrap.servers': KAFKA_BROKER,
         'group.id': 'dashboard-trade-events',
-        'auto.offset.reset': 'latest',
+        'auto.offset.reset': 'earliest',
         'enable.auto.commit': True,
         'session.timeout.ms': 6000,
     }
@@ -116,18 +116,19 @@ def trade_events_consumer_thread():
             
             try:
                 event = parse_event_envelope(msg.value().decode('utf-8'))
-                if event and 'body' in event:
-                    body = event['body']
-                    # Extract relevant fields: event_type, orderId, symbol, quantity, price, status, etc.
+                if event:
+                    # Support both formats: new format with 'payload' and legacy format with 'body'
+                    data = event.get('payload', event.get('body', {}))
+                    # Extract relevant fields: event_type, orderId, symbol, quantity, fillPrice, status, etc.
                     trade_event = {
-                        'event_type': body.get('eventType', body.get('type', 'UNKNOWN')),
-                        'order_id': body.get('orderId', body.get('id', 'N/A')),
-                        'symbol': body.get('symbol', 'N/A'),
-                        'quantity': body.get('quantity', 0),
-                        'price': body.get('price', 0),
-                        'status': body.get('status', 'UNKNOWN'),
-                        'timestamp': body.get('timestamp', datetime.utcnow().isoformat()),
-                        'account_id': body.get('accountId', 'N/A'),
+                        'event_type': event.get('eventType', data.get('type', 'UNKNOWN')),
+                        'order_id': data.get('orderId', data.get('id', 'N/A')),
+                        'symbol': data.get('symbol', 'N/A'),
+                        'quantity': data.get('quantity', 0),
+                        'price': data.get('fillPrice', data.get('price', 0)),  # fillPrice from OrderOutcomePayload
+                        'status': data.get('status', 'UNKNOWN'),
+                        'timestamp': data.get('timestamp', datetime.utcnow().isoformat()),
+                        'account_id': data.get('accountId', 'N/A'),
                     }
                     live_trades.append(trade_event)
             except Exception as e:
