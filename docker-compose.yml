@@ -305,9 +305,17 @@ services:
       context: ./db
       dockerfile: Dockerfile
     container_name: underfrog-python
-    env_file: ./app/instruments-service/.env
+    env_file: 
+      - ./app/instruments-service/.env
+      - ./app/trade-analytics-service/.env
     depends_on:
       instruments-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      trade-analytics-db:
         condition: service_healthy
     ports:
       - "0.0.0.0:8085:8080"
@@ -315,7 +323,7 @@ services:
       - ./db:/db
       - ./app/instruments-service/db/etl:/db/etl
       - ./app/instruments-service/db/schema:/db/schema:ro
-    command: python /db/dashboard/dashboard_app.py
+      - ./app/instruments-service/db/tests:/db/tests
 
   sonarqube:
     image: sonarqube:9.9.0-community

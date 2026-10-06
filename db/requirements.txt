@@ -8,3 +8,4 @@ pytest
 plotly
 dash
 dash-bootstrap-components
+confluent-kafka
