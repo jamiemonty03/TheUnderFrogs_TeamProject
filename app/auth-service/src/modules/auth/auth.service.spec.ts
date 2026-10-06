@@ -37,8 +37,7 @@ describe('AuthService', () => {
           provide: UsersService,
           useValue: {
             createUser: jest.fn(),
-            getUserByUsername: jest.fn(),
-            validatePassword: jest.fn(),
+            verifyCredentials: jest.fn(),
           },
         },
         {
@@ -108,16 +107,14 @@ describe('AuthService', () => {
         password: 'password123',
       };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(mockUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(true);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(mockUser);
       jest.spyOn(authRepository, 'update').mockResolvedValue(null);
 
       const result = await service.login(loginDto);
 
       expect(result).toHaveProperty('access_token');
       expect(result.token_type).toBe('Bearer');
-      expect(usersService.getUserByUsername).toHaveBeenCalledWith('testuser');
-      expect(usersService.validatePassword).toHaveBeenCalledWith('password123', mockUser.password_hash);
+      expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
       expect(authRepository.update).toHaveBeenCalled();
     });
 
@@ -127,10 +124,16 @@ describe('AuthService', () => {
         password: 'wrongpassword',
       };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(mockUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(false);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(authRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should give the same error for an unknown username as for a wrong password', async () => {
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
+
+      await expect(service.login({ username: 'ghost', password: 'whatever' })).rejects.toThrow('Invalid credentials');
     });
 
     it('should throw UnauthorizedException if user is inactive', async () => {
@@ -141,8 +144,7 @@ describe('AuthService', () => {
 
       const inactiveUser = { ...mockUser, is_active: false };
 
-      jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(inactiveUser);
-      jest.spyOn(usersService, 'validatePassword').mockResolvedValue(true);
+      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(inactiveUser);
 
       await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });

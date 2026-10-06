@@ -1,5 +1,4 @@
 import { Injectable, ConflictException, Logger, NotFoundException } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
 import { UsersRepository } from './users.repository';
 import { PasswordHasher } from './password-hasher.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
@@ -29,8 +28,7 @@ export class UsersService {
       throw new ConflictException(`User with email ${email} already exists`);
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await this.passwordHasher.hash(password);
 
     return this.usersRepository.create({
       username,
@@ -67,7 +65,7 @@ export class UsersService {
     const { password, role, ...rest } = updateUserDto;
     const changes: Partial<User> = { ...rest };
     if (password) {
-      changes.password_hash = await bcrypt.hash(password, 10);
+      changes.password_hash = await this.passwordHasher.hash(password);
     }
     if (role) {
       changes.roles = [role.toUpperCase()];
@@ -86,10 +84,6 @@ export class UsersService {
     if (!success) {
       throw new NotFoundException(`Failed to delete user with id ${id}`);
     }
-  }
-
-  async validatePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
   }
 
   async verifyCredentials(username: string, password: string): Promise<User | null> {

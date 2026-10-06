@@ -3,9 +3,8 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersRepository } from './users.repository';
 import { PasswordHasher } from './password-hasher.service';
+import { User } from './entities/user.entity';
 import * as bcrypt from 'bcryptjs';
-
-jest.mock('bcryptjs');
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -60,9 +59,6 @@ describe('UsersService', () => {
     service = module.get<UsersService>(UsersService);
     repository = module.get<UsersRepository>(UsersRepository);
     hasher = module.get(PasswordHasher);
-
-    (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -80,12 +76,16 @@ describe('UsersService', () => {
       jest.spyOn(repository, 'findByUsername').mockResolvedValue(null);
       jest.spyOn(repository, 'findByEmail').mockResolvedValue(null);
       jest.spyOn(repository, 'create').mockResolvedValue(mockUser);
+      hasher.hash.mockResolvedValue('$argon2id$new-hash');
 
       const result = await service.createUser(createUserDto);
 
       expect(result).toEqual(mockUser);
-      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
-      expect(repository.create).toHaveBeenCalled();
+      expect(hasher.hash).toHaveBeenCalledWith('password123');
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ password_hash: '$argon2id$new-hash' }),
+      );
+      expect(repository.create).not.toHaveBeenCalledWith(expect.objectContaining({ password: expect.anything() }));
     });
 
     it('should throw ConflictException if username exists', async () => {
@@ -131,20 +131,26 @@ describe('UsersService', () => {
     });
   });
 
-  describe('validatePassword', () => {
-    it('should return true for matching passwords', async () => {
-      const result = await service.validatePassword('password123', 'hashedPassword');
+  describe('updateUser', () => {
+    it('hashes a new password with the password hasher', async () => {
+      jest.spyOn(repository, 'findById').mockResolvedValue(mockUser);
+      jest.spyOn(repository, 'update').mockResolvedValue(mockUser);
+      hasher.hash.mockResolvedValue('$argon2id$new-hash');
 
-      expect(result).toBe(true);
-      expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashedPassword');
+      await service.updateUser(1, { password: 'a-new-long-password' });
+
+      expect(hasher.hash).toHaveBeenCalledWith('a-new-long-password');
+      expect(repository.update).toHaveBeenCalledWith(1, { password_hash: '$argon2id$new-hash' });
     });
 
-    it('should return false for non-matching passwords', async () => {
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+    it('does not touch the password hash when no password is given', async () => {
+      jest.spyOn(repository, 'findById').mockResolvedValue(mockUser);
+      jest.spyOn(repository, 'update').mockResolvedValue(mockUser);
 
-      const result = await service.validatePassword('password123', 'wrongHash');
+      await service.updateUser(1, { email: 'new@example.com', role: 'admin' });
 
-      expect(result).toBe(false);
+      expect(hasher.hash).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalledWith(1, { email: 'new@example.com', roles: ['ADMIN'] });
     });
   });
 
@@ -220,6 +226,49 @@ describe('UsersService', () => {
 
       expect(user?.id).toBe(1);
       expect(user?.password_hash).toBe(bcryptHash);
+    });
+  });
+
+  describe('with the real PasswordHasher', () => {
+    let realService: UsersService;
+    let stored: User | undefined;
+    const repo = {
+      findByUsername: jest.fn(async (username: string) => (stored?.username === username ? { ...stored } : null)),
+      findByEmail: jest.fn(async () => null),
+      create: jest.fn(async (payload: Partial<User>) => {
+        stored = { ...mockUser, ...payload } as User;
+        return { ...stored };
+      }),
+      updatePasswordHash: jest.fn(async (_id: number, current: string, next: string) => {
+        if (!stored || stored.password_hash !== current) {
+          return false;
+        }
+        stored = { ...stored, password_hash: next };
+        return true;
+      }),
+    };
+
+    beforeEach(() => {
+      stored = undefined;
+      realService = new UsersService(repo as unknown as UsersRepository, new PasswordHasher());
+    });
+
+    it('stores new passwords as salted argon2id hashes, never in plain text', async () => {
+      await realService.createUser({ username: 'newuser', email: 'new@example.com', password: 'correct-horse-battery' });
+
+      expect(stored?.password_hash.startsWith('$argon2id$')).toBe(true);
+      expect(stored?.password_hash).not.toContain('correct-horse-battery');
+    });
+
+    it('logs a seed BCrypt user in, upgrades them to argon2id, and the new hash still works', async () => {
+      stored = { ...mockUser, username: 'demo', password_hash: await bcrypt.hash('Demo123!', 4) };
+
+      expect(await realService.verifyCredentials('demo', 'Demo123!')).not.toBeNull();
+      expect(stored?.password_hash.startsWith('$argon2id$')).toBe(true);
+
+      expect(await realService.verifyCredentials('demo', 'Demo123!')).not.toBeNull();
+      expect(await realService.verifyCredentials('demo', 'wrong-password')).toBeNull();
+      expect(repo.updatePasswordHash).toHaveBeenCalledTimes(1);
     });
   });
 });
