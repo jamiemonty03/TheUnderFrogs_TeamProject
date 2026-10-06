@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException, ConflictException, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ConflictException, UnauthorizedException, ForbiddenException, UnprocessableEntityException } from '@nestjs/common';
 
 export class ResourceNotFoundException extends NotFoundException {
   constructor(resource: string) {
@@ -18,9 +18,11 @@ export class InvalidCredentialsException extends UnauthorizedException {
   }
 }
 
-export class ValidationException extends BadRequestException {
+export const VALIDATION_ERROR_CODE = 'VAL-422';
+
+export class ValidationException extends UnprocessableEntityException {
   constructor(message: string) {
-    super(message);
+    super({ errorCode: VALIDATION_ERROR_CODE, message });
   }
 }
 

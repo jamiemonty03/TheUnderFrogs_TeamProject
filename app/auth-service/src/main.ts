@@ -1,16 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { createValidationPipe } from './common/validation/validation.pipe';
+import { JsonBodyAdapter } from './common/validation/json-body.adapter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(createValidationPipe());
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('APP_PORT', 8081);
