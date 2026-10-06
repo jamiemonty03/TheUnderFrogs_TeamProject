@@ -239,6 +239,7 @@ services:
         export POSTGRES_PASSWORD="$$DB_PASSWORD"
         export POSTGRES_DB="$$DB_NAME";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /db/seed/*.sql /docker-entrypoint-initdb.d/ 2>/dev/null || true;
         exec docker-entrypoint.sh postgres
     ports:
       - "127.0.0.1:5438:5432"
@@ -257,6 +258,9 @@ services:
       dockerfile: Dockerfile
     container_name: auth-service
     env_file: ./app/auth-service/.env
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
     depends_on:
       auth-db:
         condition: service_healthy
