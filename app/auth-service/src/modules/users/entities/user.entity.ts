@@ -3,6 +3,7 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 @Entity('users')
 @Index('idx_users_username', ['username'])
 @Index('idx_users_email', ['email'])
+@Index('idx_users_account_id', ['account_id'])
 export class User {
   @PrimaryGeneratedColumn('increment')
   id: number;
@@ -21,6 +22,9 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  account_id?: string;
 
   @Column({ type: 'integer', default: 0 })
   version: number;

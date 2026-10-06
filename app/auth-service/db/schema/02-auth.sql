@@ -12,5 +12,3 @@ CREATE TABLE auth (
 );
 
 CREATE INDEX idx_auth_user_id ON auth(user_id);
-CREATE INDEX idx_auth_is_2fa_enabled ON auth(is_2fa_enabled);
-

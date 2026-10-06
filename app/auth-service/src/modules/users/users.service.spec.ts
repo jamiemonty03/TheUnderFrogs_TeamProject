@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -44,8 +45,9 @@ describe('UsersService', () => {
     service = module.get<UsersService>(UsersService);
     repository = module.get<UsersRepository>(UsersRepository);
 
-    (bcrypt.hash as jest.Mock).mockResolvedValue('hashedPassword');
-    (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+    // Setup bcrypt mocks
+    (bcrypt.hash as any) = jest.fn().mockResolvedValue('hashedPassword');
+    (bcrypt.compare as any) = jest.fn().mockResolvedValue(true);
   });
 
   afterEach(() => {

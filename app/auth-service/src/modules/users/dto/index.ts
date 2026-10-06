@@ -33,6 +33,9 @@ export class UpdateUserDto {
 
   @IsString()
   role?: string;
+
+  @IsString()
+  account_id?: string;
 }
 
 export { UserResponseDto } from './user-response.dto';
