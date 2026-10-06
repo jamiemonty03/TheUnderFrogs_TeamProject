@@ -194,7 +194,10 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     seed_db orders-db    orders    app/orders-service/db/seed/dummy-data.sql
 seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
-    seed_db auth-db      users     app/auth-service/db/seed/dummy-data.sql
+
+    echo -e "${YELLOW}Copying users from accounts-db into auth-db...${NC}"
+    ./db/scripts/migrate-auth-users.sh >/dev/null || error_exit "Failed to migrate users into auth-db"
+    echo -e "${GREEN}✓ auth-db users migrated${NC}"
 
 echo ""
 echo -e "${YELLOW}Checking historical trades against current positions...${NC}"
@@ -269,6 +272,11 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     echo -e "${GREEN}trade-analytics-db${NC}"
     docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -Atc "$1"' _ "$ROW_COUNTS" \
         | sed 's/^/    /' || error_exit "Could not read tables in trade-analytics-db"
+
+    accounts_users=$(db_psql accounts-db -Atc "SELECT COUNT(*) FROM users;")
+    auth_users=$(db_psql auth-db -Atc "SELECT COUNT(*) FROM users WHERE account_id IS NOT NULL;")
+    [ "$accounts_users" -eq "$auth_users" ] || error_exit "auth-db has $auth_users migrated users, accounts-db has $accounts_users"
+    echo -e "${GREEN}✓ auth-db has all $auth_users accounts-db users${NC}"
 
     echo -e "${GREEN}Kafka topics${NC}"
     docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe 2>/dev/null \
