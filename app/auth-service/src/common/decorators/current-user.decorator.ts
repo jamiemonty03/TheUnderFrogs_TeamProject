@@ -10,7 +10,7 @@ export const CurrentUser = createParamDecorator(
       userId: user.sub,
       username: user.username,
       roles: user.roles || [],
-      accountId: user.accountId, // This will be undefined for now but ready for future integration
+      accountId: user.accountId,
     };
   },
 );
