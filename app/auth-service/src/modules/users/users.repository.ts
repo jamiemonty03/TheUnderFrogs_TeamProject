@@ -44,6 +44,11 @@ export class UsersRepository {
     return this.findById(id);
   }
 
+  async updatePasswordHash(id: number, currentHash: string, newHash: string): Promise<boolean> {
+    const result = await this.repository.update({ id, password_hash: currentHash }, { password_hash: newHash });
+    return (result.affected ?? 0) > 0;
+  }
+
   async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;
