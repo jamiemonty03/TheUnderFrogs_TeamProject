@@ -46,7 +46,7 @@ docker exec accounts-db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$SPRING_DATASOURCE
 
 echo "== Placing BUY $QTY $SYMBOL"
 RESPONSE=$(curl -s -w '\n%{http_code}' -X POST http://localhost:8083/api/orders -H "$AUTH" -H 'Content-Type: application/json' \
-    -d "{\"accountId\":\"$ACCOUNT\",\"symbol\":\"$SYMBOL\",\"side\":\"BUY\",\"quantity\":$QTY,\"price\":$LIMIT,\"idempotencyKey\":\"smoke-$RUN_ID\"}")
+    -d "{\"accountId\":\"$ACCOUNT\",\"symbol\":\"$SYMBOL\",\"side\":\"BUY\",\"quantity\":$QTY,\"priceLimit\":$LIMIT,\"idempotencyKey\":\"smoke-$RUN_ID\"}")
 STATUS_CODE=$(echo "$RESPONSE" | tail -1)
 BODY=$(echo "$RESPONSE" | head -n -1)
 [ "$STATUS_CODE" = "201" ] || fail "POST /orders returned $STATUS_CODE: $BODY"
