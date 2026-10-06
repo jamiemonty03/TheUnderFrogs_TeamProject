@@ -34,7 +34,7 @@ class OrderValidationMvcTest {
 
     private static final String VALID_ORDER = """
             {"accountId": "ACC0001", "symbol": "AAPL", "side": "BUY",
-             "quantity": 10, "price": 150.00, "idempotencyKey": "key-1"}
+             "quantity": 10, "priceLimit": 150.00, "idempotencyKey": "key-1"}
             """;
 
     @Autowired
@@ -64,7 +64,7 @@ class OrderValidationMvcTest {
             missing symbol         | symbol         | Symbol is required
             missing side           | side           | Order side (BUY/SELL) is required
             missing quantity       | quantity       | Quantity is required
-            missing price          | price          | Price is required
+            missing priceLimit     | priceLimit     | Price limit is required
             missing idempotencyKey | idempotencyKey | Idempotency key is required
             """)
     @DisplayName("POST /orders with a missing required field returns 422 VAL-422")
@@ -85,8 +85,8 @@ class OrderValidationMvcTest {
     @CsvSource(delimiter = '|', textBlock = """
             zero quantity     | "quantity": 0     | Quantity must be greater than 0
             negative quantity | "quantity": -5    | Quantity must be greater than 0
-            zero price        | "price": 0        | Price must be greater than 0
-            negative price    | "price": -1.50    | Price must be greater than 0
+            zero priceLimit     | "priceLimit": 0     | Price limit must be greater than 0
+            negative priceLimit | "priceLimit": -1.50 | Price limit must be greater than 0
             blank accountId   | "accountId": "  " | Account ID is required
             """)
     @DisplayName("POST /orders with an out-of-range value returns 422 VAL-422")
@@ -104,7 +104,7 @@ class OrderValidationMvcTest {
     @CsvSource(delimiter = '|', textBlock = """
             side not BUY or SELL | "side": "HOLD"    | Invalid value for field 'side'
             quantity is text     | "quantity": "ten" | Invalid value for field 'quantity'
-            price is text        | "price": "cheap"  | Invalid value for field 'price'
+            priceLimit is text   | "priceLimit": "cheap" | Invalid value for field 'priceLimit'
             """)
     @DisplayName("POST /orders with a wrong type or unknown enum returns 422 VAL-422 naming the field")
     void mistypedValueReturns422(String caseName, String replacement, String expectedMessage) throws Exception {

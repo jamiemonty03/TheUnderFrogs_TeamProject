@@ -57,7 +57,7 @@ class OrderLoggingMvcTest {
 
     private static final String ORDER_BODY = """
             {"accountId": "ACC0001", "symbol": "AAPL", "side": "BUY",
-             "quantity": 10, "price": 150.00, "idempotencyKey": "key-1"}
+             "quantity": 10, "priceLimit": 150.00, "idempotencyKey": "key-1"}
             """;
 
     @Autowired

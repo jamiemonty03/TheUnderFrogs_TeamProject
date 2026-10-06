@@ -1,6 +1,6 @@
 -- Dummy data for orders
 
-INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price, order_status, version, created_at, last_updated, updated_by) VALUES
+INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price_limit, order_status, version, created_at, last_updated, updated_by) VALUES
 -- ACC0001 (Alice Johnson)
 ('a1b2c3d4-e5f6-47a8-b9c0-d1e2f3a4b5c6', '9f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0', 'ACC0001', 'AAPL',  'BUY',  10, 190.25, 'FILLED',    0, NOW(), NOW(), 'SYSTEM'),
 ('b3c4d5e6-f7a8-49b0-c1d2-e3f4a5b6c7d8', '8e7d6c5b-4a39-3827-1605-e4d3c2b1a09f', 'ACC0001', 'SPY',   'BUY',   5, 445.00, 'FILLED',    0, NOW(), NOW(), 'SYSTEM'),
