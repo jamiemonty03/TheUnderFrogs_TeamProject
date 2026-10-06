@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -27,10 +27,13 @@ RUN apk add --no-cache curl
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --production && npm cache clean --force
+RUN npm install --production --legacy-peer-deps && npm cache clean --force
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+
+# OpenAPI spec served at /docs
+COPY docs ./docs
 
 # Expose port
 EXPOSE 8081
