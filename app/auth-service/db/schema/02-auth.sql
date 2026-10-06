@@ -6,6 +6,7 @@ CREATE TABLE auth (
     last_login VARCHAR(255),
     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

@@ -31,3 +31,5 @@ export class TokenResponseDto {
   token_type: string;
   expires_in: number;
 }
+
+export { TokenPayloadDto } from './token-payload.dto';

@@ -7,6 +7,7 @@ CREATE TABLE tokens (
     token_type VARCHAR(50) NOT NULL DEFAULT 'refresh',
     expires_at TIMESTAMP,
     is_revoked BOOLEAN NOT NULL DEFAULT false,
+    last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

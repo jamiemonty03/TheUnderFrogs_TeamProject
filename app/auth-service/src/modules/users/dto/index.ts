@@ -34,3 +34,5 @@ export class UpdateUserDto {
   @IsString()
   role?: string;
 }
+
+export { UserResponseDto } from './user-response.dto';

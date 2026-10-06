@@ -5,8 +5,9 @@ __pycache__/
 build.log
 *.log
 
-*/dist
+**/dist/
 **/node_modules/
+.vscode/
 app/auth-service/build
 *.tsbuildinfo
 
