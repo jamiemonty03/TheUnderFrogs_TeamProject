@@ -1,0 +1,472 @@
+openapi: 3.0.0
+info:
+  title: Auth Service API
+  description: Authentication and authorization service for TheUnderFrogs platform.
+  version: 1.0.0
+  contact:
+    name: TheUnderFrogs Team
+
+servers:
+  - url: /
+    description: Local development (relative URLs)
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account and receive an access and refresh token
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '409':
+          description: User already exists (username or email conflict)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                usernameConflict:
+                  value:
+                    errorCode: AUTH-409
+                    message: User with username johndoe already exists
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with credentials and receive an access and refresh token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials or user inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid credentials
+                userInactive:
+                  value:
+                    errorCode: AUTH-401
+                    message: User account is inactive
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Exchange a valid refresh token for a new access token and refresh token
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid, expired or revoked refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidToken:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid or expired token
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Revoke the given refresh token. The caller must present the access token it was issued with.
+      operationId: logout
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Logout successful
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Client credentials flow
+      description: |
+        Service-to-service authentication (OAuth2 client credentials, RFC 6749 §4.4).
+        A service exchanges its client_id/client_secret for an access token. No refresh token is issued;
+        the client requests a new token when the current one expires.
+      operationId: clientCredentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
+      responses:
+        '200':
+          description: Token obtained successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid client credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidClient:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid client credentials
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/me:
+    get:
+      tags:
+        - User
+      summary: Get current user info
+      description: Retrieve the current authenticated user's information
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User info retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - JWKS
+      summary: Get JSON Web Key Set
+      description: Retrieve the public keys resource servers use to verify JWT signatures
+      operationId: getJWKS
+      responses:
+        '200':
+          description: JWKS retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKS'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                errorCode: AUTH-401
+                message: Invalid or expired token
+
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidField:
+              value:
+                errorCode: VAL-422
+                message: email must be an email
+
+    TooManyRequests:
+      description: Too many attempts
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rateLimited:
+              value:
+                errorCode: AUTH-429
+                message: Too many attempts. Please try again later.
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal:
+              value:
+                errorCode: SRV-500
+                message: Unexpected error
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Unique username for the account
+          example: johndoe
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: john@example.com
+        password:
+          type: string
+          minLength: 6
+          description: Account password (minimum 6 characters)
+          example: MySecurePass123
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Username or email
+          example: johndoe
+        password:
+          type: string
+          description: Account password
+          example: MySecurePass123
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token issued by register, login or refresh
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ClientCredentialsRequest:
+      type: object
+      required:
+        - client_id
+        - client_secret
+        - grant_type
+      properties:
+        client_id:
+          type: string
+          description: Client application ID
+          example: trade-executor
+        client_secret:
+          type: string
+          description: Client application secret
+          example: secret-key-xyz
+        grant_type:
+          type: string
+          enum:
+            - client_credentials
+          description: OAuth2 grant type
+          example: client_credentials
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type:
+          type: string
+          enum:
+            - Bearer
+          description: Always Bearer (required by RFC 6749 §5.1 for OAuth2 clients)
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int32
+          description: Access token lifetime in seconds
+          example: 86400
+        refresh_token:
+          type: string
+          description: Refresh token. Returned by register, login and refresh; never by the client credentials flow.
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    UserResponse:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - role
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        username:
+          type: string
+          description: Username
+          example: johndoe
+        email:
+          type: string
+          format: email
+          description: User email
+          example: john@example.com
+        role:
+          type: string
+          description: User role
+          example: user
+        is_active:
+          type: boolean
+          description: User account status
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: 2024-10-06T10:30:00Z
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: 2024-10-06T10:30:00Z
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code
+          example: AUTH-401
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid credentials
+
+    JWKS:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            required:
+              - kty
+              - use
+              - kid
+              - alg
+              - n
+              - e
+            properties:
+              kty:
+                type: string
+                example: RSA
+              use:
+                type: string
+                example: sig
+              kid:
+                type: string
+                example: key-1
+              alg:
+                type: string
+                example: RS256
+              n:
+                type: string
+                description: RSA modulus (base64url encoded)
+              e:
+                type: string
+                description: RSA public exponent (base64url encoded)
+                example: AQAB
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token
