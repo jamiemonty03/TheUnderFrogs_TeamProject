@@ -6,8 +6,9 @@ import { User } from './entities/user.entity';
 export interface CreateUserPayload {
   username: string;
   email: string;
-  password: string;
-  role: string;
+  password_hash: string;
+  roles: string[];
+  full_name?: string | null;
 }
 
 @Injectable()

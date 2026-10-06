@@ -28,8 +28,8 @@ export class UsersService {
     return this.usersRepository.create({
       username,
       email,
-      password: hashedPassword,
-      role: role || 'user',
+      password_hash: hashedPassword,
+      roles: [(role || 'USER').toUpperCase()],
     });
   }
 
@@ -56,12 +56,16 @@ export class UsersService {
   async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     await this.getUserById(id);
 
-    // If password is being updated, hash it
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    const { password, role, ...rest } = updateUserDto;
+    const changes: Partial<User> = { ...rest };
+    if (password) {
+      changes.password_hash = await bcrypt.hash(password, 10);
+    }
+    if (role) {
+      changes.roles = [role.toUpperCase()];
     }
 
-    const updated = await this.usersRepository.update(id, updateUserDto);
+    const updated = await this.usersRepository.update(id, changes);
     if (!updated) {
       throw new NotFoundException(`Failed to update user with id ${id}`);
     }

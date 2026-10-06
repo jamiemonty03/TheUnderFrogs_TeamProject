@@ -35,4 +35,4 @@ export class UpdateUserDto {
   role?: string;
 }
 
-export { UserResponseDto } from './user-response.dto';
+export { UserResponseDto, toUserResponse } from './user-response.dto';

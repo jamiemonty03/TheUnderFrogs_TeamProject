@@ -14,12 +14,17 @@ describe('UsersService', () => {
     id: 1,
     username: 'testuser',
     email: 'test@example.com',
-    password: 'hashedPassword',
-    role: 'user',
+    password_hash: 'hashedPassword',
+    full_name: 'Test User',
+    roles: ['USER'],
+    account_id: null,
     is_active: true,
+    failed_attempts: 0,
+    locked_until: null,
     version: 0,
     created_at: new Date(),
     updated_at: new Date(),
+    updated_by: 'SYSTEM',
   };
 
   beforeEach(async () => {

@@ -16,12 +16,17 @@ describe('AuthService', () => {
     id: 1,
     username: 'testuser',
     email: 'test@example.com',
-    password: 'hashedPassword',
-    role: 'user',
+    password_hash: 'hashedPassword',
+    full_name: 'Test User',
+    roles: ['USER'],
+    account_id: null,
     is_active: true,
+    failed_attempts: 0,
+    locked_until: null,
     version: 0,
     created_at: new Date(),
     updated_at: new Date(),
+    updated_by: 'SYSTEM',
   };
 
   beforeEach(async () => {
@@ -91,7 +96,7 @@ describe('AuthService', () => {
         username: registerDto.username,
         email: registerDto.email,
         password: registerDto.password,
-        role: 'user',
+        role: 'USER',
       });
     });
   });
@@ -105,14 +110,14 @@ describe('AuthService', () => {
 
       jest.spyOn(usersService, 'getUserByUsername').mockResolvedValue(mockUser);
       jest.spyOn(usersService, 'validatePassword').mockResolvedValue(true);
-      jest.spyOn(authRepository, 'update').mockResolvedValue({ ...mockUser });
+      jest.spyOn(authRepository, 'update').mockResolvedValue(null);
 
       const result = await service.login(loginDto);
 
       expect(result).toHaveProperty('access_token');
       expect(result.token_type).toBe('Bearer');
       expect(usersService.getUserByUsername).toHaveBeenCalledWith('testuser');
-      expect(usersService.validatePassword).toHaveBeenCalledWith('password123', mockUser.password);
+      expect(usersService.validatePassword).toHaveBeenCalledWith('password123', mockUser.password_hash);
       expect(authRepository.update).toHaveBeenCalled();
     });
 

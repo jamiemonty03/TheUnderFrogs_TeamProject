@@ -19,10 +19,10 @@ export class AuthService {
       username: registerDto.username,
       email: registerDto.email,
       password: registerDto.password,
-      role: 'user',
+      role: 'USER',
     });
 
-    return this.generateToken(user.id, user.username, user.role);
+    return this.generateToken(user.id, user.username, user.roles);
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
@@ -30,7 +30,7 @@ export class AuthService {
 
     const isPasswordValid = await this.usersService.validatePassword(
       loginDto.password,
-      user.password,
+      user.password_hash,
     );
 
     if (!isPasswordValid) {
@@ -47,7 +47,7 @@ export class AuthService {
       failed_login_attempts: 0,
     });
 
-    return this.generateToken(user.id, user.username, user.role);
+    return this.generateToken(user.id, user.username, user.roles);
   }
 
 
@@ -62,7 +62,7 @@ export class AuthService {
   private generateToken(
     userId: number,
     username: string,
-    role: string,
+    roles: string[],
   ): TokenResponseDto {
     const expiresIn = this.configService.get<number>('JWT_EXPIRATION', 86400000);
     const expiresInSeconds = Math.floor(expiresIn / 1000);
@@ -70,7 +70,7 @@ export class AuthService {
     const payload = {
       sub: userId,
       username,
-      roles: [role],
+      roles,
     };
 
     const accessToken = this.jwtService.sign(payload, {
