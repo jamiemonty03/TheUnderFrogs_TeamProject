@@ -126,7 +126,7 @@ class TradeDataETL:
             cursor = self.orders_db.get_cursor()
             
             new_orders_query = sql.SQL(
-                "SELECT order_id, idempotency_key, account_id, symbol, side, quantity, price, "
+                "SELECT order_id, idempotency_key, account_id, symbol, side, quantity, price_limit AS price, "
                 "order_status, created_at, version "
                 "FROM orders "
                 "WHERE created_at > %s "
@@ -148,7 +148,7 @@ class TradeDataETL:
 
             
             reprocess_query = sql.SQL(
-                "SELECT order_id, idempotency_key, account_id, symbol, side, quantity, price, "
+                "SELECT order_id, idempotency_key, account_id, symbol, side, quantity, price_limit AS price, "
                 "order_status, created_at, version "
                 "FROM orders "
                 "WHERE order_id = ANY(%s) AND created_at <= %s"
