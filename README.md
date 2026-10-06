@@ -14,34 +14,52 @@
 
 ![ERD Diagram](app/docs/diagrams/ERD-Diagram.PNG)
 
-## Docker Setup
-1) Create a `.env` for each service from its example (these are gitignored, never commit them):
+## Getting Started (fresh clone)
+
+### Prerequisites
+- Docker with the standalone `docker-compose` command (v2)
+- JDK 21 and Maven (the setup script builds the Java jars on your machine)
+- Bash and `openssl` (on Windows, use WSL or Git Bash)
+
+You don't need Node or Python locally: auth-service and the ETL/dashboard are built inside Docker.
+
+### 1) Create the `.env` files
+Each service reads its own `app/<service>/.env`. These files are gitignored and must never be committed. The command below creates them from the `.env.example` files. It also generates one database password and one `JWT_SECRET` and writes the same values into every file:
 ```
-for s in accounts-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
-  cp app/$s/.env.example app/$s/.env
+SECRET=$(openssl rand -hex 32)
+PASSWORD=$(openssl rand -hex 16)
+for s in accounts-service auth-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
+  if [ ! -f app/$s/.env ]; then
+    cp app/$s/.env.example app/$s/.env
+    sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=$SECRET|; s|ENTER_PASSWORD_HERE|$PASSWORD|g" app/$s/.env && rm app/$s/.env.bak
+  fi
 done
 ```
-Then fill in the database passwords and use the **same** `JWT_SECRET` in every file.
+It skips any service that already has a `.env`. If you already have some, copy their `JWT_SECRET` and password into the new ones by hand.
 
-| File | Needed for |
-|---|---|
-| `app/accounts-service/.env`, `instruments-service`, `orders-service`, `positions-service` | Required |
-| `app/trade-executor/.env` | Optional (defaults work; add your own Alpaca paper keys for live prices) |
-| `app/trade-analytics-service/.env` | Optional (only for the analytics service) |
+> **`JWT_SECRET` must be the same in every `.env`.** If one service has a different value, its calls to the others fail with `401`. For example, the trade executor stops publishing to `market-data`.
 
-2) Build the jars and start the core stack (waits until every service is healthy):
+Optional: add your own free [Alpaca](https://alpaca.markets) paper-trading keys to `app/trade-executor/.env` (`ALPACA_KEY_ID` starts with `PK`, plus `ALPACA_SECRET_KEY`) to get live bid/ask prices. If you leave them blank, the trade executor prices orders from the daily close.
+
+### 2) Run the setup script
+From the repo root:
 ```
-for s in accounts-service instruments-service orders-service positions-service trade-executor; do
-  mvn -B -f app/$s/pom.xml clean package -Dmaven.test.skip=true
-done
-docker-compose up -d --build --wait accounts-service instruments-service orders-service positions-service trade-executor kafka-ui
+./db/scripts/setup-pipeline.sh
 ```
+The script:
+1. builds the Java jars;
+2. stops anything already running and starts every container;
+3. creates the tables;
+4. loads the instruments and prices through the Python ETL;
+5. seeds the dummy accounts, orders and positions;
+6. starts trade-analytics-service;
+7. prints row counts, Kafka topics and container status.
 
-3) Load the market data (daily closes the trade executor falls back to):
+When it finishes with `✓ Setup stage 'all' completed successfully!`, the stack is ready to use.
+
+To run only part of the setup, pass a stage: `build`, `containers`, `tables` or `populate` (see `--help`). After editing a `.env`, recreate that container so it reads the change. A plain `restart` doesn't reload `.env` files:
 ```
-docker-compose up -d python trade-analytics-db
-./db/scripts/setup-pipeline.sh populate   # also starts trade-analytics-service
-
+docker-compose up -d --force-recreate <service>
 ```
 
 | Service | Host port |
@@ -52,10 +70,12 @@ docker-compose up -d python trade-analytics-db
 | positions-service | 8084 |
 | python dashboard | 8085 |
 | kafka-ui | 8086 |
+| auth-service | 8087 |
+| sonarqube (`quality` profile only) | 8088 |
 | kafka (external listener) | 127.0.0.1:9094 |
-| accounts / instruments / orders / positions / analytics DBs | 127.0.0.1:5433-5437 |
+| accounts / instruments / orders / positions / analytics / auth DBs | 127.0.0.1:5433-5438 |
 
-Sprint 7 environment variables:
+Environment variables:
 
 | Variable | Service | Purpose |
 |---|---|---|
@@ -66,38 +86,30 @@ Sprint 7 environment variables:
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
 
-4) Watch the Kafka topics (or open kafka-ui on port 8086):
+### 3) Check it works
+Watch a Kafka topic (or open kafka-ui on port 8086):
 ```
 docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic trade-events --from-beginning
 ```
 
-5) Run the end-to-end smoke test (builds, starts, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears down):
+Run the end-to-end smoke test. It builds and starts the stack, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
 ```
 ./scripts/smoke-test-e2e.sh
 ```
 Set `KEEP_UP=true` to leave the stack running afterwards.
 
-6) Tear down (add `--volumes` to also wipe the databases):
+### 4) Tear down
+Add `--volumes` to also wipe the databases:
 ```
 docker-compose down
 docker-compose down --volumes
 ```
 
-> If a service fails with `Schema-validation: missing table`, its database volume was created from an older schema. Wipe it with `docker-compose down --volumes` and start again.
-
-## Database Setup (manual / non-Docker)
-1) Create the database (note: underscores, not hyphens, since Postgres identifiers can't contain `-` unquoted):
-```
-psql -U postgres -h <host> -p 5432 -c "CREATE DATABASE enterprise_schema;"
-```
-2) Create the schema (tables):
-```
-psql -U postgres -h <host> -p 5432 -d enterprise_schema -f sql/tables.sql
-```
-3) Load the seed/dummy data:
-```
-psql -U postgres -h <host> -p 5432 -d enterprise_schema -f sql/dummy-data.sql
-```
+### Troubleshooting
+- **`Schema-validation: missing table`**: the database volume was created from an older schema. Run `docker-compose down --volumes`, then run the setup script again.
+- **`401` errors between services** (for example, `Market-data poll failed ... 401` in the trade-executor logs): `JWT_SECRET` doesn't match across the `.env` files. Fix it, then recreate the container.
+- **Database password errors after changing a password in `.env`**: Postgres keeps the password it was created with. Change it back, or wipe the volumes.
+- **`docker: 'compose' is not a docker command`**: use `docker-compose` (with the hyphen).
 
 ## Branching Strategy (GitFlow)
 ### Purpose
@@ -141,7 +153,7 @@ For local SonarQube, the optional Compose profile avoids starting a second serve
 docker-compose --profile quality up -d sonarqube
 ```
 
-The default local URL is `http://localhost:9001` (override it with `SONARQUBE_PORT`). Complete the first-run setup, create an analysis token, and use the server’s **Sonar way** quality gate or create a project gate with these conditions on new code:
+The local URL is `http://localhost:8088`. Complete the first-run setup, create an analysis token, and use the server’s **Sonar way** quality gate or create a project gate with these conditions on new code:
 
 - Blocker issues greater than 0: fail.
 - Critical issues greater than 0: fail.
@@ -156,7 +168,7 @@ Configure Jenkins under **Manage Jenkins → System → SonarQube installations*
 To run an analysis locally, first test the service so JaCoCo writes the XML report, then provide the host and token through environment variables (do not commit the token):
 
 ```bash
-export SONAR_HOST_URL=http://localhost:9001
+export SONAR_HOST_URL=http://localhost:8088
 export SONAR_TOKEN='<your SonarQube token>'
 mvn -B -f app/accounts-service/pom.xml clean verify sonar:sonar \
   -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN" \
