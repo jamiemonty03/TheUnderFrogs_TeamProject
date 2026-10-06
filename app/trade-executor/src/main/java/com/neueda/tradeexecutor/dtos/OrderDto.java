@@ -10,6 +10,6 @@ public record OrderDto(
     String symbol,
     OrderSide side,
     int quantity,
-    BigDecimal price,
+    BigDecimal priceLimit,
     OrderStatus orderStatus
 ) {}

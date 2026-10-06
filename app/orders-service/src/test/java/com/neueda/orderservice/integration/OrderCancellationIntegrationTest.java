@@ -181,7 +181,7 @@ class OrderCancellationIntegrationTest {
     private String insertOrder(String status) {
         String orderId = UUID.randomUUID().toString();
         jdbcTemplate.update("""
-                INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price, order_status)
+                INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price_limit, order_status)
                 VALUES (?, ?, ?, 'AAPL', 'BUY', 10, 150.00, ?)
                 """, orderId, "idem-" + orderId, ACCOUNT_ID, status);
         return orderId;

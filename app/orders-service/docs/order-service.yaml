@@ -48,7 +48,7 @@ paths:
     put:
       summary: Update mutable order fields
       description: >
-        Updates quantity, price, side and updatedBy. The order status cannot be changed here:
+        Updates quantity, priceLimit, side and updatedBy. The order status cannot be changed here:
         sending orderStatus returns 422. Use PATCH /orders/{orderId}/status instead.
       operationId: updateOrder
       security:
@@ -280,7 +280,7 @@ components:
   schemas:
     OrderResponse:
       type: object
-      required: [orderId, accountId, symbol, side, quantity, price, orderStatus, version, createdAt, lastUpdated]
+      required: [orderId, accountId, symbol, side, quantity, priceLimit, orderStatus, version, createdAt, lastUpdated]
       properties:
         orderId:
           type: string
@@ -299,10 +299,10 @@ components:
           type: integer
           description: Number of shares
           minimum: 1
-        price:
+        priceLimit:
           type: number
           format: decimal
-          description: Limit price per share
+          description: Worst price per share the user accepts. The order fills at the market price, not this value.
         orderStatus:
           type: string
           enum: [NEW, FILLED, CANCELLED, REJECTED]
@@ -327,7 +327,7 @@ components:
 
     PlaceOrderRequest:
       type: object
-      required: [accountId, symbol, side, quantity, price, idempotencyKey]
+      required: [accountId, symbol, side, quantity, priceLimit, idempotencyKey]
       properties:
         accountId:
           type: string
@@ -342,10 +342,13 @@ components:
         quantity:
           type: number
           description: Number of shares (integers only)
-        price:
+        priceLimit:
           type: number
           format: decimal
-          description: Limit price per share
+          description: >
+            Worst price per share you accept: the most you pay on a BUY, the least you receive on a SELL.
+            The order fills at the market price, or is rejected if the market is past this limit.
+          example: 190.00
         idempotencyKey:
           type: string
           description: Unique key for idempotent order placement
@@ -360,10 +363,10 @@ components:
           type: integer
           minimum: 1
           description: New quantity
-        price:
+        priceLimit:
           type: number
           format: decimal
-          description: New limit price
+          description: New price limit
         side:
           type: string
           enum: [BUY, SELL]

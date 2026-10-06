@@ -48,12 +48,12 @@ public class OrderService {
     }
 
     public Order placeOrder(Account account, Instrument instrument, OrderSide side,
-                           BigDecimal quantity, BigDecimal price, String idempotencyKey)
+                           BigDecimal quantity, BigDecimal priceLimit, String idempotencyKey)
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
                    InsufficientFundsException, InsufficientHoldingsException,
                    InvalidOrderException, DuplicateOrderException {
         
-        validationService.validateOrder(account, instrument, side, quantity, price);
+        validationService.validateOrder(account, instrument, side, quantity, priceLimit);
         
         int quantityInt = quantity.intValueExact();
 
@@ -63,7 +63,7 @@ public class OrderService {
             instrument.getSymbol(),
             side,
             quantityInt,
-            price,
+            priceLimit,
             idempotencyKey
         );
         

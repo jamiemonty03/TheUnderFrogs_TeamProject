@@ -92,7 +92,7 @@ public class OrderController {
     public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
         log.info("Order placement received {} {} {} {} {}", kv("accountId", request.accountId()),
             kv("symbol", request.symbol()), kv("side", request.side()), kv("quantity", request.quantity()),
-            kv("price", request.price()));
+            kv("priceLimit", request.priceLimit()));
 
         Account account = fetchAccount(request.accountId());
         if (account == null) {
@@ -108,7 +108,7 @@ public class OrderController {
             instrument,
             request.side(),
             request.quantity(),
-            request.price(),
+            request.priceLimit(),
             request.idempotencyKey()
         );
         if (!result.isSuccess()) {
@@ -162,8 +162,8 @@ public class OrderController {
         if (request.quantity() != null) {
             order.setQuantity(request.quantity());
         }
-        if (request.price() != null) {
-            order.setPrice(request.price());
+        if (request.priceLimit() != null) {
+            order.setPriceLimit(request.priceLimit());
         }
         if (request.side() != null) {
             order.setSide(request.side());
@@ -205,7 +205,7 @@ public class OrderController {
             order.getSymbol(),
             order.getSide(),
             order.getQuantity(),
-            order.getPrice(),
+            order.getPriceLimit(),
             order.getOrderStatus(),
             order.getVersion(),
             order.getCreatedAt(),
