@@ -174,7 +174,7 @@ class DuplicateOrderPlacedIntegrationTest {
                         "symbol", SYMBOL,
                         "side", "BUY",
                         "quantity", 10,
-                        "price", LIMIT,
+                        "priceLimit", LIMIT,
                         "idempotencyKey", "key-" + orderId)));
     }
 

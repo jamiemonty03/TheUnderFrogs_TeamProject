@@ -32,6 +32,9 @@ RUN npm ci --omit=dev && npm cache clean --force
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# OpenAPI spec served at /docs
+COPY docs ./docs
+
 # Expose port
 EXPOSE 8081
 

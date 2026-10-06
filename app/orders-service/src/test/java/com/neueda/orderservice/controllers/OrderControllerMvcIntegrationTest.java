@@ -134,7 +134,7 @@ class OrderControllerMvcIntegrationTest {
                                   "symbol": "AAPL",
                                   "side": "BUY",
                                   "quantity": 10,
-                                  "price": 150.00,
+                                  "priceLimit": 150.00,
                                   "idempotencyKey": "idempotency-key-2"
                                 }
                                 """))

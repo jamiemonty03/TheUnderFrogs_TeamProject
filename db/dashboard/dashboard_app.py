@@ -9,12 +9,16 @@ from data.loaders import (
     get_available_asset_classes,
     get_available_currencies
 )
-from layouts import create_ticker_tab_layout, create_screener_tab_layout
+from data.kafka_consumers import start_kafka_consumers
+from layouts import create_ticker_tab_layout, create_screener_tab_layout, create_live_tab_layout
 from callbacks import register_all_callbacks
 
 
 # Initialize Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+# Start Kafka consumers in background threads
+start_kafka_consumers()
 
 # Load data
 price_metrics_df = load_price_metrics()
@@ -34,9 +38,10 @@ app.layout = dbc.Container([
     ]),
     
     dbc.Tabs([
+        create_live_tab_layout(),
         create_ticker_tab_layout(available_tickers),
         create_screener_tab_layout(available_asset_classes, available_currencies),
-    ], id="dashboard-tabs", active_tab="ticker-tab")
+    ], id="dashboard-tabs", active_tab="live-tab")
 ], fluid=True, className="bg-light")
 
 # Register all callbacks
@@ -45,4 +50,5 @@ register_all_callbacks(app, price_metrics_df, instruments_metrics_df)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)
+
 

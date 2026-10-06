@@ -108,7 +108,7 @@ public class OrderControllerTest {
         assertEquals("AAPL", order.symbol());
         assertEquals(OrderSide.BUY, order.side());
         assertEquals(100, order.quantity());
-        assertEquals(new BigDecimal("150.25"), order.price());
+        assertEquals(new BigDecimal("150.25"), order.priceLimit());
         assertEquals(OrderStatus.NEW, order.orderStatus());
         assertEquals("ACC001", order.accountId());
     }
@@ -151,13 +151,13 @@ public class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /orders/{orderId} updates price successfully")
+    @DisplayName("PUT /orders/{orderId} updates price limit successfully")
     void testUpdateOrderPriceSuccess() {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(null, new BigDecimal("160.50"), null, null, null);
         
         var response = orderController.updateOrder("ORD001", updateRequest);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertEquals(new BigDecimal("160.50"), response.getBody().price());
+        assertEquals(new BigDecimal("160.50"), response.getBody().priceLimit());
     }
 
     @Test
@@ -179,7 +179,7 @@ public class OrderControllerTest {
         var response = orderController.updateOrder("ORD001", updateRequest);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertEquals(150, response.getBody().quantity());
-        assertEquals(new BigDecimal("155.00"), response.getBody().price());
+        assertEquals(new BigDecimal("155.00"), response.getBody().priceLimit());
         assertEquals(OrderSide.BUY, response.getBody().side());
         assertEquals(OrderStatus.NEW, response.getBody().orderStatus());
     }
