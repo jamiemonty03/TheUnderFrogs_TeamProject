@@ -41,12 +41,12 @@ public class OrderValidationService {
         }
     }
 
-    public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal price)
+    public void validateBuyOrder(Account account, BigDecimal quantity, BigDecimal priceLimit)
             throws InsufficientFundsException, InvalidOrderException {
         validateQuantity(quantity);
-        validatePrice(price);
+        validatePriceLimit(priceLimit);
         
-        BigDecimal requiredBalance = quantity.multiply(price);
+        BigDecimal requiredBalance = quantity.multiply(priceLimit);
         BigDecimal availableBalance = account.getCashBalance();
         
         if (availableBalance.compareTo(requiredBalance) < 0) {
@@ -57,10 +57,10 @@ public class OrderValidationService {
         }
     }
 
-    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity, BigDecimal price)
+    public void validateSellOrder(Account account, String instrumentSymbol, BigDecimal quantity, BigDecimal priceLimit)
             throws InvalidOrderException {
         validateQuantity(quantity);
-        validatePrice(price);
+        validatePriceLimit(priceLimit);
     }
 
     private void validateQuantity(BigDecimal quantity) throws InvalidOrderException {
@@ -75,14 +75,14 @@ public class OrderValidationService {
         }
     }
 
-    private void validatePrice(BigDecimal price) throws InvalidOrderException {
-        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new InvalidOrderException("Price must be positive");
+    private void validatePriceLimit(BigDecimal priceLimit) throws InvalidOrderException {
+        if (priceLimit == null || priceLimit.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidOrderException("Price limit must be positive");
         }
     }
 
     public void validateOrder(Account account, Instrument instrument, OrderSide side,
-                             BigDecimal quantity, BigDecimal price)
+                             BigDecimal quantity, BigDecimal priceLimit)
             throws AccountNotActiveException, InstrumentNotFoundException,
                    TradingException, InsufficientFundsException, InsufficientHoldingsException,
                    InvalidOrderException {
@@ -92,9 +92,9 @@ public class OrderValidationService {
         validateInstrument(instrument);
 
         if (side == OrderSide.BUY) {
-            validateBuyOrder(account, quantity, price);
+            validateBuyOrder(account, quantity, priceLimit);
         } else if (side == OrderSide.SELL) {
-            validateSellOrder(account, instrument.getSymbol(), quantity, price);
+            validateSellOrder(account, instrument.getSymbol(), quantity, priceLimit);
         } else {
             throw new InvalidOrderException("Invalid order side: " + side);
         }

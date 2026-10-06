@@ -48,7 +48,7 @@ class OrdersClientTest {
               "symbol": "AAPL",
               "side": "BUY",
               "quantity": 10,
-              "price": 150.00,
+              "priceLimit": 150.00,
               "orderStatus": "%s",
               "version": 0,
               "createdAt": "2026-09-28T10:00:00",
@@ -71,7 +71,7 @@ class OrdersClientTest {
         assertEquals("AAPL", order.symbol());
         assertEquals(OrderSide.BUY, order.side());
         assertEquals(10, order.quantity());
-        assertEquals(0, new BigDecimal("150.00").compareTo(order.price()));
+        assertEquals(0, new BigDecimal("150.00").compareTo(order.priceLimit()));
         assertEquals(OrderStatus.NEW, order.orderStatus());
         ordersService.verify();
     }

@@ -116,7 +116,7 @@ classDiagram
         -String symbol
         -OrderSide side
         -int quantity
-        -BigDecimal price
+        -BigDecimal priceLimit
         -String idempotencyKey
         -OrderStatus orderStatus
         -int version

@@ -15,7 +15,7 @@ import jakarta.validation.constraints.Null;
  */
 public record UpdateOrderRequest(
     Integer quantity,
-    BigDecimal price,
+    BigDecimal priceLimit,
     OrderSide side,
     @Null(message = "orderStatus cannot be changed with PUT; use PATCH /orders/{id}/status")
     OrderStatus orderStatus,

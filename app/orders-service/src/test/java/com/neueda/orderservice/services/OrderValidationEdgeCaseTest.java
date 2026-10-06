@@ -33,7 +33,7 @@ class OrderValidationEdgeCaseTest {
     void rejectsNullPrice() {
         InvalidOrderException ex = assertThrows(InvalidOrderException.class, () ->
             validationService.validateOrder(account, instrument, OrderSide.SELL, BigDecimal.ONE, null));
-        assertEquals("Price must be positive", ex.getMessage());
+        assertEquals("Price limit must be positive", ex.getMessage());
     }
 
     @Test

@@ -14,7 +14,7 @@ public final class FillRule {
             return FillDecision.reject("No valid market price for " + order.symbol());
         }
 
-        BigDecimal limit = order.price();
+        BigDecimal limit = order.priceLimit();
 
         if (order.side() == OrderSide.BUY) {
             if (marketPrice.compareTo(limit) <= 0) {
