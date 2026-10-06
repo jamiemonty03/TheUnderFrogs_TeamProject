@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    triggers {
-        cron('*/45 * * * *')
-    }
     tools {
         jdk 'JDK21'
         maven 'maven'
@@ -70,6 +67,54 @@ pipeline {
                     steps {
                         sh 'mvn -B -f app/trade-executor/pom.xml test'
                     }
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'app/*/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Prepare Environment') {
+            steps {
+                sh '''
+                    DB_PASSWORD=$(openssl rand -hex 16)
+                    JWT_SECRET=$(openssl rand -hex 32)
+                    for s in accounts-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
+                        if [ ! -f app/$s/.env ]; then
+                            sed -e "s/ENTER_PASSWORD_HERE/$DB_PASSWORD/" -e "s/your-generated-secret-token-here/$JWT_SECRET/" \
+                                app/$s/.env.example > app/$s/.env
+                        fi
+                    done
+                '''
+            }
+        }
+
+        stage('Python Tests') {
+            steps {
+                sh '''
+                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 python sh -c \
+                        "python -m pytest /db/tests -p no:cacheprovider --junitxml=/db/tests/reports/pytest-db.xml; s=\\$?; chown -R $(id -u):$(id -g) /db/tests/reports; exit \\$s"
+                    docker-compose build trade-analytics-service
+                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD/app/trade-analytics-service/tests:/app/tests" trade-analytics-service sh -c \
+                        "python -m pytest tests -p no:cacheprovider --junitxml=tests/reports/pytest-analytics.xml; s=\\$?; chown -R $(id -u):$(id -g) tests/reports; exit \\$s"
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+                }
+            }
+        }
+
+        stage('End-to-end Smoke Test') {
+            steps {
+                sh './scripts/smoke-test-e2e.sh'
+            }
+            post {
+                always {
+                    sh 'docker-compose down --volumes --remove-orphans || true'
                 }
             }
         }
