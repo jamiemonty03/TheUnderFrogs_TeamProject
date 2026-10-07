@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { ConflictException, INestApplication } from '@nestjs/common';
+import { ConflictException, INestApplication, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -31,6 +31,8 @@ describe('Auth endpoints (HTTP)', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  const tokens = { accessToken: 'rs256.jwt', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false };
+
   describe('POST /auth/register', () => {
     const body = { username: 'alice', email: 'alice@example.com', password: 'correct-horse-battery' };
 
@@ -45,6 +47,38 @@ describe('Auth endpoints (HTTP)', () => {
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({ errorCode: 'AUTH-409', message });
+    });
+
+    it('returns 201 with the token response for a new user', async () => {
+      authService.register.mockResolvedValue(tokens);
+
+      const response = await request(app.getHttpServer()).post('/auth/register').send(body);
+
+      expect(response.status).toBe(201);
+      expect(response.body).toEqual(tokens);
+    });
+  });
+
+  describe('POST /auth/login', () => {
+    it('returns 200 with accessToken, refreshToken, expiresIn and mfaRequired', async () => {
+      authService.login.mockResolvedValue(tokens);
+
+      const response = await request(app.getHttpServer()).post('/auth/login').send({ username: 'demo', password: 'Demo123!' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(tokens);
+    });
+
+    it('gives byte-for-byte identical responses for a wrong username and a wrong password', async () => {
+      authService.login.mockRejectedValue(new UnauthorizedException('Invalid credentials'));
+
+      const wrongUser = await request(app.getHttpServer()).post('/auth/login').send({ username: 'ghost', password: 'Demo123!' });
+      const wrongPassword = await request(app.getHttpServer()).post('/auth/login').send({ username: 'demo', password: 'Wrong123!' });
+
+      expect(wrongUser.status).toBe(401);
+      expect(wrongUser.body).toEqual({ errorCode: 'AUTH-401', message: 'Invalid credentials' });
+      expect(wrongPassword.status).toBe(wrongUser.status);
+      expect(wrongPassword.text).toBe(wrongUser.text);
     });
   });
 });

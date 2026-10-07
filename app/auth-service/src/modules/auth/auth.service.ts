@@ -4,6 +4,7 @@ import { AuthRepository } from './auth.repository';
 import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
 import { DEFAULT_ROLE } from '../users/dto';
 import { AccessTokenClaims, TokenService } from '../tokens/token.service';
+import { RefreshTokensService } from '../tokens/refresh-tokens.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 import { User } from '../users/entities/user.entity';
 
@@ -13,6 +14,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly authRepository: AuthRepository,
     private readonly tokenService: TokenService,
+    private readonly refreshTokensService: RefreshTokensService,
     private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
@@ -25,26 +27,19 @@ export class AuthService {
       role: DEFAULT_ROLE,
     });
 
-    return this.generateToken(user);
+    return this.issueTokens(user);
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
     const user = await this.usersService.verifyCredentials(loginDto.username, loginDto.password);
 
-    if (!user) {
+    if (!user || !user.is_active) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user.is_active) {
-      throw new UnauthorizedException('User account is inactive');
-    }
+    await this.authRepository.recordLogin(user.id);
 
-    await this.authRepository.update(user.id, {
-      last_login: new Date().toISOString(),
-      failed_login_attempts: 0,
-    });
-
-    return this.generateToken(user);
+    return this.issueTokens(user);
   }
 
 
@@ -52,12 +47,9 @@ export class AuthService {
     return this.tokenService.verify(token);
   }
 
-  private generateToken(user: User): TokenResponseDto {
+  private async issueTokens(user: User): Promise<TokenResponseDto> {
     const { accessToken, expiresIn } = this.tokenService.issue(user);
-    return {
-      access_token: accessToken,
-      token_type: 'Bearer',
-      expires_in: expiresIn,
-    };
+    const { refreshToken } = await this.refreshTokensService.issue(user.id);
+    return { accessToken, refreshToken, expiresIn, mfaRequired: false };
   }
 }
