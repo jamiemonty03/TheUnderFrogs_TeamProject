@@ -77,23 +77,26 @@ export class RegisterDto {
 
 export class TokenResponseDto {
   @ApiProperty({
-    description: 'JWT access token',
+    description: 'RS256 JWT access token',
   })
-  access_token: string;
+  accessToken: string;
 
   @ApiProperty({
-    description: 'Token type (always Bearer)',
-    enum: ['Bearer'],
-    example: 'Bearer',
+    description: 'Opaque refresh token',
   })
-  token_type: string;
+  refreshToken: string;
 
   @ApiProperty({
-    description: 'Token expiration time in seconds',
+    description: 'Access token lifetime in seconds',
     type: 'integer',
-    example: 86400,
+    example: 900,
   })
-  expires_in: number;
+  expiresIn: number;
+
+  @ApiProperty({
+    description: 'Whether a second factor is needed before the tokens can be used',
+    example: false,
+  })
+  mfaRequired: boolean;
 }
 
-export { TokenPayloadDto } from './token-payload.dto';

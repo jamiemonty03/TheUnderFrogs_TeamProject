@@ -67,9 +67,13 @@ describe('user DTO validation', () => {
   });
 
   describe('CreateUserDto role', () => {
-    it('accepts USER and ADMIN in any case', async () => {
+    it('accepts TRADER and ADMIN in any case', async () => {
       expect(await errorsFor(CreateUserDto, { ...valid, role: 'admin' })).toEqual([]);
-      expect(plainToInstance(CreateUserDto, { ...valid, role: ' user ' }).role).toBe('USER');
+      expect(plainToInstance(CreateUserDto, { ...valid, role: ' trader ' }).role).toBe('TRADER');
+    });
+
+    it('rejects the old USER role', async () => {
+      expect(await errorsFor(CreateUserDto, { ...valid, role: 'USER' })).toEqual(['role']);
     });
 
     it('rejects any other role', async () => {

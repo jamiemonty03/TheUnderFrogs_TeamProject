@@ -1,21 +1,21 @@
 import { jest } from '@jest/globals';
 // @ts-nocheck
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { ConflictException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { TokenService } from '../tokens/token.service';
+import { RefreshTokensService } from '../tokens/refresh-tokens.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 
 describe('AuthService', () => {
   let service: AuthService;
   let usersService: any;
   let authRepository: any;
-  let jwtService: any;
+  let tokenService: any;
+  let refreshTokensService: any;
   let accountsServiceClient: any;
-  let configService: any;
 
   const mockUser = {
     id: 1,
@@ -23,7 +23,7 @@ describe('AuthService', () => {
     email: 'test@example.com',
     password_hash: 'hashedPassword',
     full_name: 'Test User',
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: null,
     is_active: true,
     failed_attempts: 0,
@@ -61,22 +61,20 @@ describe('AuthService', () => {
           provide: AuthRepository,
           useValue: {
             update: jest.fn() as any,
+            recordLogin: jest.fn() as any,
           } as any,
         },
         {
-          provide: JwtService,
+          provide: TokenService,
           useValue: {
-            sign: jest.fn().mockReturnValue('jwt_token_here') as any,
+            issue: jest.fn().mockReturnValue({ accessToken: 'rs256.token.here', expiresIn: 900 }) as any,
             verify: jest.fn() as any,
           } as any,
         },
         {
-          provide: ConfigService,
+          provide: RefreshTokensService,
           useValue: {
-            get: jest.fn((key, defaultValue) => {
-              if (key === 'JWT_EXPIRATION') return 86400000;
-              return defaultValue;
-            }) as any,
+            issue: jest.fn().mockResolvedValue({ refreshToken: 'opaque-refresh', expiresAt: new Date() }) as any,
           } as any,
         },
         {
@@ -92,9 +90,9 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     usersService = module.get<any>(UsersService);
     authRepository = module.get<any>(AuthRepository);
-    jwtService = module.get<any>(JwtService);
+    tokenService = module.get<any>(TokenService);
+    refreshTokensService = module.get<any>(RefreshTokensService);
     accountsServiceClient = module.get<any>(AccountsServiceClient);
-    configService = module.get<any>(ConfigService);
   });
 
   afterEach(() => {
@@ -131,7 +129,7 @@ describe('AuthService', () => {
         username: registerDto.username,
         email: registerDto.email,
         password: registerDto.password,
-        role: 'USER',
+        role: 'TRADER',
       });
       expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({
         userId: 2,
@@ -220,74 +218,76 @@ describe('AuthService', () => {
     });
   });
 
-  describe('login', () => {
-    it('should login user and return token', async () => {
-      const loginDto = {
-        username: 'testuser',
-        password: 'password123',
-      };
+  describe('register', () => {
+    const registerDto = { username: 'newuser', email: 'new@example.com', password: 'correct-horse-battery' };
 
-      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(mockUser);
-      jest.spyOn(authRepository, 'update').mockResolvedValue(null);
+    it('creates the user with the TRADER role and returns a token for them', async () => {
+      const created = { ...mockUser, id: 9, username: 'newuser', roles: ['TRADER'] };
+      (usersService.createUser as jest.Mock).mockResolvedValue(created as any);
+
+      const result = await service.register(registerDto);
+
+      expect(usersService.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'newuser', role: 'TRADER' }));
+      expect(tokenService.issue).toHaveBeenCalledWith(created);
+      expect(refreshTokensService.issue).toHaveBeenCalledWith(9);
+      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false });
+    });
+
+    it('passes a taken username or email straight through as a conflict', async () => {
+      (usersService.createUser as jest.Mock).mockRejectedValue(new ConflictException('User with username newuser already exists') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('login', () => {
+    const loginDto = { username: 'testuser', password: 'password123' };
+
+    it('returns an access token, a refresh token, the lifetime and mfaRequired false', async () => {
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(mockUser as any);
 
       const result = await service.login(loginDto);
 
-      expect(result).toHaveProperty('access_token');
-      expect(result.token_type).toBe('Bearer');
+      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false });
       expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
-      expect(authRepository.update).toHaveBeenCalled();
+      expect(tokenService.issue).toHaveBeenCalledWith(mockUser);
+      expect(refreshTokensService.issue).toHaveBeenCalledWith(1);
+      expect(authRepository.recordLogin).toHaveBeenCalledWith(1);
     });
 
-    it('should throw UnauthorizedException for invalid password', async () => {
-      const loginDto = {
-        username: 'testuser',
-        password: 'wrongpassword',
-      };
+    it.each([
+      ['an unknown username', null],
+      ['a wrong password', null],
+      ['an inactive account', { ...mockUser, is_active: false }],
+    ])('rejects %s with the same generic error and issues nothing', async (_label, verified) => {
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(verified as any);
 
-      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
-
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      expect(authRepository.update).not.toHaveBeenCalled();
-    });
-
-    it('should give the same error for an unknown username as for a wrong password', async () => {
-      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(null);
-
-      await expect(service.login({ username: 'ghost', password: 'whatever' })).rejects.toThrow('Invalid credentials');
-    });
-
-    it('should throw UnauthorizedException if user is inactive', async () => {
-      const loginDto = {
-        username: 'testuser',
-        password: 'password123',
-      };
-
-      const inactiveUser = { ...mockUser, is_active: false };
-
-      jest.spyOn(usersService, 'verifyCredentials').mockResolvedValue(inactiveUser);
-
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.login(loginDto)).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+      expect(tokenService.issue).not.toHaveBeenCalled();
+      expect(refreshTokensService.issue).not.toHaveBeenCalled();
+      expect(authRepository.recordLogin).not.toHaveBeenCalled();
     });
   });
 
   describe('validateToken', () => {
     it('should validate a token successfully', async () => {
       const token = 'valid_token';
-      const decoded = { sub: 1, username: 'testuser', roles: ['user'], accountId: 'ACC-000001' };
+      const decoded = { sub: '1', username: 'testuser', roles: ['TRADER'], accountId: 'ACC0001' };
 
-      (jwtService.verify as jest.Mock).mockReturnValue(decoded as any);
+      (tokenService.verify as jest.Mock).mockReturnValue(decoded as any);
 
       const result = await service.validateToken(token);
 
       expect(result).toEqual(decoded);
-      expect(jwtService.verify).toHaveBeenCalledWith(token);
+      expect(tokenService.verify).toHaveBeenCalledWith(token);
     });
 
     it('should throw UnauthorizedException for invalid token', async () => {
       const token = 'invalid_token';
 
-      (jwtService.verify as jest.Mock).mockImplementation(() => {
-        throw new Error('Invalid token');
+      (tokenService.verify as jest.Mock).mockImplementation(() => {
+        throw new UnauthorizedException('Invalid or expired token');
       });
 
       await expect(service.validateToken(token)).rejects.toThrow(UnauthorizedException);

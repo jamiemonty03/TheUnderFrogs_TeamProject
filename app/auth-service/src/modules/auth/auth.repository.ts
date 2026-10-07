@@ -28,6 +28,14 @@ export class AuthRepository {
     return this.findById(id);
   }
 
+  async recordLogin(userId: number): Promise<void> {
+    const changes = { last_login: new Date().toISOString(), failed_login_attempts: 0 };
+    const result = await this.repository.update({ user_id: userId }, changes);
+    if (!result.affected) {
+      await this.repository.save(this.repository.create({ user_id: userId, ...changes }));
+    }
+  }
+
   async delete(id: number): Promise<boolean> {
     const result = await this.repository.delete(id);
     return (result.affected ?? 0) > 0;

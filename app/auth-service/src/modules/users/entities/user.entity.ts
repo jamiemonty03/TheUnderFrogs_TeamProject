@@ -17,7 +17,7 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   full_name: string | null;
 
-  @Column({ type: 'text', array: true, default: () => "ARRAY['USER']" })
+  @Column({ type: 'text', array: true, default: () => "ARRAY['TRADER']" })
   roles: string[];
 
   @Column({ type: 'varchar', length: 32, unique: true, nullable: true })

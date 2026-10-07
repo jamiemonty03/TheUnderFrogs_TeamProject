@@ -18,7 +18,7 @@ describe('UsersService', () => {
     email: 'test@example.com',
     password_hash: 'hashedPassword',
     full_name: 'Test User',
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: null,
     is_active: true,
     failed_attempts: 0,

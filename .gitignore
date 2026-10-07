@@ -13,3 +13,5 @@ app/auth-service/build
 
 .pytest_cache/
 tests/reports/
+
+*.pdf
