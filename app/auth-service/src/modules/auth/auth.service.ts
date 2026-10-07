@@ -1,9 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
 import { LoginDto, RegisterDto, TokenResponseDto, TokenPayloadDto } from './dto';
+import { AccountsServiceClient } from './services/accounts-service-client';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +14,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<TokenResponseDto> {
@@ -36,7 +39,6 @@ export class AuthService {
     if (!user.is_active) {
       throw new UnauthorizedException('User account is inactive');
     }
-
 
     await this.authRepository.update(user.id, {
       last_login: new Date().toISOString(),
@@ -63,7 +65,7 @@ export class AuthService {
     const expiresIn = this.configService.get<number>('JWT_EXPIRATION', 86400000);
     const expiresInSeconds = Math.floor(expiresIn / 1000);
 
-    const payload = {
+    const payload: any = {
       sub: userId,
       username,
       roles,

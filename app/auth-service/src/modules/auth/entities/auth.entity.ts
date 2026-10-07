@@ -11,9 +11,6 @@ export class Auth {
   @Column({ type: 'varchar', length: 255, nullable: true })
   last_login: string;
 
-  @Column({ type: 'boolean', default: true })
-  is_2fa_enabled: boolean;
-
   @Column({ type: 'integer', default: 0 })
   failed_login_attempts: number;
 
