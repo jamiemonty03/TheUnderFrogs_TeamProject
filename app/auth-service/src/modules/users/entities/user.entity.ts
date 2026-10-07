@@ -26,9 +26,6 @@ export class User {
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  account_id?: string;
-
   @Column({ type: 'integer', default: 0 })
   failed_attempts: number;
 

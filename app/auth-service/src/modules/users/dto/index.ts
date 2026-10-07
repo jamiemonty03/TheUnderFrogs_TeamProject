@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './validation';
 
@@ -107,6 +107,11 @@ export class UpdateUserDto {
   @IsRole()
   role?: string;
 
+  @ApiProperty({
+    description: 'Account ID',
+    required: false,
+  })
+  @IsOptional()
   @IsString()
   account_id?: string;
 }

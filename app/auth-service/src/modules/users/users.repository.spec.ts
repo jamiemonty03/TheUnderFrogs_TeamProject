@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Repository } from 'typeorm';
 import { UsersRepository } from './users.repository';
 import { User } from './entities/user.entity';

@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { INestApplication, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
