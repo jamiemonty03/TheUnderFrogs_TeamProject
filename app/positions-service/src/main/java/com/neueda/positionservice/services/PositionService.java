@@ -15,6 +15,10 @@ import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.repositories.PositionRepository;
+import org.springframework.transaction.annotation.Transactional;
+import com.neueda.positionservice.enums.MovementType;
+import com.neueda.positionservice.models.PositionMovement;
+import com.neueda.positionservice.repositories.PositionMovementRepository;
 
 @Service
 public class PositionService {
@@ -23,9 +27,11 @@ public class PositionService {
     private static final RoundingMode ROUNDING_MODE = RoundingMode.HALF_UP;
 
     private final PositionRepository positionRepository;
+    private final PositionMovementRepository positionMovementRepository;
 
-    public PositionService(PositionRepository positionRepository) {
+    public PositionService(PositionRepository positionRepository, PositionMovementRepository positionMovementRepository) {
         this.positionRepository = positionRepository;
+        this.positionMovementRepository = positionMovementRepository;
     }
 
     public List<Position> getPositionsByAccountId(String accountId) {
@@ -61,20 +67,52 @@ public class PositionService {
         return applyUpdate(findExisting(accountId, symbol), request.quantity(), request.averageCost());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
+        return updatePositionAfterBuy(accountId, symbol, quantity, price, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price,
+                                           String orderId) {
+        BigDecimal shares = BigDecimal.valueOf(quantity);
+        requirePositive(shares, "Quantity and price must be greater than zero");
+        requirePositive(price, "Quantity and price must be greater than zero");
+
         Position position = getPosition(accountId, symbol)
-            .orElseGet(() -> new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO));
-        applyBuy(position, BigDecimal.valueOf(quantity), price);
+            .orElseGet(() -> emptyPosition(accountId, symbol));
+
+        if (isRepeat(orderId, MovementType.BUY, accountId, symbol, shares, price)) {
+            return position;
+        }
+
+        applyBuy(position, shares, price);
         return positionRepository.save(position);
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Position updatePositionAfterSell(String accountId, String symbol, int quantity)
             throws InsufficientHoldingsException {
-        Position position = getPosition(accountId, symbol)
-            .orElseThrow(() -> new InsufficientHoldingsException(
-                symbol, BigDecimal.valueOf(quantity), BigDecimal.ZERO, accountId));
+        return updatePositionAfterSell(accountId, symbol, quantity, null);
+    }
 
-        applySell(position, BigDecimal.valueOf(quantity));
+    @Transactional(rollbackFor = Exception.class)
+    public Position updatePositionAfterSell(String accountId, String symbol, int quantity, String orderId)
+            throws InsufficientHoldingsException {
+        BigDecimal shares = BigDecimal.valueOf(quantity);
+        requirePositive(shares, "Quantity must be greater than zero");
+
+        Optional<Position> existing = getPosition(accountId, symbol);
+        BigDecimal averageCost = existing.map(Position::getAverageCost).orElse(BigDecimal.ZERO);
+
+        if (isRepeat(orderId, MovementType.SELL, accountId, symbol, shares, averageCost)) {
+            return existing.orElseGet(() -> emptyPosition(accountId, symbol));
+        }
+
+        Position position = existing.orElseThrow(() -> new InsufficientHoldingsException(
+            symbol, shares, BigDecimal.ZERO, accountId));
+
+        applySell(position, shares);
 
         if (position.getQuantity().compareTo(BigDecimal.ZERO) == 0) {
             positionRepository.deleteById(new PositionId(accountId, symbol));
@@ -83,18 +121,47 @@ public class PositionService {
         return positionRepository.save(position);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public Position reverse(String accountId, String symbol, String orderId) throws InsufficientHoldingsException {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("Order ID is required for a reversal");
+        }
+
+        Position position = getPosition(accountId, symbol)
+            .orElseGet(() -> emptyPosition(accountId, symbol));
+
+        List<PositionMovement> originals = positionMovementRepository.findByOrderId(orderId).stream()
+            .filter(movement -> movement.getMovementType() != MovementType.REVERSAL)
+            .toList();
+
+        if (originals.isEmpty()) {
+            return position;
+        }
+        if (originals.size() > 1) {
+            throw new IllegalArgumentException("Order " + orderId + " has more than one position movement to reverse");
+        }
+
+        PositionMovement original = originals.get(0);
+        if (!original.getAccountId().equals(accountId) || !original.getSymbol().equals(symbol)) {
+            throw new IllegalArgumentException("Order " + orderId + " belongs to a different position");
+        }
+
+        if (isRepeat(orderId, MovementType.REVERSAL, accountId, symbol, original.getQuantity(), original.getPrice())) {
+            return position;
+        }
+
+        if (original.getMovementType() == MovementType.SELL) {
+            addShares(position, original.getQuantity(), original.getPrice());
+            return positionRepository.save(position);
+        }
+        return removeShares(position, original.getQuantity(), original.getPrice());
+    }
+
     public void applyBuy(Position position, BigDecimal quantity, BigDecimal price) {
         requirePosition(position);
         requirePositive(quantity, "Quantity and price must be greater than zero");
         requirePositive(price, "Quantity and price must be greater than zero");
-
-        BigDecimal currentCostBasis = position.getAverageCost().multiply(position.getQuantity());
-        BigDecimal purchaseCost = price.multiply(quantity);
-        BigDecimal newQuantity = position.getQuantity().add(quantity);
-
-        position.setQuantity(newQuantity);
-        position.setAverageCost(currentCostBasis.add(purchaseCost)
-            .divide(newQuantity, DECIMAL_PLACES, ROUNDING_MODE));
+        addShares(position, quantity, price);
     }
 
     public void applySell(Position position, BigDecimal quantity) throws InsufficientHoldingsException {
@@ -139,4 +206,45 @@ public class PositionService {
             throw new IllegalArgumentException(message);
         }
     }
+    
+    private boolean isRepeat(String orderId, MovementType type, String accountId, String symbol, BigDecimal quantity, BigDecimal price) {
+        return orderId != null && positionMovementRepository.insertIfAbsent(
+                orderId, type.name(), accountId, symbol, quantity, price) == 0;
+    }
+
+    private static void addShares(Position position, BigDecimal quantity, BigDecimal price) {
+        BigDecimal currentCostBasis = position.getAverageCost().multiply(position.getQuantity());
+        BigDecimal newQuantity = position.getQuantity().add(quantity);
+
+        position.setQuantity(newQuantity);
+        position.setAverageCost(currentCostBasis.add(price.multiply(quantity))
+            .divide(newQuantity, DECIMAL_PLACES, ROUNDING_MODE));
+    }
+
+    private Position removeShares(Position position, BigDecimal quantity, BigDecimal price)
+            throws InsufficientHoldingsException {
+        if (quantity.compareTo(position.getQuantity()) > 0) {
+            throw new InsufficientHoldingsException(
+                position.getSymbol(), quantity, position.getQuantity(), position.getAccountId());
+        }
+
+        BigDecimal remaining = position.getQuantity().subtract(quantity);
+        if (remaining.signum() == 0) {
+            positionRepository.deleteById(new PositionId(position.getAccountId(), position.getSymbol()));
+            position.setQuantity(BigDecimal.ZERO);
+            return position;
+        }
+
+        BigDecimal remainingCost = position.getAverageCost().multiply(position.getQuantity())
+            .subtract(price.multiply(quantity))
+            .max(BigDecimal.ZERO);
+        position.setQuantity(remaining);
+        position.setAverageCost(remainingCost.divide(remaining, DECIMAL_PLACES, ROUNDING_MODE));
+        return positionRepository.save(position);
+    }
+
+    private static Position emptyPosition(String accountId, String symbol) {
+        return new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
+    }
+
 }

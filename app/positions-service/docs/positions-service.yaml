@@ -326,7 +326,10 @@ paths:
       tags:
         - Positions
       summary: Execute a buy operation
-      description: Adds shares to an existing position or creates a new position with FIFO average cost calculation
+      description: >
+        Adds shares to an existing position or creates a new position with FIFO average cost calculation.
+        When an orderId is sent, the buy is applied at most once for that order: a repeat call returns 200
+        with the current position and changes nothing. Without an orderId, every call is applied.
       operationId: buyPosition
       parameters:
         - name: accountId
@@ -355,6 +358,12 @@ paths:
                 value:
                   quantity: 50
                   price: 155.00
+              buyForOrder:
+                summary: Buy for an order (safe to repeat)
+                value:
+                  quantity: 50
+                  price: 155.00
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
       responses:
         '200':
           description: Buy operation executed successfully
@@ -380,7 +389,11 @@ paths:
       tags:
         - Positions
       summary: Execute a sell operation
-      description: Removes shares from an existing position using FIFO method
+      description: >
+        Removes shares from an existing position using FIFO method. A position sold down to zero is deleted.
+        When an orderId is sent, the sell is applied at most once for that order: a repeat call returns 200
+        with the current position (quantity 0 if it was fully sold) and changes nothing.
+        Without an orderId, every call is applied.
       operationId: sellPosition
       parameters:
         - name: accountId
@@ -408,6 +421,11 @@ paths:
                 summary: Valid sell order
                 value:
                   quantity: 30
+              sellForOrder:
+                summary: Sell for an order (safe to repeat)
+                value:
+                  quantity: 30
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
       responses:
         '200':
           description: Sell operation executed successfully
@@ -429,6 +447,65 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '422':
           description: Unprocessable Entity - Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /positions/{accountId}/{symbol}/reversal:
+    post:
+      tags:
+        - Positions
+      summary: Reverse an order's position movement
+      description: >
+        Undoes the buy or sell recorded for the given orderId.
+        Reversing a buy removes its shares and their cost from the average (the position is deleted if nothing is left).
+        Reversing a sell puts the shares back at the average cost recorded at the time of the sale,
+        recreating the position if it was fully sold.
+        Applied at most once per order: a repeat call returns 200 with the current position and changes nothing.
+        If the order has no position movement, nothing is changed and 200 is returned.
+      operationId: reversePosition
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+        - name: symbol
+          in: path
+          required: true
+          description: The trading symbol (ticker) of the security
+          schema:
+            type: string
+            example: "AAPL"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReversalRequest'
+            examples:
+              reverseOrder:
+                summary: Reverse the position movement for an order
+                value:
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
+      responses:
+        '200':
+          description: Movement reversed, already reversed, or nothing to reverse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+        '409':
+          description: Conflict - The bought shares have since been sold, so the buy cannot be reversed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity - Missing orderId, or the order belongs to a different position
           content:
             application/json:
               schema:
@@ -518,6 +595,11 @@ components:
           description: Purchase price per share
           example: 155.00
           minimum: 0.01
+        orderId:
+          type: string
+          description: >
+            Optional. The order this buy belongs to. When sent, the buy is applied at most once per order.
+          example: "0adf7599-df9d-4176-93b6-3a555e54415d"
 
     SellRequest:
       type: object
@@ -530,6 +612,22 @@ components:
           description: Number of shares to sell
           example: 30
           minimum: 1
+        orderId:
+          type: string
+          description: >
+            Optional. The order this sell belongs to. When sent, the sell is applied at most once per order.
+          example: "0adf7599-df9d-4176-93b6-3a555e54415d"
+
+    ReversalRequest:
+      type: object
+      description: Request body for reversing an order's position movement
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string
+          description: The order whose buy or sell should be reversed
+          example: "0adf7599-df9d-4176-93b6-3a555e54415d"
 
     UpdatePositionRequest:
       type: object

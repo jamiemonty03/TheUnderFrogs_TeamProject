@@ -37,7 +37,7 @@ public class OrderProcessor {
             Instrument instrument,
             OrderSide side,
             BigDecimal quantity,
-            BigDecimal price,
+            BigDecimal priceLimit,
             String idempotencyKey)
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
                    InsufficientFundsException, InsufficientHoldingsException, DuplicateOrderException {
@@ -45,7 +45,7 @@ public class OrderProcessor {
             throw new InvalidOrderException("Order side cannot be null");
         }
 
-        Order order = orderService.placeOrder(account, instrument, side, quantity, price, idempotencyKey);
+        Order order = orderService.placeOrder(account, instrument, side, quantity, priceLimit, idempotencyKey);
         eventPublisher.publishEvent(new OrderPlacedApplicationEvent(
                 this,
                 new OrderPlacedPayload(
@@ -54,7 +54,7 @@ public class OrderProcessor {
                         order.getSymbol(),
                         order.getSide(),
                         order.getQuantity(),
-                        order.getPrice(),
+                        order.getPriceLimit(),
                         order.getIdempotencyKey())));
 
         return new OrderResult(true, "Order accepted", null, order);

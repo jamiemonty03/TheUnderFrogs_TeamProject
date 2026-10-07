@@ -1,5 +1,10 @@
 package com.neueda.orderservice.controllers;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
@@ -25,15 +30,23 @@ import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.exceptions.TradingException;
 import com.neueda.orderservice.services.OrderCancellationService;
+import com.neueda.orderservice.dtos.requests.UpdateOrderStatusRequest;
+import com.neueda.orderservice.exceptions.OrderStatusConflictException;
+import com.neueda.orderservice.services.OrderStatusService;
+
 
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
 
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
+
     private final OrderProcessor orderProcessor;
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
     private final OrderCancellationService orderCancellationService;
+    private final OrderStatusService orderStatusService;
+
 
     @Value("${service.accounts.url:http://accounts-service:8081/api/accounts}")
     private String accountsServiceUrl;
@@ -42,11 +55,12 @@ public class OrderController {
     private String instrumentsServiceUrl;
 
     public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate,
-            OrderCancellationService orderCancellationService) {
+            OrderCancellationService orderCancellationService, OrderStatusService orderStatusService) {
         this.orderProcessor = orderProcessor;
         this.orderRepository = orderRepository;
         this.restTemplate = restTemplate;
         this.orderCancellationService = orderCancellationService;
+        this.orderStatusService = orderStatusService;
     }
 
     @GetMapping
@@ -76,8 +90,14 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
+        log.info("Order placement received {} {} {} {} {}", kv("accountId", request.accountId()),
+            kv("symbol", request.symbol()), kv("side", request.side()), kv("quantity", request.quantity()),
+            kv("priceLimit", request.priceLimit()));
+
         Account account = fetchAccount(request.accountId());
         if (account == null) {
+            log.warn("Order rejected {} {} {}", kv("status", 404), kv("errorCode", "ACC-404"),
+                kv("accountId", request.accountId()));
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("ACC-404", "Account not found: " + request.accountId()));
         }
@@ -88,20 +108,29 @@ public class OrderController {
             instrument,
             request.side(),
             request.quantity(),
-            request.price(),
+            request.priceLimit(),
             request.idempotencyKey()
         );
         if (!result.isSuccess()) {
+            log.warn("Order rejected {} {} {}", kv("status", 422), kv("errorCode", "ORD-422"),
+                kv("reason", result.getMessage()));
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse("ORD-422", result.getMessage()));
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(result.getOrder()));
+
+        Order order = result.getOrder();
+        log.info("Order placed {} {} {} {} {} {}", kv("orderId", order.getOrderId()),
+            kv("accountId", order.getAccountId()), kv("symbol", order.getSymbol()), kv("side", order.getSide()),
+            kv("quantity", order.getQuantity()), kv("orderStatus", order.getOrderStatus()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toOrderResponse(order));
     }
 
     private Account fetchAccount(String accountId) {
         try {
             return restTemplate.getForObject(accountsServiceUrl + "/{accountId}", Account.class, accountId);
         } catch (RestClientException e) {
+            log.warn("Accounts service lookup failed {} {}", kv("accountId", accountId),
+                kv("error", e.getClass().getSimpleName()));
             return null;
         }
     }
@@ -133,14 +162,11 @@ public class OrderController {
         if (request.quantity() != null) {
             order.setQuantity(request.quantity());
         }
-        if (request.price() != null) {
-            order.setPrice(request.price());
+        if (request.priceLimit() != null) {
+            order.setPriceLimit(request.priceLimit());
         }
         if (request.side() != null) {
             order.setSide(request.side());
-        }
-        if (request.orderStatus() != null) {
-            order.setOrderStatus(request.orderStatus());
         }
         if (request.updatedBy() != null) {
             order.setUpdatedBy(request.updatedBy());
@@ -152,6 +178,16 @@ public class OrderController {
         order.setVersion(order.getVersion() + 1);
 
         orderRepository.save(order);
+        return ResponseEntity.ok(toOrderResponse(order));
+    }
+
+    @PatchMapping("/{orderId}/status")
+    public ResponseEntity<OrderResponse> updateOrderStatus(
+            @PathVariable String orderId,
+            @Valid @RequestBody UpdateOrderStatusRequest request)
+            throws OrderNotFoundException, OrderStatusConflictException {
+        Order order = orderStatusService.changeStatus(
+                orderId, request.expectedStatus(), request.newStatus(), request.reason());
         return ResponseEntity.ok(toOrderResponse(order));
     }
 
@@ -169,7 +205,7 @@ public class OrderController {
             order.getSymbol(),
             order.getSide(),
             order.getQuantity(),
-            order.getPrice(),
+            order.getPriceLimit(),
             order.getOrderStatus(),
             order.getVersion(),
             order.getCreatedAt(),

@@ -25,7 +25,7 @@ public class OrderTest {
         assertEquals("AAPL", order.getSymbol());
         assertEquals(OrderSide.BUY, order.getSide());
         assertEquals(10, order.getQuantity());
-        assertEquals(new BigDecimal("150.00"), order.getPrice());
+        assertEquals(new BigDecimal("150.00"), order.getPriceLimit());
         assertEquals("idem-key-1", order.getIdempotencyKey());
         assertEquals(OrderStatus.NEW, order.getOrderStatus());
         assertEquals(0, order.getVersion());
@@ -90,7 +90,7 @@ public class OrderTest {
     public void testConstructorPriceAtMinimumBoundary() {
         Order order = newOrder(new BigDecimal("0.01"), 10);
 
-        assertEquals(new BigDecimal("0.01"), order.getPrice());
+        assertEquals(new BigDecimal("0.01"), order.getPriceLimit());
     }
 
     @Test

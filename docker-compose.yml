@@ -36,6 +36,12 @@ services:
         condition: service_healthy
     ports:
       - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/api/v3/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   instruments-db:
     image: postgres:15-alpine
@@ -74,6 +80,12 @@ services:
         condition: service_healthy
     ports:
       - "8082:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/api/v3/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   orders-db:
     image: postgres:15-alpine
@@ -107,13 +119,23 @@ services:
       dockerfile: Dockerfile
     container_name: orders-service
     env_file: ./app/orders-service/.env
+    environment:
+      SPRING_PROFILES_ACTIVE: json-logs
     depends_on:
       orders-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
     ports:
       - "8083:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/api/v3/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   positions-db:
     image: postgres:15-alpine
@@ -152,7 +174,13 @@ services:
         condition: service_healthy
     ports:
       - "8084:8081"
-  
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/api/v3/api-docs || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
   kafka:
     image: apache/kafka:3.9.1
     ports:
@@ -199,6 +227,52 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth-db
+    env_file: ./app/auth-service/.env
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        export POSTGRES_USER="$$DB_USERNAME"
+        export POSTGRES_PASSWORD="$$DB_PASSWORD"
+        export POSTGRES_DB="$$DB_NAME";
+        cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
+        cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
+        exec docker-entrypoint.sh postgres
+    ports:
+      - "127.0.0.1:5438:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+      - ./app/auth-service/db:/db:ro
+      - ./db/scripts/load-seed-data.sh:/load-seed-data.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$DB_USERNAME" -d "$$DB_NAME"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build:
+      context: ./app/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    env_file: ./app/auth-service/.env
+    environment:
+      DB_HOST: auth-db
+      DB_PORT: 5432
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    ports:
+      - "8087:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   trade-executor:
     build:
       context: ./app/trade-executor
@@ -207,23 +281,42 @@ services:
     env_file:
       - path: ./app/trade-executor/.env
         required: false
-
     depends_on:
+      kafka:
+        condition: service_healthy
       kafka-init:
         condition: service_completed_successfully
       orders-service:
-        condition: service_started
+        condition: service_healthy
       instruments-service:
-        condition: service_started
+        condition: service_healthy
+      accounts-service:
+        condition: service_healthy
+      positions-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
 
   python:
     build:
       context: ./db
       dockerfile: Dockerfile
     container_name: underfrog-python
-    env_file: ./app/instruments-service/.env
+    env_file: 
+      - ./app/instruments-service/.env
+      - ./app/trade-analytics-service/.env
     depends_on:
       instruments-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      trade-analytics-db:
         condition: service_healthy
     ports:
       - "0.0.0.0:8085:8080"
@@ -231,12 +324,27 @@ services:
       - ./db:/db
       - ./app/instruments-service/db/etl:/db/etl
       - ./app/instruments-service/db/schema:/db/schema:ro
-    command: python /db/dashboard/dashboard_app.py
+      - ./app/instruments-service/db/tests:/db/tests
+
+  sonarqube:
+    image: sonarqube:9.9.0-community
+    container_name: sonarqube
+    profiles: [quality]
+    ports:
+      - "0.0.0.0:8088:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLED: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
 
   trade-analytics-db:
     image: postgres:15-alpine
     container_name: trade-analytics-db
-    env_file: ./app/trade-analytics-service/.env
+    env_file:
+      - path: ./app/trade-analytics-service/.env
+        required: false
     entrypoint:
       - sh
       - -c
@@ -262,7 +370,9 @@ services:
       context: ./app/trade-analytics-service
       dockerfile: Dockerfile
     container_name: trade-analytics-service
-    env_file: ./app/trade-analytics-service/.env
+    env_file:
+      - path: ./app/trade-analytics-service/.env
+        required: false
     depends_on:
       orders-db:
         condition: service_healthy
@@ -278,4 +388,8 @@ volumes:
   instruments_db_data:
   orders_db_data:
   positions_db_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
   trade_analytics_db_data:
+  auth_db_data:

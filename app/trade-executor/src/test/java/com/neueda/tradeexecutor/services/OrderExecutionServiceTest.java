@@ -47,11 +47,23 @@ class OrderExecutionServiceTest {
 
     @Test
     void skipsOrderThatIsNoLongerNew() {
-        when(ordersClient.getOrder("ORD-1")).thenReturn(buyOrder(OrderStatus.CANCELLED));
+        when(ordersClient.getOrder("ORD-1")).thenReturn(buyOrder(OrderStatus.FILLED));
 
         executionService.execute("ORD-1");
 
         verifyNoInteractions(instrumentsClient, priceSource, settlementService);
+    }
+
+    @Test
+    void cancelledOrderIsCompensatedInsteadOfSettled() {
+        OrderDto cancelled = buyOrder(OrderStatus.CANCELLED);
+        when(ordersClient.getOrder("ORD-1")).thenReturn(cancelled);
+
+        executionService.execute("ORD-1");
+
+        verify(settlementService).compensateCancelled(cancelled);
+        verify(settlementService, never()).settle(any(), any());
+        verifyNoInteractions(instrumentsClient, priceSource);
     }
 
     @Test

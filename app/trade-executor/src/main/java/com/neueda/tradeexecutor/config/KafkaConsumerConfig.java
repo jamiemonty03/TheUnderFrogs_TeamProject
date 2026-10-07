@@ -43,7 +43,6 @@ public class KafkaConsumerConfig {
     static ExponentialBackOff retryBackOff() {
         ExponentialBackOff backOff = new ExponentialBackOff(1_000L, 2.0);
         backOff.setMaxInterval(8_000L);
-        // Four retries (1s, 2s, 4s, 8s), then recover. This bounds an outage to ~15 seconds.
         backOff.setMaxElapsedTime(15_000L);
         return backOff;
     }

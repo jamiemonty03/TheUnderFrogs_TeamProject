@@ -11,7 +11,7 @@ public record OrderResponse(
     String symbol,
     OrderSide side,
     int quantity,
-    BigDecimal price,
+    BigDecimal priceLimit,
     OrderStatus orderStatus,
     int version,
     LocalDateTime createdAt,

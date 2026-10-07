@@ -72,7 +72,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/register", "/auth/login").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/accounts/*/debit", "/accounts/*/credit")
+                        .requestMatchers(HttpMethod.POST, "/accounts/*/debit", "/accounts/*/credit", "/accounts/*/reversal")
                                 .access(anyOf(hasRole("SERVICE"), authenticated()))
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

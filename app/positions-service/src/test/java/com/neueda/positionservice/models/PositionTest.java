@@ -181,4 +181,99 @@ public class PositionTest {
         assertEquals(createdAt, position.getCreatedAt());
         assertTrue(position.getLastUpdated().isAfter(createdAt));
     }
+
+    @Test
+    @DisplayName("constructor: Accepts negative quantity")
+    public void testConstructorNegativeQuantity() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("-10"), new BigDecimal("150.00"));
+        assertEquals(new BigDecimal("-10"), position.getQuantity());
+    }
+
+    @Test
+    @DisplayName("getTotalCostBasis: Correctly handles very large numbers")
+    public void testGetTotalCostBasisLargeNumbers() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("1000000"), new BigDecimal("9999.99"));
+        assertEquals(new BigDecimal("9999990000.00"), position.getTotalCostBasis());
+    }
+
+    @Test
+    @DisplayName("getTotalCostBasis: Correctly handles decimal precision")
+    public void testGetTotalCostBasisDecimalPrecision() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("10.5"), new BigDecimal("150.50"));
+        assertEquals(0, new BigDecimal("1580.25").compareTo(position.getTotalCostBasis()));
+    }
+
+    @Test
+    @DisplayName("getMarketValue: Returns zero when current price is zero")
+    public void testGetMarketValueZeroPrice() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+        assertEquals(0, BigDecimal.ZERO.compareTo(position.getMarketValue(BigDecimal.ZERO)));
+    }
+
+    @Test
+    @DisplayName("getMarketValue: Returns zero when quantity is zero")
+    public void testGetMarketValueZeroQuantity() {
+        Position position = new Position("ACC001", "AAPL", BigDecimal.ZERO, new BigDecimal("150.00"));
+        assertEquals(0, BigDecimal.ZERO.compareTo(position.getMarketValue(new BigDecimal("200.00"))));
+    }
+
+    @Test
+    @DisplayName("getMarketValue: Handles negative quantities")
+    public void testGetMarketValueNegativeQuantity() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("-10"), new BigDecimal("150.00"));
+        BigDecimal marketValue = position.getMarketValue(new BigDecimal("200.00"));
+        assertEquals(0, new BigDecimal("-2000.00").compareTo(marketValue));
+    }
+
+    @Test
+    @DisplayName("setter and getter: Can set and get all fields")
+    public void testSettersAndGetters() {
+        Position position = new Position();
+        position.setAccountId("ACC001");
+        position.setSymbol("AAPL");
+        position.setQuantity(new BigDecimal("10"));
+        position.setAverageCost(new BigDecimal("150.00"));
+        position.setVersion(1);
+
+        assertEquals("ACC001", position.getAccountId());
+        assertEquals("AAPL", position.getSymbol());
+        assertEquals(new BigDecimal("10"), position.getQuantity());
+        assertEquals(new BigDecimal("150.00"), position.getAverageCost());
+        assertEquals(Integer.valueOf(1), position.getVersion());
+    }
+
+    @Test
+    @DisplayName("constructor: Accepts case-sensitive account IDs")
+    public void testConstructorCaseSensitiveAccountId() {
+        Position position1 = new Position("acc001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+        Position position2 = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+
+        assertNotEquals(position1, position2);
+    }
+
+    @Test
+    @DisplayName("constructor: Accepts case-sensitive symbols")
+    public void testConstructorCaseSensitiveSymbol() {
+        Position position1 = new Position("ACC001", "aapl", new BigDecimal("10"), new BigDecimal("150.00"));
+        Position position2 = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+
+        assertNotEquals(position1, position2);
+    }
+
+    @Test
+    @DisplayName("hashCode: Consistent when called multiple times")
+    public void testHashCodeConsistency() {
+        Position position = new Position("ACC001", "AAPL", new BigDecimal("10"), new BigDecimal("150.00"));
+        int hash1 = position.hashCode();
+        int hash2 = position.hashCode();
+
+        assertEquals(hash1, hash2);
+    }
+
+    @Test
+    @DisplayName("getMarketValue: Works with BigDecimal.ONE")
+    public void testGetMarketValueWithOne() {
+        Position position = new Position("ACC001", "AAPL", BigDecimal.ONE, new BigDecimal("150.00"));
+        assertEquals(0, new BigDecimal("150.00").compareTo(position.getMarketValue(new BigDecimal("150.00"))));
+    }
 }

@@ -235,7 +235,11 @@ paths:
       tags:
         - Credit Operations
       summary: Credit an account
-      description: Adds funds to an active account's cash balance
+      description: >
+        Adds funds to an active account's cash balance.
+        When an orderId is sent, the credit is applied at most once for that order:
+        a repeat call returns 200 with the current balance and changes nothing.
+        Without an orderId, every call is applied.
       operationId: creditAccount
       parameters:
         - name: accountId
@@ -256,6 +260,11 @@ paths:
                 summary: Credit 1000 to account
                 value:
                   amount: 1000.00
+              creditForOrder:
+                summary: Credit 1000 for an order (safe to repeat)
+                value:
+                  amount: 1000.00
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
       responses:
         '200':
           description: Account credited successfully
@@ -333,7 +342,11 @@ paths:
       tags:
         - Debit Operations
       summary: Debit an account
-      description: Withdraws funds from an active account's cash balance
+      description: >
+        Withdraws funds from an active account's cash balance.
+        When an orderId is sent, the debit is applied at most once for that order:
+        a repeat call returns 200 with the current balance and changes nothing.
+        Without an orderId, every call is applied.
       operationId: debitAccount
       parameters:
         - name: accountId
@@ -354,6 +367,11 @@ paths:
                 summary: Debit 1000 from account
                 value:
                   amount: 1000.00
+              debitForOrder:
+                summary: Debit 1000 for an order (safe to repeat)
+                value:
+                  amount: 1000.00
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
       responses:
         '200':
           description: Account debited successfully
@@ -425,6 +443,80 @@ paths:
                   value:
                     errorCode: "VAL-422"
                     message: "Debit amount must be positive"
+
+  /accounts/{accountId}/reversal:
+    post:
+      tags:
+        - Reversal Operations
+      summary: Reverse an order's cash movement
+      description: >
+        Undoes the debit or credit recorded for the given orderId by applying the opposite amount.
+        Applied at most once per order: a repeat call returns 200 with the current balance and changes nothing.
+        If the order has no cash movement, nothing is changed and 200 is returned, so a saga can safely
+        undo a step that never happened. Works on inactive accounts.
+      operationId: reverseMovement
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The unique identifier of the account
+          schema:
+            type: string
+            example: "ACC001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReversalRequest'
+            examples:
+              reverseOrder:
+                summary: Reverse the cash movement for an order
+                value:
+                  orderId: "0adf7599-df9d-4176-93b6-3a555e54415d"
+      responses:
+        '200':
+          description: Movement reversed, already reversed, or nothing to reverse
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Bad Request - Reversing a credit would take the balance below zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                insufficientFunds:
+                  summary: Not enough cash to reverse a credit
+                  value:
+                    errorCode: "ORD-400"
+                    message: "Insufficient funds to reverse order 0adf7599-df9d-4176-93b6-3a555e54415d. Balance: 50.00"
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  summary: Account does not exist
+                  value:
+                    errorCode: "ACC-404"
+                    message: "Account not found: ACC001"
+        '422':
+          description: Unprocessable Entity - Missing orderId, or the order belongs to a different account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrongAccount:
+                  summary: Order belongs to another account
+                  value:
+                    errorCode: "VAL-422"
+                    message: "Order 0adf7599-df9d-4176-93b6-3a555e54415d belongs to a different account"
 
 components:
   schemas:
@@ -530,8 +622,25 @@ components:
           description: Amount to credit or debit
           example: 1000.00
           minimum: 0.01
+        orderId:
+          type: string
+          description: >
+            Optional. The order this movement belongs to. When sent, the movement is applied
+            at most once per order; a repeat returns the current balance and changes nothing.
+          example: "0adf7599-df9d-4176-93b6-3a555e54415d"
       required:
         - amount
+
+    ReversalRequest:
+      type: object
+      description: Request body for reversing an order's cash movement
+      properties:
+        orderId:
+          type: string
+          description: The order whose debit or credit should be reversed
+          example: "0adf7599-df9d-4176-93b6-3a555e54415d"
+      required:
+        - orderId
 
     ErrorResponse:
       type: object

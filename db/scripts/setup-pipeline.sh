@@ -22,7 +22,7 @@ db_psql() {
     local container="$1"; shift
     local flags=""
     if [ "$1" = "-i" ]; then flags="-i"; shift; fi
-    docker exec $flags "$container" sh -c 'psql -U "$SPRING_DATASOURCE_USERNAME" -d "${SPRING_DATASOURCE_URL##*/}" "$@"' _ "$@"
+    docker exec $flags "$container" sh -c 'D="${SPRING_DATASOURCE_URL##*/}"; psql -U "${SPRING_DATASOURCE_USERNAME:-$DB_USERNAME}" -d "${D:-$DB_NAME}" "$@"' _ "$@"
 }
 
 # Check prerequisites
@@ -41,8 +41,8 @@ check_prerequisites() {
     fi
     
     [ -f "docker-compose.yml" ] || error_exit "docker-compose.yml not found in current directory"
-    for svc in accounts instruments orders positions trade-analytics; do
-        [ -f "app/$svc-service/.env" ] || error_exit "app/$svc-service/.env missing (copy it from .env.example and set the password)"
+    for svc in accounts-service instruments-service orders-service positions-service trade-analytics-service trade-executor auth-service; do
+        [ -f "app/$svc/.env" ] || error_exit "app/$svc/.env missing (copy it from .env.example and set the password / JWT_SECRET)"
     done
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
 }
@@ -75,9 +75,9 @@ check_prerequisites
 # ==========================================
 if [[ "$STAGE" == "all" || "$STAGE" == "build" ]]; then
     echo -e "${YELLOW}Building Java services...${NC}"
-    for svc in accounts instruments orders positions; do
-        mvn -q -B -f app/$svc-service/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed for $svc-service"
-        echo -e "${GREEN}✓ Built $svc-service${NC}"
+    for svc in accounts-service instruments-service orders-service positions-service trade-executor; do
+        mvn -q -B -f app/$svc/pom.xml clean package -Dmaven.test.skip=true || error_exit "Maven build failed for $svc"
+        echo -e "${GREEN}✓ Built $svc${NC}"
     done
     echo ""
     [ "$STAGE" == "build" ] && exit 0
@@ -94,10 +94,10 @@ if [[ "$STAGE" == "all" || "$STAGE" == "containers" ]]; then
     echo -e "${GREEN}✓ Docker compose up complete${NC}\n"
 
     echo -e "${YELLOW}Waiting for databases to be ready...${NC}"
-    for container in accounts-db instruments-db orders-db positions-db; do
+    for container in accounts-db instruments-db orders-db positions-db auth-db; do
         DB_READY=false
         for i in {1..30}; do
-            if docker exec "$container" sh -c 'pg_isready -U "$SPRING_DATASOURCE_USERNAME"' > /dev/null 2>&1; then
+            if docker exec "$container" sh -c 'pg_isready -U "${SPRING_DATASOURCE_USERNAME:-$DB_USERNAME}"' > /dev/null 2>&1; then
                 echo -e "${GREEN}✓ $container ready${NC}"
                 DB_READY=true
                 break
@@ -118,7 +118,7 @@ if [[ "$STAGE" == "all" || "$STAGE" == "tables" ]]; then
     echo -e "${YELLOW}Creating database schemas and tables...${NC}"
     
     # Array of services and their database containers
-    declare -a services=("accounts" "instruments" "orders" "positions")
+    declare -a services=("accounts" "instruments" "orders" "positions" "auth")
     
     for svc in "${services[@]}"; do
         container="${svc}-db"
@@ -195,6 +195,10 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
 seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
 
+    echo -e "${YELLOW}Copying users from accounts-db into auth-db...${NC}"
+    ./db/scripts/migrate-auth-users.sh >/dev/null || error_exit "Failed to migrate users into auth-db"
+    echo -e "${GREEN}✓ auth-db users migrated${NC}"
+
 echo ""
 echo -e "${YELLOW}Checking historical trades against current positions...${NC}"
 
@@ -246,6 +250,41 @@ rm -f "$trades_file" "$positions_file"
     docker-compose up -d trade-analytics-service || error_exit "Failed to start trade-analytics-service"
     echo -e "${GREEN}✓ trade-analytics-service started${NC}"
 
+    echo ""
+fi
+
+# ==========================================
+# VERIFY
+# ==========================================
+if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
+    echo -e "${YELLOW}Verifying setup...${NC}"
+
+    ROW_COUNTS="SELECT table_schema || '.' || table_name || ': ' ||
+        (xpath('/row/c/text()', query_to_xml(format('SELECT COUNT(*) AS c FROM %I.%I', table_schema, table_name), false, true, '')))[1]::text
+        FROM information_schema.tables
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_type = 'BASE TABLE'
+        ORDER BY 1;"
+
+    for container in accounts-db instruments-db orders-db positions-db auth-db; do
+        echo -e "${GREEN}$container${NC}"
+        db_psql "$container" -Atc "$ROW_COUNTS" | sed 's/^/    /' || error_exit "Could not read tables in $container"
+    done
+    echo -e "${GREEN}trade-analytics-db${NC}"
+    docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -Atc "$1"' _ "$ROW_COUNTS" \
+        | sed 's/^/    /' || error_exit "Could not read tables in trade-analytics-db"
+
+    accounts_users=$(db_psql accounts-db -Atc "SELECT COUNT(*) FROM users;")
+    auth_users=$(db_psql auth-db -Atc "SELECT COUNT(*) FROM users WHERE account_id IS NOT NULL;")
+    [ "$accounts_users" -eq "$auth_users" ] || error_exit "auth-db has $auth_users migrated users, accounts-db has $accounts_users"
+    echo -e "${GREEN}✓ auth-db has all $auth_users accounts-db users${NC}"
+
+    echo -e "${GREEN}Kafka topics${NC}"
+    docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe 2>/dev/null \
+        | grep -o '^Topic: [^[:space:]]*.*PartitionCount: [0-9]*' | sed 's/TopicId: [^[:space:]]*//; s/^/    /' \
+        || error_exit "Kafka topics not available"
+
+    echo -e "${GREEN}Containers${NC}"
+    docker-compose ps --format '{{.Name}}\t{{.Status}}' | sed 's/^/    /'
     echo ""
 fi
 

@@ -177,7 +177,7 @@ class OrderPlacementCharacterisationTest {
     @Test
     void invalidRequestBodyReturnsUnprocessableEntityVal422() throws Exception {
         ResponseEntity<String> response = postOrder(createToken(), """
-                {"accountId":"ACC0001","symbol":"AAPL","side":"BUY","quantity":0,"price":50,"idempotencyKey":"invalid"}
+                {"accountId":"ACC0001","symbol":"AAPL","side":"BUY","quantity":0,"priceLimit":50,"idempotencyKey":"invalid"}
                 """);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -274,7 +274,7 @@ class OrderPlacementCharacterisationTest {
         assertThat(body.path("symbol").asText()).isEqualTo(SYMBOL);
         assertThat(body.path("side").asText()).isEqualTo(side);
         assertThat(body.path("quantity").asInt()).isEqualTo(2);
-        assertThat(body.path("price").decimalValue()).isEqualByComparingTo("50.00");
+        assertThat(body.path("priceLimit").decimalValue()).isEqualByComparingTo("50.00");
         assertThat(body.path("orderStatus").asText()).isEqualTo("NEW");
         assertThat(body.path("version").asInt()).isZero();
         assertThat(body.path("createdAt").asText()).isNotBlank();
@@ -297,7 +297,7 @@ class OrderPlacementCharacterisationTest {
         assertThat(payload.symbol()).isEqualTo(SYMBOL);
         assertThat(payload.side()).isEqualTo(side);
         assertThat(payload.quantity()).isEqualTo(2);
-        assertThat(payload.price()).isEqualByComparingTo("50.00");
+        assertThat(payload.priceLimit()).isEqualByComparingTo("50.00");
         assertThat(payload.idempotencyKey()).isEqualTo(idempotencyKey);
     }
 
@@ -357,7 +357,7 @@ class OrderPlacementCharacterisationTest {
 
     private String orderRequest(String side, String idempotencyKey) {
         return """
-                {"accountId":"ACC0001","symbol":"AAPL","side":"%s","quantity":2,"price":50.00,"idempotencyKey":"%s"}
+                {"accountId":"ACC0001","symbol":"AAPL","side":"%s","quantity":2,"priceLimit":50.00,"idempotencyKey":"%s"}
                 """.formatted(side, idempotencyKey);
     }
 
