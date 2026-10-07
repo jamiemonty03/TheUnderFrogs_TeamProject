@@ -37,7 +37,7 @@ done
 ```
 It skips any service that already has a `.env`. If you already have some, copy their `JWT_SECRET` and password into the new ones by hand.
 
-> **`JWT_SECRET` must be the same in every `.env`.** If one service has a different value, its calls to the others fail with `401`. For example, the trade executor stops publishing to `market-data`.
+> **Only auth-service issues tokens.** accounts, instruments, orders and positions verify them with auth-service's public key (`/.well-known/jwks.json`), so they don't need `JWT_SECRET`. auth-service and the trade-executor still read it until they switch to RS256 signing (S8-4 and S8-9).
 
 Optional: add your own free [Alpaca](https://alpaca.markets) paper-trading keys to `app/trade-executor/.env` (`ALPACA_KEY_ID` starts with `PK`, plus `ALPACA_SECRET_KEY`) to get live bid/ask prices. If you leave them blank, the trade executor prices orders from the daily close.
 
@@ -80,7 +80,8 @@ Environment variables:
 | Variable | Service | Purpose |
 |---|---|---|
 | `KAFKA_BOOTSTRAP_SERVERS` | orders-service, trade-executor | Kafka broker, `kafka:9092` inside compose |
-| `JWT_SECRET` | all Java services | Shared signing secret, must match everywhere |
+| `AUTH_JWKS_URI`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | accounts, instruments, orders, positions | Where to fetch auth-service's public keys, and the `iss` / `aud` every token must carry. Optional; the defaults match docker-compose |
+| `JWT_SECRET` | auth-service, trade-executor | Signing secret, until both move to RS256 (S8-4, S8-9) |
 | `SERVICE_TOKEN_TTL` | trade-executor | Lifetime of its service-to-service token |
 | `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
@@ -107,7 +108,7 @@ docker-compose down --volumes
 
 ### Troubleshooting
 - **`Schema-validation: missing table`**: the database volume was created from an older schema. Run `docker-compose down --volumes`, then run the setup script again.
-- **`401` errors between services** (for example, `Market-data poll failed ... 401` in the trade-executor logs): `JWT_SECRET` doesn't match across the `.env` files. Fix it, then recreate the container.
+- **`401` errors on every request**: the token wasn't issued by auth-service, or its `iss` / `aud` doesn't match `AUTH_ISSUER` / `AUTH_AUDIENCE`. Log in through auth-service to get a new token. If the services can't reach `AUTH_JWKS_URI`, every token is rejected too.
 - **Database password errors after changing a password in `.env`**: Postgres keeps the password it was created with. Change it back, or wipe the volumes.
 - **`docker: 'compose' is not a docker command`**: use `docker-compose` (with the hyphen).
 
