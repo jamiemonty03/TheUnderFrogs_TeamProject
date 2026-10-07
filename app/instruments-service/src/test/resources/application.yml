@@ -1,2 +1,9 @@
-jwt:
-  secret: instrument-test-secret-32-bytes-minimum
+# Tests that send real tokens override jwk-set-uri with TestJwtIssuer's JWKS server
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost/jwks-not-used-in-this-test
+          issuer-uri: auth-service
+          audiences: trading-platform
