@@ -6,9 +6,11 @@ import { TokensRepository } from './tokens.repository';
 import { Token } from './entities/token.entity';
 import { SIGNING_KEY, TokenService } from './token.service';
 import { loadSigningKey } from '../../config/signing-key';
+import { JwksController } from './jwks.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Token])],
+  controllers: [JwksController],
   providers: [
     TokensService,
     TokensRepository,
