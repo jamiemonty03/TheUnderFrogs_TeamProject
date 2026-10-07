@@ -1,7 +1,19 @@
+x-java-memory: &java-memory
+  mem_limit: 512m
+  restart: unless-stopped
+
+x-java-env: &java-env
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=70
+    -XX:MaxMetaspaceSize=192m
+    -XX:+ExitOnOutOfMemoryError
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
+
 services:
   accounts-db:
     image: postgres:15-alpine
     container_name: accounts-db
+    mem_limit: 256m
     env_file: ./app/accounts-service/.env
     entrypoint:
       - sh
@@ -12,7 +24,7 @@ services:
         export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
         cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -30,6 +42,9 @@ services:
       context: ./app/accounts-service
       dockerfile: Dockerfile
     container_name: accounts-service
+    <<: *java-memory
+    environment:
+      <<: *java-env
     env_file: ./app/accounts-service/.env
     depends_on:
       accounts-db:
@@ -46,6 +61,7 @@ services:
   instruments-db:
     image: postgres:15-alpine
     container_name: instruments-db
+    mem_limit: 256m
     env_file: ./app/instruments-service/.env
     entrypoint:
       - sh
@@ -56,7 +72,7 @@ services:
         export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
         cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
@@ -74,6 +90,9 @@ services:
       context: ./app/instruments-service
       dockerfile: Dockerfile
     container_name: instruments-service
+    <<: *java-memory
+    environment:
+      <<: *java-env
     env_file: ./app/instruments-service/.env
     depends_on:
       instruments-db:
@@ -90,6 +109,7 @@ services:
   orders-db:
     image: postgres:15-alpine
     container_name: orders-db
+    mem_limit: 256m
     env_file: ./app/orders-service/.env
     entrypoint:
       - sh
@@ -100,7 +120,7 @@ services:
         export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
         cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5435:5432"
     volumes:
@@ -118,8 +138,10 @@ services:
       context: ./app/orders-service
       dockerfile: Dockerfile
     container_name: orders-service
+    <<: *java-memory
     env_file: ./app/orders-service/.env
     environment:
+      <<: *java-env
       SPRING_PROFILES_ACTIVE: json-logs
     depends_on:
       orders-db:
@@ -140,6 +162,7 @@ services:
   positions-db:
     image: postgres:15-alpine
     container_name: positions-db
+    mem_limit: 256m
     env_file: ./app/positions-service/.env
     entrypoint:
       - sh
@@ -150,7 +173,7 @@ services:
         export POSTGRES_DB="$${SPRING_DATASOURCE_URL##*/}";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
         cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5436:5432"
     volumes:
@@ -168,6 +191,9 @@ services:
       context: ./app/positions-service
       dockerfile: Dockerfile
     container_name: positions-service
+    <<: *java-memory
+    environment:
+      <<: *java-env
     env_file: ./app/positions-service/.env
     depends_on:
       positions-db:
@@ -186,7 +212,10 @@ services:
     ports:
       - "127.0.0.1:9094:9094" 
     container_name: kafka
+    mem_limit: 1g
+    restart: unless-stopped
     environment:
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -220,16 +249,19 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
+    mem_limit: 384m
     ports:
       - "8086:8086"  
     environment:
       SERVER_PORT: 8086
+      JAVA_OPTS: "-XX:MaxRAMPercentage=70 -XX:MaxMetaspaceSize=128m"
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
   auth-db:
     image: postgres:15-alpine
     container_name: auth-db
+    mem_limit: 256m
     env_file: ./app/auth-service/.env
     entrypoint:
       - sh
@@ -240,7 +272,7 @@ services:
         export POSTGRES_DB="$$DB_NAME";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
         cp /load-seed-data.sh /docker-entrypoint-initdb.d/zz-load-seed-data.sh;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5438:5432"
     volumes:
@@ -258,6 +290,7 @@ services:
       context: ./app/auth-service
       dockerfile: Dockerfile
     container_name: auth-service
+    mem_limit: 256m
     env_file: ./app/auth-service/.env
     environment:
       DB_HOST: auth-db
@@ -278,6 +311,9 @@ services:
       context: ./app/trade-executor
       dockerfile: Dockerfile
     container_name: trade-executor
+    <<: *java-memory
+    environment:
+      <<: *java-env
     env_file:
       - path: ./app/trade-executor/.env
         required: false
@@ -306,6 +342,7 @@ services:
       context: ./db
       dockerfile: Dockerfile
     container_name: underfrog-python
+    mem_limit: 512m
     env_file: 
       - ./app/instruments-service/.env
       - ./app/trade-analytics-service/.env
@@ -329,6 +366,7 @@ services:
   sonarqube:
     image: sonarqube:9.9.0-community
     container_name: sonarqube
+    mem_limit: 2g
     profiles: [quality]
     ports:
       - "0.0.0.0:8088:9000"
@@ -342,6 +380,7 @@ services:
   trade-analytics-db:
     image: postgres:15-alpine
     container_name: trade-analytics-db
+    mem_limit: 256m
     env_file:
       - path: ./app/trade-analytics-service/.env
         required: false
@@ -353,7 +392,7 @@ services:
         export POSTGRES_PASSWORD="$$ANALYTICS_DB_PASSWORD"
         export POSTGRES_DB="$${ANALYTICS_DB_URL##*/}";
         cp /db/schema/*.sql /docker-entrypoint-initdb.d/;
-        exec docker-entrypoint.sh postgres
+        exec docker-entrypoint.sh postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
     ports:
       - "127.0.0.1:5437:5432"
     volumes:
@@ -370,6 +409,7 @@ services:
       context: ./app/trade-analytics-service
       dockerfile: Dockerfile
     container_name: trade-analytics-service
+    mem_limit: 256m
     env_file:
       - path: ./app/trade-analytics-service/.env
         required: false
