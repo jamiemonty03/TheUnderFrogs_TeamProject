@@ -34,10 +34,7 @@ import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.services.AccountService;
 
 @Testcontainers
-@SpringBootTest(properties = {
-        "jwt.secret=accounts-test-secret-that-is-32-bytes-min",
-        "jwt.expiration=3600000"
-})
+@SpringBootTest
 class IdempotentCashMovementIntegrationTest {
 
     private static final String ACCOUNT_ID = "ACC0001";
