@@ -33,6 +33,7 @@ import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.dtos.requests.UpdateOrderStatusRequest;
 import com.neueda.orderservice.exceptions.OrderStatusConflictException;
 import com.neueda.orderservice.services.OrderStatusService;
+import com.neueda.orderservice.utils.AuthorizationUtils;
 
 
 @RestController
@@ -75,12 +76,19 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable String orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
-        return order.map(o -> ResponseEntity.ok(toOrderResponse(o)))
-                   .orElseGet(() -> ResponseEntity.notFound().build());
+        if (order.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        AuthorizationUtils.verifyAccountAccess(order.get().getAccountId());
+        
+        return ResponseEntity.ok(toOrderResponse(order.get()));
     }
 
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<OrderResponse>> getOrdersByAccountId(@PathVariable String accountId) {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         List<Order> orders = orderRepository.findByAccountIdOrderByCreatedAtDesc(accountId);
         List<OrderResponse> responses = orders.stream()
             .map(this::toOrderResponse)
@@ -90,6 +98,8 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
+        AuthorizationUtils.verifyAccountAccess(request.accountId());
+        
         log.info("Order placement received {} {} {} {} {}", kv("accountId", request.accountId()),
             kv("symbol", request.symbol()), kv("side", request.side()), kv("quantity", request.quantity()),
             kv("priceLimit", request.priceLimit()));
@@ -158,6 +168,8 @@ public class OrderController {
         }
 
         Order order = existingOrder.get();
+        
+        AuthorizationUtils.verifyAccountAccess(order.getAccountId());
 
         if (request.quantity() != null) {
             order.setQuantity(request.quantity());
@@ -194,6 +206,11 @@ public class OrderController {
     @DeleteMapping("/{orderId}")
     public ResponseEntity<Void> deleteOrder(@PathVariable String orderId)
             throws OrderNotFoundException, OrderNotCancellableException {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
+        
+        AuthorizationUtils.verifyAccountAccess(order.getAccountId());
+        
         orderCancellationService.cancel(orderId);
         return ResponseEntity.noContent().build();
     }

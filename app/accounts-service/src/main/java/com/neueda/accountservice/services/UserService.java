@@ -1,11 +1,14 @@
 package com.neueda.accountservice.services;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.neueda.accountservice.models.User;
+import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.repositories.UserRepository;
+import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.services.JwtService;
 import com.neueda.accountservice.dtos.LoginRequest;
 import com.neueda.accountservice.dtos.RegisterRequest;
@@ -14,11 +17,14 @@ import com.neueda.accountservice.dtos.RegisterRequest;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public UserService(UserRepository userRepository, AccountRepository accountRepository, 
+                       PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
+        this.accountRepository = accountRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
     }
@@ -43,7 +49,7 @@ public class UserService {
         user.setUpdatedBy("SYSTEM");
         userRepository.save(user);
 
-        String token = jwtService.generateToken(user.getUsername());
+        String token = generateToken(user);
         user.setToken(token);
 
         return user;
@@ -66,10 +72,22 @@ public class UserService {
             throw new IllegalArgumentException("Invalid username or password");
         }
 
-        String token = jwtService.generateToken(user.getUsername());
+        String token = generateToken(user);
         user.setToken(token);
 
         return user;
+    }
+
+    private String generateToken(User user) {
+        List<Account> accounts = accountRepository.findByUserId(user.getId());
+        String accountId = null;
+        if (!accounts.isEmpty()) {
+            accountId = accounts.get(0).getAccountId();
+        }
+
+        List<String> roles = List.of("TRADER");
+
+        return jwtService.generateToken(user.getUsername(), accountId, roles);
     }
 
     public Optional<User> getUserByUsername(String username) {

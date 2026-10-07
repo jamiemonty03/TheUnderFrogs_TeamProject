@@ -17,8 +17,8 @@ export class AuthService {
     private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<TokenResponseDto> {
-    const user = await this.usersService.createUser({
+  register(registerDto: RegisterDto): Promise<TokenResponseDto> {
+    return this.usersService.createUser({
       username: registerDto.username,
       email: registerDto.email,
       password: registerDto.password,
@@ -70,6 +70,10 @@ export class AuthService {
       username,
       roles,
     };
+
+    if (accountId) {
+      payload.accountId = accountId;
+    }
 
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: expiresInSeconds,

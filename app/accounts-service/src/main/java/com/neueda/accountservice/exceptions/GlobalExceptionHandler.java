@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("ACC-403", ex.getMessage()));
     }
 
+    @ExceptionHandler(AccountAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountAuthorization(AccountAuthorizationException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("AUTH-403", ex.getMessage()));
+    }
+
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientFunds(InsufficientFundsException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

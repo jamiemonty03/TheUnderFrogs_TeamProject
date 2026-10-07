@@ -27,6 +27,11 @@ public class GlobalExceptionHandler {
         return reject(HttpStatus.FORBIDDEN, "ACC-403", ex.getMessage());
     }
 
+    @ExceptionHandler(AccountAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountAuthorization(AccountAuthorizationException ex) {
+        return reject(HttpStatus.FORBIDDEN, "AUTH-403", ex.getMessage());
+    }
+
     @ExceptionHandler(InstrumentNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInstrumentNotFound(InstrumentNotFoundException ex) {
         return reject(HttpStatus.NOT_FOUND, "INS-404", ex.getMessage());

@@ -2,6 +2,7 @@ package com.neueda.accountservice.services;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -23,13 +24,26 @@ public class JwtService {
     }
 
     public String generateToken(String username) {
+        return generateToken(username, null, null);
+    }
+
+    public String generateToken(String username, String accountId, List<String> roles) {
         Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claimsBuilder = JwtClaimsSet.builder()
                 .issuer("accounts-service")
                 .subject(username)
                 .issuedAt(now)
-                .expiresAt(now.plus(Duration.ofMillis(jwtExpirationMs)))
-                .build();
+                .expiresAt(now.plus(Duration.ofMillis(jwtExpirationMs)));
+
+        if (accountId != null && !accountId.isEmpty()) {
+            claimsBuilder.claim("accountId", accountId);
+        }
+
+        if (roles != null && !roles.isEmpty()) {
+            claimsBuilder.claim("roles", roles);
+        }
+
+        JwtClaimsSet claims = claimsBuilder.build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
 
         return jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
