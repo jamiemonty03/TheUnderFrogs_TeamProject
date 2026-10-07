@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';

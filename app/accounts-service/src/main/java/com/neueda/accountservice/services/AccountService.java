@@ -42,6 +42,9 @@ public class AccountService {
         if (account.getVersion() == 0) {
             account.setVersion(1);
         }
+        if (account.getUpdatedBy() == null) {
+            account.setUpdatedBy("SYSTEM");
+        }
         
         accountRepository.save(account);
         return account;
