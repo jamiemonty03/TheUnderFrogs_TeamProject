@@ -21,4 +21,5 @@ export const validationSchema = Joi.object({
   JWT_ISSUER: Joi.string().default('auth-service'),
   JWT_AUDIENCE: Joi.string().default('trading-platform'),
   JWT_ACCESS_TOKEN_TTL: Joi.number().integer().min(60).max(3600).default(900),
+  JWT_REFRESH_TOKEN_TTL: Joi.number().integer().min(3600).max(2592000).default(604800),
 });

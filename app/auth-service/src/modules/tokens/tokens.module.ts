@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TokensService } from './tokens.service';
+import { RefreshTokensService } from './refresh-tokens.service';
 import { TokensRepository } from './tokens.repository';
 import { Token } from './entities/token.entity';
 import { SIGNING_KEY, TokenService } from './token.service';
@@ -12,7 +12,7 @@ import { JwksController } from './jwks.controller';
   imports: [TypeOrmModule.forFeature([Token])],
   controllers: [JwksController],
   providers: [
-    TokensService,
+    RefreshTokensService,
     TokensRepository,
     TokenService,
     {
@@ -22,6 +22,6 @@ import { JwksController } from './jwks.controller';
         loadSigningKey(configService.getOrThrow<string>('JWT_PRIVATE_KEY'), configService.getOrThrow<string>('JWT_KEY_ID')),
     },
   ],
-  exports: [TokensService, TokensRepository, TokenService, SIGNING_KEY],
+  exports: [RefreshTokensService, TokenService, SIGNING_KEY],
 })
 export class TokensModule {}
