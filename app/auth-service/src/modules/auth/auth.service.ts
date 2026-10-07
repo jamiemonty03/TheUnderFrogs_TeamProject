@@ -1,9 +1,8 @@
 import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
-import { LoginDto, RegisterDto, TokenResponseDto, TokenPayloadDto } from './dto';
+import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
+import { AccessTokenClaims, TokenService } from '../tokens/token.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 import { User } from '../users/entities/user.entity';
 
@@ -12,8 +11,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly authRepository: AuthRepository,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    private readonly tokenService: TokenService,
     private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
@@ -26,7 +24,7 @@ export class AuthService {
       role: 'USER',
     });
 
-    return this.generateToken(user.id, user.username, user.roles);
+    return this.generateToken(user);
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
@@ -45,40 +43,20 @@ export class AuthService {
       failed_login_attempts: 0,
     });
 
-    return this.generateToken(user.id, user.username, user.roles);
+    return this.generateToken(user);
   }
 
 
-  async validateToken(token: string): Promise<TokenPayloadDto> {
-    try {
-      return this.jwtService.verify(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+  async validateToken(token: string): Promise<AccessTokenClaims> {
+    return this.tokenService.verify(token);
   }
 
-  private generateToken(
-    userId: number,
-    username: string,
-    roles: string[],
-  ): TokenResponseDto {
-    const expiresIn = this.configService.get<number>('JWT_EXPIRATION', 86400000);
-    const expiresInSeconds = Math.floor(expiresIn / 1000);
-
-    const payload: any = {
-      sub: userId,
-      username,
-      roles,
-    };
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: expiresInSeconds,
-    });
-
+  private generateToken(user: User): TokenResponseDto {
+    const { accessToken, expiresIn } = this.tokenService.issue(user);
     return {
       access_token: accessToken,
       token_type: 'Bearer',
-      expires_in: expiresInSeconds,
+      expires_in: expiresIn,
     };
   }
 }

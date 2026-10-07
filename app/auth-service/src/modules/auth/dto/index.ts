@@ -96,4 +96,3 @@ export class TokenResponseDto {
   expires_in: number;
 }
 
-export { TokenPayloadDto } from './token-payload.dto';

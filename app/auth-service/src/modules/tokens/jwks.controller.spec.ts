@@ -2,7 +2,6 @@ import { createPublicKey, generateKeyPairSync, JsonWebKey } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import * as jsonwebtoken from 'jsonwebtoken';
 import request from 'supertest';
@@ -81,7 +80,7 @@ describe('JWKS', () => {
         controllers: [JwksController],
         providers: [
           { provide: SIGNING_KEY, useValue: key },
-          { provide: JwtService, useValue: { verify: () => { throw new Error('no tokens accepted'); } } },
+          { provide: TokenService, useValue: { verify: () => { throw new Error('no tokens accepted'); } } },
           { provide: APP_GUARD, useClass: JwtAuthGuard },
         ],
       }).compile();

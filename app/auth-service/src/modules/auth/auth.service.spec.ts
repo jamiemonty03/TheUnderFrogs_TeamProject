@@ -5,17 +5,15 @@ import { UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { TokenService } from '../tokens/token.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 
 describe('AuthService', () => {
   let service: AuthService;
   let usersService: any;
   let authRepository: any;
-  let jwtService: any;
+  let tokenService: any;
   let accountsServiceClient: any;
-  let configService: any;
 
   const mockUser = {
     id: 1,
@@ -64,19 +62,10 @@ describe('AuthService', () => {
           } as any,
         },
         {
-          provide: JwtService,
+          provide: TokenService,
           useValue: {
-            sign: jest.fn().mockReturnValue('jwt_token_here') as any,
+            issue: jest.fn().mockReturnValue({ accessToken: 'rs256.token.here', expiresIn: 900 }) as any,
             verify: jest.fn() as any,
-          } as any,
-        },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: jest.fn((key, defaultValue) => {
-              if (key === 'JWT_EXPIRATION') return 86400000;
-              return defaultValue;
-            }) as any,
           } as any,
         },
         {
@@ -92,9 +81,8 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     usersService = module.get<any>(UsersService);
     authRepository = module.get<any>(AuthRepository);
-    jwtService = module.get<any>(JwtService);
+    tokenService = module.get<any>(TokenService);
     accountsServiceClient = module.get<any>(AccountsServiceClient);
-    configService = module.get<any>(ConfigService);
   });
 
   afterEach(() => {
@@ -232,8 +220,8 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
 
-      expect(result).toHaveProperty('access_token');
-      expect(result.token_type).toBe('Bearer');
+      expect(result).toEqual({ access_token: 'rs256.token.here', token_type: 'Bearer', expires_in: 900 });
+      expect(tokenService.issue).toHaveBeenCalledWith(mockUser);
       expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
       expect(authRepository.update).toHaveBeenCalled();
     });
@@ -273,21 +261,21 @@ describe('AuthService', () => {
   describe('validateToken', () => {
     it('should validate a token successfully', async () => {
       const token = 'valid_token';
-      const decoded = { sub: 1, username: 'testuser', roles: ['user'], accountId: 'ACC-000001' };
+      const decoded = { sub: '1', username: 'testuser', roles: ['TRADER'], accountId: 'ACC0001' };
 
-      (jwtService.verify as jest.Mock).mockReturnValue(decoded as any);
+      (tokenService.verify as jest.Mock).mockReturnValue(decoded as any);
 
       const result = await service.validateToken(token);
 
       expect(result).toEqual(decoded);
-      expect(jwtService.verify).toHaveBeenCalledWith(token);
+      expect(tokenService.verify).toHaveBeenCalledWith(token);
     });
 
     it('should throw UnauthorizedException for invalid token', async () => {
       const token = 'invalid_token';
 
-      (jwtService.verify as jest.Mock).mockImplementation(() => {
-        throw new Error('Invalid token');
+      (tokenService.verify as jest.Mock).mockImplementation(() => {
+        throw new UnauthorizedException('Invalid or expired token');
       });
 
       await expect(service.validateToken(token)).rejects.toThrow(UnauthorizedException);
