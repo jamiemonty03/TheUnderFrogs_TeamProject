@@ -1,7 +1,7 @@
 import { Injectable, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { UsersRepository } from './users.repository';
 import { PasswordHasher } from './password-hasher.service';
-import { CreateUserDto, UpdateUserDto } from './dto';
+import { CreateUserDto, DEFAULT_ROLE, UpdateUserDto } from './dto';
 import { User } from './entities/user.entity';
 
 @Injectable()
@@ -35,7 +35,7 @@ export class UsersService {
       email,
       password_hash: hashedPassword,
       full_name: full_name ?? null,
-      roles: [(role || 'USER').toUpperCase()],
+      roles: [(role || DEFAULT_ROLE).toUpperCase()],
     });
   }
 

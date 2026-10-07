@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@n
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
 import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
+import { DEFAULT_ROLE } from '../users/dto';
 import { AccessTokenClaims, TokenService } from '../tokens/token.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 import { User } from '../users/entities/user.entity';
@@ -21,7 +22,7 @@ export class AuthService {
       email: registerDto.email,
       password: registerDto.password,
       full_name: registerDto.full_name,
-      role: 'USER',
+      role: DEFAULT_ROLE,
     });
 
     return this.generateToken(user);

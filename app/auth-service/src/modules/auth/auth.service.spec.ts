@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 // @ts-nocheck
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
+import { ConflictException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
@@ -21,7 +21,7 @@ describe('AuthService', () => {
     email: 'test@example.com',
     password_hash: 'hashedPassword',
     full_name: 'Test User',
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: null,
     is_active: true,
     failed_attempts: 0,
@@ -119,7 +119,7 @@ describe('AuthService', () => {
         username: registerDto.username,
         email: registerDto.email,
         password: registerDto.password,
-        role: 'USER',
+        role: 'TRADER',
       });
       expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({
         userId: 2,
@@ -205,6 +205,28 @@ describe('AuthService', () => {
         const response = error.getResponse() as any;
         expect(response.error_code).toBe('REGISTRATION-500');
       }
+    });
+  });
+
+  describe('register', () => {
+    const registerDto = { username: 'newuser', email: 'new@example.com', password: 'correct-horse-battery' };
+
+    it('creates the user with the TRADER role and returns a token for them', async () => {
+      const created = { ...mockUser, id: 9, username: 'newuser', roles: ['TRADER'] };
+      (usersService.createUser as jest.Mock).mockResolvedValue(created as any);
+
+      const result = await service.register(registerDto);
+
+      expect(usersService.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'newuser', role: 'TRADER' }));
+      expect(tokenService.issue).toHaveBeenCalledWith(created);
+      expect(result.access_token).toBe('rs256.token.here');
+    });
+
+    it('passes a taken username or email straight through as a conflict', async () => {
+      (usersService.createUser as jest.Mock).mockRejectedValue(new ConflictException('User with username newuser already exists') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
+      expect(tokenService.issue).not.toHaveBeenCalled();
     });
   });
 
