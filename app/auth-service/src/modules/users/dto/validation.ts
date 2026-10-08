@@ -4,7 +4,8 @@ import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validato
 
 export const PASSWORD_MIN_LENGTH = 12;
 export const PASSWORD_MAX_LENGTH = 128;
-export const ROLES = ['USER', 'ADMIN'];
+export const DEFAULT_ROLE = 'TRADER';
+export const ROLES = [DEFAULT_ROLE, 'ADMIN'];
 
 export const Trim = () => Transform(({ value }) => (typeof value === 'string' ? value.trim() : value));
 

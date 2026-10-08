@@ -44,6 +44,10 @@ check_prerequisites() {
     for svc in accounts-service instruments-service orders-service positions-service trade-analytics-service trade-executor auth-service; do
         [ -f "app/$svc/.env" ] || error_exit "app/$svc/.env missing (copy it from .env.example and set the password / JWT_SECRET)"
     done
+    if ! grep -q '^JWT_PRIVATE_KEY=.' app/auth-service/.env; then
+        ./app/auth-service/scripts/generate-signing-key.sh || error_exit "Failed to generate the auth-service signing key"
+    fi
+    echo -e "${GREEN}✓ auth-service signing key present${NC}"
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
 }
 

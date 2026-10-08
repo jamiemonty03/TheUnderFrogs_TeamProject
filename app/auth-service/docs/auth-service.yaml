@@ -30,7 +30,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
+                $ref: '#/components/schemas/AuthTokens'
         '409':
           description: User already exists (username or email conflict)
           content:
@@ -42,6 +42,10 @@ paths:
                   value:
                     errorCode: AUTH-409
                     message: User with username johndoe already exists
+                emailConflict:
+                  value:
+                    errorCode: AUTH-409
+                    message: User with email john@example.com already exists
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -66,9 +70,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
+                $ref: '#/components/schemas/AuthTokens'
         '401':
-          description: Invalid credentials or user inactive
+          description: >-
+            Wrong username, wrong password or inactive account. All three return exactly the same
+            response so callers cannot tell which usernames exist.
           content:
             application/json:
               schema:
@@ -78,10 +84,6 @@ paths:
                   value:
                     errorCode: AUTH-401
                     message: Invalid credentials
-                userInactive:
-                  value:
-                    errorCode: AUTH-401
-                    message: User account is inactive
         '422':
           $ref: '#/components/responses/ValidationError'
         '429':
@@ -106,7 +108,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
+                $ref: '#/components/schemas/AuthTokens'
         '401':
           description: Invalid, expired or revoked refresh token
           content:
@@ -198,7 +200,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/CurrentUser'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -207,11 +209,18 @@ paths:
       tags:
         - JWKS
       summary: Get JSON Web Key Set
-      description: Retrieve the public keys resource servers use to verify JWT signatures
+      description: >-
+        Public keys resource servers use to verify RS256 access tokens. Pick the key whose kid
+        matches the token header. No authentication required; safe to cache for 5 minutes.
       operationId: getJWKS
       responses:
         '200':
           description: JWKS retrieved successfully
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=300
           content:
             application/json:
               schema:
@@ -347,6 +356,58 @@ components:
           description: OAuth2 grant type
           example: client_credentials
 
+    AuthTokens:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - mfaRequired
+      properties:
+        accessToken:
+          type: string
+          description: >-
+            RS256 JWT. Header carries kid. Claims: sub (user id), username, roles, accountId,
+            iss, aud, iat, exp.
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImF1dGgtMjAyNjEwMDcifQ...
+        refreshToken:
+          type: string
+          description: Opaque random token (43 characters). Only its SHA-256 hash is stored.
+          example: kX9fQ2v7rB1mN8pL0sT4wY6zA3cE5gH7jK9lM1nP2qR
+        expiresIn:
+          type: integer
+          format: int32
+          description: Access token lifetime in seconds
+          example: 900
+        mfaRequired:
+          type: boolean
+          description: Always false until multi-factor authentication is added
+          example: false
+
+    CurrentUser:
+      type: object
+      required:
+        - userId
+        - username
+        - roles
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 11
+        username:
+          type: string
+          example: demo
+        roles:
+          type: array
+          items:
+            type: string
+          example: [TRADER]
+        accountId:
+          type: string
+          nullable: true
+          example: ACC0011
+
     TokenResponse:
       type: object
       required:
@@ -368,11 +429,7 @@ components:
           type: integer
           format: int32
           description: Access token lifetime in seconds
-          example: 86400
-        refresh_token:
-          type: string
-          description: Refresh token. Returned by register, login and refresh; never by the client credentials flow.
-          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+          example: 900
 
     UserResponse:
       type: object
@@ -409,7 +466,7 @@ components:
           items:
             type: string
           description: User roles
-          example: [USER]
+          example: [TRADER]
         account_id:
           type: string
           nullable: true
@@ -474,7 +531,7 @@ components:
                 example: sig
               kid:
                 type: string
-                example: key-1
+                example: auth-20261007085126
               alg:
                 type: string
                 example: RS256
@@ -491,4 +548,4 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT access token
+      description: RS256 access token from /auth/login or /auth/register (valid 15 minutes)

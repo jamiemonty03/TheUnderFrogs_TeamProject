@@ -39,9 +39,10 @@ describe('AuthController', () => {
       };
 
       const mockToken = {
-        access_token: 'jwt.token',
-        token_type: 'Bearer',
-        expires_in: 86400,
+        accessToken: 'jwt.token',
+        refreshToken: 'opaque-refresh',
+        expiresIn: 900,
+        mfaRequired: false,
       };
 
       // @ts-expect-error - Mock compatibility
@@ -62,9 +63,10 @@ describe('AuthController', () => {
       };
 
       const mockToken = {
-        access_token: 'jwt.token',
-        token_type: 'Bearer',
-        expires_in: 86400,
+        accessToken: 'jwt.token',
+        refreshToken: 'opaque-refresh',
+        expiresIn: 900,
+        mfaRequired: false,
       };
 
       // @ts-expect-error - Mock compatibility
