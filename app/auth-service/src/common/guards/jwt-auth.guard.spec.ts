@@ -140,7 +140,7 @@ describe('JwtAuthGuard with the real TokenService', () => {
     expect(context.switchToHttp().getRequest().user).toMatchObject({ sub: '5', username: 'demo', accountId: 'ACC0011' });
   });
 
-  it('rejects an old HS256 token signed with JWT_SECRET', () => {
+  it('rejects an old HS256 token signed with a shared secret', () => {
     const oldToken = new JwtService().sign(
       { sub: 5, username: 'demo', roles: ['ADMIN'] },
       { secret: 'x'.repeat(32), expiresIn: 3600 },
