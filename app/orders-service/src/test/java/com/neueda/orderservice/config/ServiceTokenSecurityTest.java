@@ -1,51 +1,51 @@
 package com.neueda.orderservice.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.OctetSequenceKey;
-import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwsHeader;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.RequestBuilder;
 import org.springframework.web.client.RestTemplate;
 
 import com.neueda.orderservice.controllers.OrderController;
 import com.neueda.orderservice.repositories.OrderRepository;
-import com.neueda.orderservice.services.orderServices.OrderProcessor;
 import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.services.OrderStatusService;
+import com.neueda.orderservice.services.orderServices.OrderProcessor;
 
 @WebMvcTest(OrderController.class)
 @Import(SecurityConfig.class)
-@TestPropertySource(properties = "jwt.secret=" + ServiceTokenSecurityTest.SECRET)
 class ServiceTokenSecurityTest {
 
-    static final String SECRET = "test-secret-that-is-at-least-32-bytes-long!!";
-    private static final String WRONG_SECRET = "a-different-secret-that-is-also-32-bytes-long";
     private static final String ORDERS = "/orders";
+
+    @DynamicPropertySource
+    static void auth(DynamicPropertyRegistry registry) {
+        TestJwtIssuer.registerProperties(registry);
+    }
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private JwtAuthenticationConverter jwtAuthenticationConverter;
 
     @MockBean
     private OrderProcessor orderProcessor;
@@ -63,12 +63,15 @@ class ServiceTokenSecurityTest {
     private RestTemplate restTemplate;
 
     @Test
-    @DisplayName("Service token is accepted")
+    @DisplayName("Service token from auth-service is accepted")
     void acceptsServiceToken() throws Exception {
-        Mockito.when(orderRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+        mockMvc.perform(orders(TestJwtIssuer.serviceToken())).andExpect(status().isOk());
+    }
 
-        mockMvc.perform(get(ORDERS).header(HttpHeaders.AUTHORIZATION, bearer(serviceToken(SECRET))))
-                .andExpect(status().isOk());
+    @Test
+    @DisplayName("User token from auth-service is accepted")
+    void acceptsUserToken() throws Exception {
+        mockMvc.perform(orders(TestJwtIssuer.userToken())).andExpect(status().isOk());
     }
 
     @Test
@@ -80,42 +83,57 @@ class ServiceTokenSecurityTest {
     @Test
     @DisplayName("Garbage token is rejected with 401")
     void rejectsGarbageToken() throws Exception {
-        mockMvc.perform(get(ORDERS).header(HttpHeaders.AUTHORIZATION, bearer("not-a-jwt")))
+        mockMvc.perform(orders("not-a-jwt")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Token signed with a key auth-service does not publish is rejected with 401")
+    void rejectsUnknownKey() throws Exception {
+        mockMvc.perform(orders(TestJwtIssuer.token().roles("SERVICE").signedWithUnknownKey().build()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("Token signed with the wrong secret is rejected with 401")
-    void rejectsWrongSecret() throws Exception {
-        mockMvc.perform(get(ORDERS).header(HttpHeaders.AUTHORIZATION, bearer(serviceToken(WRONG_SECRET))))
-                .andExpect(status().isUnauthorized());
+    @DisplayName("HS256 token signed with the old shared secret is rejected with 401")
+    void rejectsSharedSecretToken() throws Exception {
+        mockMvc.perform(orders(TestJwtIssuer.sharedSecretToken())).andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("Expired service token is rejected with 401")
+    @DisplayName("Expired token is rejected with 401")
     void rejectsExpiredToken() throws Exception {
-        String expired = token(SECRET, List.of("SERVICE"), Instant.now().minus(Duration.ofMinutes(5)));
-        mockMvc.perform(get(ORDERS).header(HttpHeaders.AUTHORIZATION, bearer(expired)))
+        String expired = TestJwtIssuer.token().roles("SERVICE")
+                .expiresAt(Instant.now().minus(Duration.ofMinutes(5))).build();
+        mockMvc.perform(orders(expired)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Token from a different issuer is rejected with 401")
+    void rejectsWrongIssuer() throws Exception {
+        mockMvc.perform(orders(TestJwtIssuer.token().issuer("someone-else").build()))
                 .andExpect(status().isUnauthorized());
     }
 
-    private static String serviceToken(String secret) {
-        return token(secret, List.of("SERVICE"), Instant.now().plus(Duration.ofMinutes(5)));
+    @Test
+    @DisplayName("Token meant for a different audience is rejected with 401")
+    void rejectsWrongAudience() throws Exception {
+        mockMvc.perform(orders(TestJwtIssuer.token().audience("another-app").build()))
+                .andExpect(status().isUnauthorized());
     }
 
-    private static String token(String secret, List<String> roles, Instant expiresAt) {
-        OctetSequenceKey key = new OctetSequenceKey.Builder(secret.getBytes(StandardCharsets.UTF_8))
-                .algorithm(JWSAlgorithm.HS256)
-                .build();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .subject("trade-executor")
-                .issuedAt(expiresAt.minus(Duration.ofMinutes(5)))
-                .expiresAt(expiresAt)
-                .claim("roles", roles)
-                .build();
-        return new NimbusJwtEncoder(new ImmutableJWKSet<>(new JWKSet(key)))
-                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
-                .getTokenValue();
+    @Test
+    @DisplayName("The roles claim becomes ROLE_ authorities")
+    void rolesClaimBecomesRoleAuthorities() {
+        Jwt jwt = Jwt.withTokenValue("token").header("alg", "RS256")
+                .subject("trade-executor").claim("roles", List.of("SERVICE", "ADMIN")).build();
+
+        assertThat(jwtAuthenticationConverter.convert(jwt).getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactlyInAnyOrder("ROLE_SERVICE", "ROLE_ADMIN");
+    }
+
+    private static RequestBuilder orders(String token) {
+        return get(ORDERS).header(HttpHeaders.AUTHORIZATION, bearer(token));
     }
 
     private static String bearer(String token) {
