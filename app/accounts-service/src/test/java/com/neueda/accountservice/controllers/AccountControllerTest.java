@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.services.AccountService;
 import com.neueda.accountservice.enums.AccountStatus;
+import com.neueda.accountservice.exceptions.DuplicateAccountException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
@@ -72,6 +73,20 @@ public class AccountControllerTest {
                 .andExpect(jsonPath("$.status", equalTo("ACTIVE")));
 
         verify(accountService).createAccount(any(Account.class));
+    }
+
+    @Test
+    @DisplayName("POST /accounts: Returns 409 ACC-409 when the account ID already exists")
+    public void testCreateAccountDuplicate() throws Exception {
+        Account existing = new Account("ACC002", 1L, "Jane Smith", BigDecimal.ZERO, AccountStatus.ACTIVE);
+        when(accountService.createAccount(any(Account.class))).thenThrow(new DuplicateAccountException("ACC002"));
+
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(existing)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode", equalTo("ACC-409")))
+                .andExpect(jsonPath("$.message", equalTo("Account already exists: ACC002")));
     }
 
     @Test

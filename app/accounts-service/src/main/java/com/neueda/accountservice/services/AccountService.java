@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.enums.AccountStatus;
+import com.neueda.accountservice.exceptions.DuplicateAccountException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
@@ -28,11 +29,14 @@ public class AccountService {
         this.cashMovementRepository = cashMovementRepository;
     }
 
-    public Account createAccount(Account account) {
+    public Account createAccount(Account account) throws DuplicateAccountException {
         if (account == null) {
             throw new IllegalArgumentException("Account cannot be null");
         }
-        
+        if (accountRepository.existsById(account.getAccountId())) {
+            throw new DuplicateAccountException(account.getAccountId());
+        }
+
         if (account.getCreatedAt() == null) {
             account.setCreatedAt(LocalDateTime.now());
         }

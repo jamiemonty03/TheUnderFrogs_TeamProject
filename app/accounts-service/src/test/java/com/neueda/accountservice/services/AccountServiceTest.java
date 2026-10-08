@@ -7,6 +7,7 @@ import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
+import com.neueda.accountservice.exceptions.DuplicateAccountException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ public class AccountServiceTest {
     
     @Test
     @DisplayName("createAccount: Successfully creates a new account with default timestamps")
-    public void testCreateAccountSuccess() {
+    public void testCreateAccountSuccess() throws Exception {
         Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
         doAnswer(invocation -> {
             Account acc = invocation.getArgument(0);
@@ -64,6 +65,19 @@ public class AccountServiceTest {
         verify(accountRepository).save(any(Account.class));
     }
     
+    @Test
+    @DisplayName("createAccount: Rejects an account ID that already exists instead of overwriting it")
+    public void testCreateAccountRejectsExistingId() {
+        Account duplicate = new Account("ACC001", 2L, "Someone Else", BigDecimal.ZERO, AccountStatus.ACTIVE);
+        when(accountRepository.existsById("ACC001")).thenReturn(true);
+
+        DuplicateAccountException ex = assertThrows(DuplicateAccountException.class,
+                () -> accountService.createAccount(duplicate));
+
+        assertEquals("Account already exists: ACC001", ex.getMessage());
+        verify(accountRepository, never()).save(any());
+    }
+
     @Test
     @DisplayName("createAccount: Throws exception when account is null")
     public void testCreateAccountWithNull() {

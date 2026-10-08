@@ -1,8 +1,8 @@
 import { jest } from '@jest/globals';
 // @ts-nocheck
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
-import { AuthService } from './auth.service';
+import { ConflictException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { AuthService, REGISTRATION_FAILED } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
 import { TokenService } from '../tokens/token.service';
@@ -53,6 +53,7 @@ describe('AuthService', () => {
           useValue: {
             createUser: jest.fn(),
             verifyCredentials: jest.fn(),
+            linkAccount: jest.fn(),
             updateUser: jest.fn(),
             deleteUser: jest.fn(),
           },
@@ -81,7 +82,6 @@ describe('AuthService', () => {
           provide: AccountsServiceClient,
           useValue: {
             createAccount: jest.fn() as any,
-            getAccountByUserId: jest.fn() as any,
           } as any,
         },
       ],
@@ -99,145 +99,80 @@ describe('AuthService', () => {
     jest.clearAllMocks();
   });
 
-  describe.skip('register', () => {
-    it('should successfully register a user with an account', async () => {
-      const registerDto = {
-        username: 'newuser',
-        email: 'new@example.com',
-        password: 'password123',
-      };
+  describe('register', () => {
+    const registerDto = { username: 'zed', email: 'zed@example.com', password: 'correct-horse-battery', full_name: 'Zed Smith' };
+    const created = { ...mockUser, id: 12, username: 'zed', full_name: 'Zed Smith', roles: ['TRADER'], account_id: null };
+    const linked = { ...created, account_id: 'ACC0012' };
 
-      const newUser = { ...mockUser, id: 2, username: 'newuser', email: 'new@example.com', account_id: null };
-      const mockAccount = {
-        accountId: 'ACC-000002',
-        userId: 2,
-        holderName: 'newuser',
-        cashBalance: '0',
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-      };
-
-      (usersService.createUser as jest.Mock).mockResolvedValue(newUser as any);
-      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue(mockAccount as any);
-      (usersService.updateUser as jest.Mock).mockResolvedValue({ ...newUser, account_id: 'ACC-000002' } as any);
-
-      const result = await service.register(registerDto);
-
-      expect(result).toHaveProperty('access_token');
-      expect(result.token_type).toBe('Bearer');
-      expect(usersService.createUser).toHaveBeenCalledWith({
-        username: registerDto.username,
-        email: registerDto.email,
-        password: registerDto.password,
-        role: 'TRADER',
-      });
-      expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({
-        userId: 2,
-        holderName: 'newuser',
-      });
-      expect(usersService.updateUser).toHaveBeenCalledWith(2, { account_id: 'ACC-000002' });
+    beforeEach(() => {
+      (usersService.createUser as jest.Mock).mockResolvedValue(created as any);
+      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue({ accountId: 'ACC0012', userId: 12 } as any);
+      (usersService.linkAccount as jest.Mock).mockResolvedValue(linked as any);
     });
 
-    it('should include accountId in token payload on successful registration', async () => {
-      const registerDto = {
-        username: 'newuser',
-        email: 'new@example.com',
-        password: 'password123',
-      };
-
-      const newUser = { ...mockUser, id: 42, username: 'newuser', email: 'new@example.com', account_id: null };
-      const mockAccount = {
-        accountId: 'ACC-000042',
-        userId: 42,
-        holderName: 'newuser',
-        cashBalance: '0',
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-      };
-
-      (usersService.createUser as jest.Mock).mockResolvedValue(newUser as any);
-      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue(mockAccount as any);
-      (usersService.updateUser as jest.Mock).mockResolvedValue({ ...newUser, account_id: 'ACC-000042' } as any);
-
+    it('creates the user with the TRADER role', async () => {
       await service.register(registerDto);
 
-      const signCall = (jwtService.sign as jest.Mock).mock.calls[0];
-      expect(signCall[0]).toMatchObject({
-        sub: 42,
-        username: 'newuser',
-        roles: ['user'],
-        accountId: 'ACC-000042',
-      });
+      expect(usersService.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'zed', role: 'TRADER' }));
     });
 
-    it('should rollback user creation if account creation fails', async () => {
-      const registerDto = {
-        username: 'newuser',
-        email: 'new@example.com',
-        password: 'password123',
-      };
+    it('creates an account in accounts-service for the new user, named after their full name', async () => {
+      await service.register(registerDto);
 
-      const newUser = { ...mockUser, id: 3, username: 'newuser', email: 'new@example.com', account_id: null };
-
-      (usersService.createUser as jest.Mock).mockResolvedValue(newUser as any);
-      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(
-        new Error('Accounts service is down') as any,
-      );
-      (usersService.deleteUser as jest.Mock).mockResolvedValue(undefined as any);
-
-      await expect(service.register(registerDto)).rejects.toThrow(HttpException);
-
-      expect(usersService.deleteUser).toHaveBeenCalledWith(3);
-      expect(usersService.updateUser).not.toHaveBeenCalled();
+      expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({ userId: 12, holderName: 'Zed Smith' });
     });
 
-    it('should throw HttpException with error code REGISTRATION-500 on account creation failure', async () => {
-      const registerDto = {
-        username: 'newuser',
-        email: 'new@example.com',
-        password: 'password123',
-      };
+    it('names the account after the username when there is no full name', async () => {
+      (usersService.createUser as jest.Mock).mockResolvedValue({ ...created, full_name: null } as any);
 
-      const newUser = { ...mockUser, id: 4, username: 'newuser', email: 'new@example.com', account_id: null };
+      await service.register({ ...registerDto, full_name: undefined });
 
-      (usersService.createUser as jest.Mock).mockResolvedValue(newUser as any);
-      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(
-        new Error('Service error') as any,
-      );
-      (usersService.deleteUser as jest.Mock).mockResolvedValue(undefined as any);
-
-      try {
-        await service.register(registerDto);
-        fail('Should have thrown an exception');
-      } catch (error) {
-        expect(error).toBeInstanceOf(HttpException);
-        expect(error.getStatus()).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
-        const response = error.getResponse() as any;
-        expect(response.error_code).toBe('REGISTRATION-500');
-      }
+      expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({ userId: 12, holderName: 'zed' });
     });
-  });
 
-  describe('register', () => {
-    const registerDto = { username: 'newuser', email: 'new@example.com', password: 'correct-horse-battery' };
-
-    it('creates the user with the TRADER role and returns a token for them', async () => {
-      const created = { ...mockUser, id: 9, username: 'newuser', roles: ['TRADER'] };
-      (usersService.createUser as jest.Mock).mockResolvedValue(created as any);
-
+    it('links the account to the user and issues tokens that carry the account ID', async () => {
       const result = await service.register(registerDto);
 
-      expect(usersService.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'newuser', role: 'TRADER' }));
-      expect(tokenService.issue).toHaveBeenCalledWith(created);
-      expect(refreshTokensService.issue).toHaveBeenCalledWith(9);
+      expect(usersService.linkAccount).toHaveBeenCalledWith(12, 'ACC0012');
+      expect(tokenService.issue).toHaveBeenCalledWith(linked);
+      expect(refreshTokensService.issue).toHaveBeenCalledWith(12);
       expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false });
     });
 
-    it('passes a taken username or email straight through as a conflict', async () => {
-      (usersService.createUser as jest.Mock).mockRejectedValue(new ConflictException('User with username newuser already exists') as any);
+    it('passes a taken username or email straight through as a conflict without creating an account', async () => {
+      (usersService.createUser as jest.Mock).mockRejectedValue(new ConflictException('User with username zed already exists') as any);
 
       await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
+      expect(accountsServiceClient.createAccount).not.toHaveBeenCalled();
       expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['accounts-service is down', new ServiceUnavailableException('Account service is unavailable, please try again')],
+      ['the account ID already exists', new ConflictException('Account ACC0012 already exists')],
+    ])('deletes the new user and returns 503 when %s', async (_label, failure) => {
+      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(failure as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
+      expect(usersService.deleteUser).toHaveBeenCalledWith(12);
+      expect(usersService.linkAccount).not.toHaveBeenCalled();
+      expect(tokenService.issue).not.toHaveBeenCalled();
+      expect(refreshTokensService.issue).not.toHaveBeenCalled();
+    });
+
+    it('deletes the new user and returns 503 when the account cannot be linked', async () => {
+      (usersService.linkAccount as jest.Mock).mockRejectedValue(new Error('connection lost') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
+      expect(usersService.deleteUser).toHaveBeenCalledWith(12);
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it('still returns 503 when deleting the unfinished user also fails', async () => {
+      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(new ServiceUnavailableException() as any);
+      (usersService.deleteUser as jest.Mock).mockRejectedValue(new Error('database down') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
     });
   });
 
