@@ -198,6 +198,8 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     seed_db orders-db    orders    app/orders-service/db/seed/dummy-data.sql
 seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
+    seed_db auth-db      users     app/auth-service/db/seed/01-seed-users.sql
+    seed_db auth-db      auth      app/auth-service/db/seed/05-seed-auth.sql
 
 
 echo ""
