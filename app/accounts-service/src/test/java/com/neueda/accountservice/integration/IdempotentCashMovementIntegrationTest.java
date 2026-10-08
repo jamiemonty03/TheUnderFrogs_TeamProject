@@ -34,10 +34,7 @@ import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.services.AccountService;
 
 @Testcontainers
-@SpringBootTest(properties = {
-        "jwt.secret=accounts-test-secret-that-is-32-bytes-min",
-        "jwt.expiration=3600000"
-})
+@SpringBootTest
 class IdempotentCashMovementIntegrationTest {
 
     private static final String ACCOUNT_ID = "ACC0001";
@@ -76,14 +73,10 @@ class IdempotentCashMovementIntegrationTest {
     void seedAccount() {
         jdbcTemplate.update("DELETE FROM cash_movements");
         jdbcTemplate.update("DELETE FROM accounts");
-        jdbcTemplate.update("DELETE FROM users");
-        Long userId = jdbcTemplate.queryForObject(
-                "INSERT INTO users (username, email, password) VALUES ('alice', 'alice@test.com', 'x') RETURNING id",
-                Long.class);
         jdbcTemplate.update(
                 "INSERT INTO accounts (account_id, user_id, holder_name, cash_balance, status) "
-                        + "VALUES (?, ?, 'Alice', 1000.00, 'ACTIVE')",
-                ACCOUNT_ID, userId);
+                        + "VALUES (?, 1, 'Alice', 1000.00, 'ACTIVE')",
+                ACCOUNT_ID);
     }
 
     @Test

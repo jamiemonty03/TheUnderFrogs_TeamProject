@@ -16,12 +16,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_JWKS_URI:http://auth-service:8081/.well-known/jwks.json}
+          issuer-uri: ${AUTH_ISSUER:auth-service}
+          audiences: ${AUTH_AUDIENCE:trading-platform}
 server:
   address: 0.0.0.0
   port: 8081
   servlet:
     context-path: /api/
-
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION}
