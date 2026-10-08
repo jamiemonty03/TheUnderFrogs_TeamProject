@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import type { SigningKey } from '../../config/signing-key';
 
 export const SIGNING_KEY = Symbol('SIGNING_KEY');
+export const SERVICE_ROLE = 'SERVICE';
+export const SERVICE_TOKEN_TTL_SECONDS = 60;
 
 export interface TokenSubject {
   id: number;
@@ -52,19 +54,28 @@ export class TokenService {
   }
 
   issue(subject: TokenSubject): IssuedAccessToken {
-    const accessToken = this.jwt.sign(
+    const accessToken = this.sign(
       { username: subject.username, roles: subject.roles, accountId: subject.account_id },
-      {
-        algorithm: 'RS256',
-        privateKey: this.signingKey.privateKey,
-        keyid: this.signingKey.kid,
-        subject: String(subject.id),
-        issuer: this.issuer,
-        audience: this.audience,
-        expiresIn: this.ttlSeconds,
-      },
+      String(subject.id),
+      this.ttlSeconds,
     );
     return { accessToken, expiresIn: this.ttlSeconds };
+  }
+
+  issueServiceToken(serviceName: string): string {
+    return this.sign({ roles: [SERVICE_ROLE] }, serviceName, SERVICE_TOKEN_TTL_SECONDS);
+  }
+
+  private sign(payload: object, subject: string, expiresIn: number): string {
+    return this.jwt.sign(payload, {
+      algorithm: 'RS256',
+      privateKey: this.signingKey.privateKey,
+      keyid: this.signingKey.kid,
+      subject,
+      issuer: this.issuer,
+      audience: this.audience,
+      expiresIn,
+    });
   }
 
   verify(token: string): AccessTokenClaims {
