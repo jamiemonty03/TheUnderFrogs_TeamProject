@@ -78,6 +78,14 @@ export class UsersService {
     return updated;
   }
 
+  async linkAccount(id: number, accountId: string): Promise<User> {
+    const updated = await this.usersRepository.update(id, { account_id: accountId });
+    if (!updated) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    return updated;
+  }
+
   async deleteUser(id: number): Promise<void> {
     await this.getUserById(id);
     const success = await this.usersRepository.delete(id);

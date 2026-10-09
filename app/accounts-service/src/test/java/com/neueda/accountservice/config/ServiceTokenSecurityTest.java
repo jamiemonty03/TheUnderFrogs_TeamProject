@@ -33,6 +33,8 @@ import com.neueda.accountservice.services.AccountService;
 class ServiceTokenSecurityTest {
 
     private static final String DEBIT = "/accounts/ACC0001/debit";
+    private static final String NEW_ACCOUNT =
+            "{\"userId\":12,\"holderName\":\"Zed Smith\"}";
 
     @DynamicPropertySource
     static void auth(DynamicPropertyRegistry registry) {
@@ -65,6 +67,25 @@ class ServiceTokenSecurityTest {
     @DisplayName("Authenticated user can still debit an account")
     void userTokenCanDebit() throws Exception {
         mockMvc.perform(debit(TestJwtIssuer.userToken())).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Service token can create an account")
+    void serviceTokenCanCreateAccount() throws Exception {
+        mockMvc.perform(createAccount(TestJwtIssuer.serviceToken())).andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("User token cannot create an account and gets 403")
+    void userTokenCannotCreateAccount() throws Exception {
+        mockMvc.perform(createAccount(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Creating an account without a token is rejected with 401")
+    void createAccountWithoutTokenIsRejected() throws Exception {
+        mockMvc.perform(post("/accounts").contentType(MediaType.APPLICATION_JSON).content(NEW_ACCOUNT))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -124,6 +145,13 @@ class ServiceTokenSecurityTest {
         assertThat(jwtAuthenticationConverter.convert(jwt).getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactlyInAnyOrder("ROLE_SERVICE", "ROLE_ADMIN");
+    }
+
+    private static RequestBuilder createAccount(String token) {
+        return post("/accounts")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(NEW_ACCOUNT);
     }
 
     private static RequestBuilder debit(String token) {

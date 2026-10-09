@@ -55,7 +55,6 @@ describe('signing key config', () => {
       DB_USERNAME: 'postgres',
       DB_PASSWORD: 'pw',
       DB_NAME: 'auth_db',
-      JWT_SECRET: 'x'.repeat(32),
       JWT_PRIVATE_KEY: validKey,
       JWT_KEY_ID: 'auth-20261007',
     };

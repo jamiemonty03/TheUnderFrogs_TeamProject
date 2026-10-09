@@ -94,6 +94,41 @@ describe('TokenService', () => {
     });
   });
 
+  describe('issueServiceToken', () => {
+    const decodeService = (token: string) => service.decode(token)!;
+
+    it('signs with RS256 and the same kid as user tokens', () => {
+      expect(decodeService(service.issueServiceToken('auth-service')).header).toMatchObject({ alg: 'RS256', kid: 'auth-key-1' });
+    });
+
+    it('names the calling service as the subject and carries only the SERVICE role', () => {
+      const claims = decodeService(service.issueServiceToken('auth-service')).claims as unknown as Record<string, unknown>;
+
+      expect(claims).toMatchObject({ sub: 'auth-service', roles: ['SERVICE'], iss: 'auth-service', aud: 'trading-platform' });
+      expect(claims).not.toHaveProperty('username');
+      expect(claims).not.toHaveProperty('accountId');
+    });
+
+    it('expires after 60 seconds, whatever the user token lifetime is', () => {
+      const longUserTokens = new TokenService(key, config({ JWT_ACCESS_TOKEN_TTL: 3600 }));
+      const claims = longUserTokens.decode(longUserTokens.issueServiceToken('auth-service'))!.claims;
+
+      expect(claims.exp - claims.iat).toBe(60);
+    });
+
+    it('passes verification, so resource servers using the JWKS accept it', () => {
+      expect(service.verify(service.issueServiceToken('auth-service'))).toMatchObject({ sub: 'auth-service', roles: ['SERVICE'] });
+    });
+
+    it('is rejected once the 60 seconds are up', () => {
+      jest.useFakeTimers({ now: new Date('2026-10-08T10:00:00Z') });
+      const token = service.issueServiceToken('auth-service');
+      jest.setSystemTime(new Date('2026-10-08T10:01:01Z'));
+
+      expect(() => service.verify(token)).toThrow(UnauthorizedException);
+    });
+  });
+
   describe('verify', () => {
     it('returns the claims of a valid token', () => {
       expect(service.verify(service.issue(alice).accessToken)).toMatchObject({ sub: '7', roles: ['TRADER'] });

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.services.AccountService;
 import com.neueda.accountservice.enums.AccountStatus;
+import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
@@ -57,29 +58,53 @@ public class AccountControllerTest {
     // ==================== CREATE ACCOUNT TESTS ====================
 
     @Test
-    @DisplayName("POST /accounts: Successfully creates account and returns 201 CREATED")
+    @DisplayName("POST /accounts: Creates the account and returns 201 with the generated account ID")
     public void testCreateAccountSuccess() throws Exception {
-        Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
-        when(accountService.createAccount(any(Account.class))).thenReturn(newAccount);
+        Account created = new Account("ACC0012", 12L, "Zed Smith", BigDecimal.ZERO, AccountStatus.ACTIVE);
+        when(accountService.createAccount(any(CreateAccountRequest.class))).thenReturn(created);
 
         mockMvc.perform(post("/accounts")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(newAccount)))
+                .content("{\"userId\":12,\"holderName\":\"Zed Smith\"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accountId", equalTo("ACC002")))
-                .andExpect(jsonPath("$.holderName", equalTo("Jane Smith")))
-                .andExpect(jsonPath("$.cashBalance", notNullValue()))
+                .andExpect(jsonPath("$.accountId", equalTo("ACC0012")))
+                .andExpect(jsonPath("$.holderName", equalTo("Zed Smith")))
                 .andExpect(jsonPath("$.status", equalTo("ACTIVE")));
 
-        verify(accountService).createAccount(any(Account.class));
+        verify(accountService).createAccount(new CreateAccountRequest(12L, "Zed Smith"));
     }
 
     @Test
-    @DisplayName("POST /accounts: Returns 422 when account body is invalid")
+    @DisplayName("POST /accounts: Ignores any accountId, balance or status the caller tries to set")
+    public void testCreateAccountIgnoresClientChosenFields() throws Exception {
+        when(accountService.createAccount(any(CreateAccountRequest.class)))
+                .thenReturn(new Account("ACC0012", 12L, "Zed Smith", BigDecimal.ZERO, AccountStatus.ACTIVE));
+
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"accountId\":\"ACC0001\",\"userId\":12,\"holderName\":\"Zed Smith\",\"cashBalance\":1000000,\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isCreated());
+
+        verify(accountService).createAccount(new CreateAccountRequest(12L, "Zed Smith"));
+    }
+
+    @Test
+    @DisplayName("POST /accounts: Returns 422 when userId or holderName is missing")
     public void testCreateAccountInvalidBody() throws Exception {
         mockMvc.perform(post("/accounts")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(accountService, never()).createAccount(any());
+    }
+
+    @Test
+    @DisplayName("POST /accounts: Returns 422 when holderName is blank")
+    public void testCreateAccountBlankHolderName() throws Exception {
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userId\":12,\"holderName\":\"  \"}"))
                 .andExpect(status().isUnprocessableEntity());
 
         verify(accountService, never()).createAccount(any());

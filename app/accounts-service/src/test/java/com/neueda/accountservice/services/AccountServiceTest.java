@@ -7,6 +7,7 @@ import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
+import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,37 +44,59 @@ public class AccountServiceTest {
     }
     
     // ==================== CREATE ACCOUNT TESTS ====================
-    
+
     @Test
-    @DisplayName("createAccount: Successfully creates a new account with default timestamps")
-    public void testCreateAccountSuccess() {
-        Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
-        doAnswer(invocation -> {
-            Account acc = invocation.getArgument(0);
-            assertNotNull(acc.getCreatedAt());
-            assertNotNull(acc.getLastUpdated());
-            assertEquals(1, acc.getVersion());
-            return null;
-        }).when(accountRepository).save(any(Account.class));
-        
-        Account result = accountService.createAccount(newAccount);
-        
+    @DisplayName("createAccount: Generates the account ID from the sequence and opens an ACTIVE account with a zero balance")
+    public void testCreateAccountGeneratesId() {
+        when(accountRepository.nextAccountNumber()).thenReturn(12L);
+        when(accountRepository.existsById("ACC0012")).thenReturn(false);
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Account result = accountService.createAccount(new CreateAccountRequest(12L, "Zed Smith"));
+
+        assertEquals("ACC0012", result.getAccountId());
+        assertEquals(12L, result.getUserId());
+        assertEquals("Zed Smith", result.getHolderName());
+        assertEquals(0, BigDecimal.ZERO.compareTo(result.getCashBalance()));
+        assertEquals(AccountStatus.ACTIVE, result.getStatus());
+        assertEquals(1, result.getVersion());
         assertNotNull(result.getCreatedAt());
         assertNotNull(result.getLastUpdated());
-        assertEquals(1, result.getVersion());
-        verify(accountRepository).save(any(Account.class));
+        assertEquals("SYSTEM", result.getUpdatedBy());
     }
-    
+
     @Test
-    @DisplayName("createAccount: Throws exception when account is null")
+    @DisplayName("createAccount: Skips account IDs that are already taken, such as seeded accounts")
+    public void testCreateAccountSkipsTakenIds() {
+        when(accountRepository.nextAccountNumber()).thenReturn(1L, 2L, 12L);
+        when(accountRepository.existsById("ACC0001")).thenReturn(true);
+        when(accountRepository.existsById("ACC0002")).thenReturn(true);
+        when(accountRepository.existsById("ACC0012")).thenReturn(false);
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Account result = accountService.createAccount(new CreateAccountRequest(12L, "Zed Smith"));
+
+        assertEquals("ACC0012", result.getAccountId());
+        verify(accountRepository, times(1)).save(any(Account.class));
+    }
+
+    @Test
+    @DisplayName("createAccount: Formats numbers past 9999 without truncating them")
+    public void testCreateAccountLargeNumber() {
+        when(accountRepository.nextAccountNumber()).thenReturn(12345L);
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertEquals("ACC12345", accountService.createAccount(new CreateAccountRequest(5L, "Big Number")).getAccountId());
+    }
+
+    @Test
+    @DisplayName("createAccount: Throws exception when the request is null")
     public void testCreateAccountWithNull() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            accountService.createAccount(null);
-        });
-        
+        assertThrows(IllegalArgumentException.class, () -> accountService.createAccount(null));
+
         verify(accountRepository, never()).save(any());
     }
-    
+
     // ==================== GET ACCOUNT TESTS ====================
     
     @Test

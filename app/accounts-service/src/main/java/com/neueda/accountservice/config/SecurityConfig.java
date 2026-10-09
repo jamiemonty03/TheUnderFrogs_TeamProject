@@ -35,6 +35,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/accounts").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.POST, "/accounts/*/debit", "/accounts/*/credit", "/accounts/*/reversal")
                                 .access(anyOf(hasRole("SERVICE"), authenticated()))
                         .anyRequest().authenticated())

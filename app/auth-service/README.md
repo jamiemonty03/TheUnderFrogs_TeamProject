@@ -117,9 +117,13 @@ DB_USERNAME=postgres         # Postgres user
 DB_PASSWORD=...              # Postgres password
 DB_NAME=auth_db              # Database name
 
-# JWT
-JWT_SECRET=...               # Min 32 characters (MUST match across all services)
-JWT_EXPIRATION=86400000      # Token lifetime in milliseconds (default: 24h)
+# Token signing (RS256)
+JWT_PRIVATE_KEY=...          # Base64 PEM RSA key, 2048+ bits. Generate: ./scripts/generate-signing-key.sh
+JWT_KEY_ID=...               # Key id (kid) put in every token header and the JWKS
+JWT_ISSUER=auth-service      # Optional, iss claim (default: auth-service)
+JWT_AUDIENCE=trading-platform  # Optional, aud claim (default: trading-platform)
+JWT_ACCESS_TOKEN_TTL=900     # Optional, access token lifetime in seconds (default: 15 min)
+JWT_REFRESH_TOKEN_TTL=604800 # Optional, refresh token lifetime in seconds (default: 7 days)
 
 # App
 APP_PORT=8081                # Server port
