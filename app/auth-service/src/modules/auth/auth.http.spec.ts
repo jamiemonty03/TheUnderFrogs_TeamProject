@@ -49,13 +49,13 @@ describe('Auth endpoints (HTTP)', () => {
       expect(response.body).toEqual({ errorCode: 'AUTH-409', message });
     });
 
-    it('returns 201 with the token response for a new user', async () => {
-      authService.register.mockResolvedValue(tokens);
+    it('returns 201 with the tokens and the new account ID', async () => {
+      authService.register.mockResolvedValue({ ...tokens, accountId: 'ACC0012' });
 
       const response = await request(app.getHttpServer()).post('/auth/register').send(body);
 
       expect(response.status).toBe(201);
-      expect(response.body).toEqual(tokens);
+      expect(response.body).toEqual({ ...tokens, accountId: 'ACC0012' });
     });
   });
 

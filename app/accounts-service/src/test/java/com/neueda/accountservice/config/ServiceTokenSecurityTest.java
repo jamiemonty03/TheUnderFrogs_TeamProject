@@ -34,7 +34,7 @@ class ServiceTokenSecurityTest {
 
     private static final String DEBIT = "/accounts/ACC0001/debit";
     private static final String NEW_ACCOUNT =
-            "{\"accountId\":\"ACC0012\",\"userId\":12,\"holderName\":\"Zed Smith\",\"cashBalance\":0,\"status\":\"ACTIVE\"}";
+            "{\"userId\":12,\"holderName\":\"Zed Smith\"}";
 
     @DynamicPropertySource
     static void auth(DynamicPropertyRegistry registry) {

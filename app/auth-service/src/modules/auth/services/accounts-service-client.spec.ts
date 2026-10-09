@@ -1,11 +1,11 @@
 import { jest } from '@jest/globals';
-import { ConflictException, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError, AxiosHeaders, AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 import { TokenService } from '../../tokens/token.service';
-import { accountIdFor, AccountsServiceClient } from './accounts-service-client';
+import { AccountsServiceClient } from './accounts-service-client';
 
 const axiosError = (status?: number) =>
   new AxiosError(
@@ -33,20 +33,8 @@ describe('AccountsServiceClient', () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
   });
 
-  describe('accountIdFor', () => {
-    it.each([
-      [1, 'ACC0001'],
-      [11, 'ACC0011'],
-      [12, 'ACC0012'],
-      [9999, 'ACC9999'],
-      [12345, 'ACC12345'],
-    ])('user %i gets %s, matching the seed account format', (userId, accountId) => {
-      expect(accountIdFor(userId)).toBe(accountId);
-    });
-  });
-
   describe('createAccount', () => {
-    it('posts a new ACTIVE account with a zero balance to accounts-service', async () => {
+    it('asks accounts-service to open an account with just the user ID and holder name', async () => {
       httpService.post.mockReturnValue(of({ data: created }));
 
       const result = await client.createAccount({ userId: 12, holderName: 'Zed Smith' });
@@ -54,7 +42,7 @@ describe('AccountsServiceClient', () => {
       expect(result).toEqual(created);
       expect(httpService.post).toHaveBeenCalledWith(
         'http://accounts-service:8081/api/accounts',
-        { accountId: 'ACC0012', userId: 12, holderName: 'Zed Smith', cashBalance: 0, status: 'ACTIVE' },
+        { userId: 12, holderName: 'Zed Smith' },
         expect.objectContaining({ timeout: 5000 }),
       );
     });
@@ -81,16 +69,16 @@ describe('AccountsServiceClient', () => {
       expect(httpService.post.mock.calls[0][0]).toBe('http://localhost:8084/api/accounts');
     });
 
-    it('throws a conflict when the account already exists', async () => {
-      httpService.post.mockReturnValue(throwError(() => axiosError(409)));
+    it('returns the account ID that accounts-service generated', async () => {
+      httpService.post.mockReturnValue(of({ data: { ...created, accountId: 'ACC0042' } }));
 
-      await expect(client.createAccount({ userId: 12, holderName: 'Zed Smith' })).rejects.toThrow(
-        new ConflictException('Account ACC0012 already exists'),
-      );
+      expect((await client.createAccount({ userId: 12, holderName: 'Zed Smith' })).accountId).toBe('ACC0042');
     });
 
     it.each([
       ['accounts-service rejects the token', 401],
+      ['accounts-service refuses the request', 403],
+      ['accounts-service rejects the body', 422],
       ['accounts-service fails', 500],
       ['accounts-service is down', undefined],
     ])('throws 503 when %s', async (_label, status) => {
@@ -105,7 +93,7 @@ describe('AccountsServiceClient', () => {
 
       await expect(client.createAccount({ userId: 12, holderName: 'Zed Smith' })).rejects.toThrow();
 
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('ACC0012'));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('user 12'));
       expect(JSON.stringify(warn.mock.calls)).not.toContain('secret.service.token');
     });
   });

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { isAxiosError } from 'axios';
@@ -21,8 +21,6 @@ export interface AccountResponse {
   status: string;
 }
 
-export const accountIdFor = (userId: number): string => `ACC${String(userId).padStart(4, '0')}`;
-
 @Injectable()
 export class AccountsServiceClient {
   private readonly logger = new Logger(AccountsServiceClient.name);
@@ -37,16 +35,9 @@ export class AccountsServiceClient {
   }
 
   async createAccount(request: AccountCreationRequest): Promise<AccountResponse> {
-    const body = {
-      accountId: accountIdFor(request.userId),
-      userId: request.userId,
-      holderName: request.holderName,
-      cashBalance: 0,
-      status: 'ACTIVE',
-    };
     try {
       const response = await firstValueFrom(
-        this.httpService.post<AccountResponse>(this.accountsUrl, body, {
+        this.httpService.post<AccountResponse>(this.accountsUrl, request, {
           headers: { Authorization: `Bearer ${this.tokenService.issueServiceToken(SERVICE_NAME)}` },
           timeout: ACCOUNTS_REQUEST_TIMEOUT_MS,
         }),
@@ -55,11 +46,8 @@ export class AccountsServiceClient {
     } catch (error) {
       const status = isAxiosError(error) ? error.response?.status : undefined;
       this.logger.warn(
-        `Creating account ${body.accountId} for user ${request.userId} failed: ${status ?? 'no response'} ${(error as Error).message}`,
+        `Creating an account for user ${request.userId} failed: ${status ?? 'no response'} ${(error as Error).message}`,
       );
-      if (status === 409) {
-        throw new ConflictException(`Account ${body.accountId} already exists`);
-      }
       throw new ServiceUnavailableException('Account service is unavailable, please try again');
     }
   }

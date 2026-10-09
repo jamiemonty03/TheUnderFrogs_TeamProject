@@ -1,7 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
-import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
+import { LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from './dto';
 import { DEFAULT_ROLE } from '../users/dto';
 import { AccessTokenClaims, TokenService } from '../tokens/token.service';
 import { RefreshTokensService } from '../tokens/refresh-tokens.service';
@@ -22,7 +22,7 @@ export class AuthService {
     private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<TokenResponseDto> {
+  async register(registerDto: RegisterDto): Promise<RegisterResponseDto> {
     const user = await this.usersService.createUser({
       username: registerDto.username,
       email: registerDto.email,
@@ -51,7 +51,7 @@ export class AuthService {
       throw new ServiceUnavailableException(REGISTRATION_FAILED);
     }
 
-    return this.issueTokens(linked);
+    return { ...(await this.issueTokens(linked)), accountId };
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {

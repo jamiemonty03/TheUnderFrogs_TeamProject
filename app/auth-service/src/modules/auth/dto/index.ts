@@ -100,3 +100,11 @@ export class TokenResponseDto {
   mfaRequired: boolean;
 }
 
+export class RegisterResponseDto extends TokenResponseDto {
+  @ApiProperty({
+    description: 'Trading account created for the new user in accounts-service',
+    example: 'ACC0012',
+  })
+  accountId: string;
+}
+

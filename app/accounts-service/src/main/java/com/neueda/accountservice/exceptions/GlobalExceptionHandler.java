@@ -18,12 +18,6 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("ACC-404", ex.getMessage()));
     }
 
-    @ExceptionHandler(DuplicateAccountException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateAccount(DuplicateAccountException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse("ACC-409", ex.getMessage()));
-    }
-
     @ExceptionHandler(AccountNotActiveException.class)
     public ResponseEntity<ErrorResponse> handleAccountNotActive(AccountNotActiveException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)

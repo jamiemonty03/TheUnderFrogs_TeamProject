@@ -136,7 +136,23 @@ describe('AuthService', () => {
       expect(usersService.linkAccount).toHaveBeenCalledWith(12, 'ACC0012');
       expect(tokenService.issue).toHaveBeenCalledWith(linked);
       expect(refreshTokensService.issue).toHaveBeenCalledWith(12);
-      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false });
+      expect(result).toEqual({
+        accessToken: 'rs256.token.here',
+        refreshToken: 'opaque-refresh',
+        expiresIn: 900,
+        mfaRequired: false,
+        accountId: 'ACC0012',
+      });
+    });
+
+    it('returns the account ID that accounts-service created, not one it worked out itself', async () => {
+      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue({ accountId: 'ACC9999', userId: 12 } as any);
+      (usersService.linkAccount as jest.Mock).mockResolvedValue({ ...linked, account_id: 'ACC9999' } as any);
+
+      const result = await service.register(registerDto);
+
+      expect(usersService.linkAccount).toHaveBeenCalledWith(12, 'ACC9999');
+      expect(result.accountId).toBe('ACC9999');
     });
 
     it('passes a taken username or email straight through as a conflict without creating an account', async () => {
@@ -149,7 +165,6 @@ describe('AuthService', () => {
 
     it.each([
       ['accounts-service is down', new ServiceUnavailableException('Account service is unavailable, please try again')],
-      ['the account ID already exists', new ConflictException('Account ACC0012 already exists')],
     ])('deletes the new user and returns 503 when %s', async (_label, failure) => {
       (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(failure as any);
 

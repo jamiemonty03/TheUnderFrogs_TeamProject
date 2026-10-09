@@ -1,4 +1,5 @@
 DROP TABLE IF EXISTS accounts CASCADE;
+DROP SEQUENCE IF EXISTS account_number_seq;
 
 CREATE TABLE accounts (
     id           SERIAL PRIMARY KEY,
@@ -12,3 +13,5 @@ CREATE TABLE accounts (
     last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),
     updated_by    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM'
 );
+
+CREATE SEQUENCE account_number_seq;
