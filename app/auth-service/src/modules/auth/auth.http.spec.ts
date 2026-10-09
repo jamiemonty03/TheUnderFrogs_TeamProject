@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
-import { ConflictException, INestApplication, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, INestApplication, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { AuthService, REGISTRATION_FAILED } from './auth.service';
 import { createValidationPipe } from '../../common/validation/validation.pipe';
 import { JsonBodyAdapter } from '../../common/validation/json-body.adapter';
 import { HttpExceptionFilter } from '../../common/filters/http-exception.filter';
@@ -47,6 +47,15 @@ describe('Auth endpoints (HTTP)', () => {
 
       expect(response.status).toBe(409);
       expect(response.body).toEqual({ errorCode: 'AUTH-409', message });
+    });
+
+    it('returns 503 AUTH-503 when the account could not be created', async () => {
+      authService.register.mockRejectedValue(new ServiceUnavailableException(REGISTRATION_FAILED));
+
+      const response = await request(app.getHttpServer()).post('/auth/register').send(body);
+
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({ errorCode: 'AUTH-503', message: REGISTRATION_FAILED });
     });
 
     it('returns 201 with the tokens and the new account ID', async () => {
