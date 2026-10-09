@@ -2,6 +2,9 @@ import { jest } from '@jest/globals';
 import { createPublicKey, generateKeyPairSync, JsonWebKey } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import * as jsonwebtoken from 'jsonwebtoken';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { load } from 'js-yaml';
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { UsersService } from '../users/users.service';
@@ -54,5 +57,22 @@ describe('Register end to end (real TokenService, RefreshTokensService and JWKS)
     expect(claims).toMatchObject({ sub: '26', username: 'zed', roles: ['TRADER'], accountId: 'ACC0012' });
     expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({ userId: 26, holderName: 'Zed Smith' });
     expect(usersService.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('matches the RegisterResponse schema in the OpenAPI spec served at /docs', async () => {
+    type Schema = { required?: string[]; properties?: Record<string, { type: string }>; allOf?: Array<Schema & { $ref?: string }> };
+    const spec = load(readFileSync(join(process.cwd(), 'docs', 'auth-service.yaml'), 'utf8')) as { components: { schemas: Record<string, Schema> } };
+    const parts = spec.components.schemas.RegisterResponse.allOf!.map((part) =>
+      part.$ref ? spec.components.schemas[part.$ref.split('/').pop()!] : part,
+    );
+    const required = parts.flatMap((part) => part.required ?? []);
+    const properties = Object.assign({}, ...parts.map((part) => part.properties ?? {})) as Record<string, { type: string }>;
+
+    const result = await authService.register({ username: 'zed', email: 'zed@example.com', password: 'correct-horse-battery' });
+
+    expect(Object.keys(result).sort()).toEqual([...required].sort());
+    for (const [field, value] of Object.entries(result)) {
+      expect(typeof value === 'number' ? 'integer' : typeof value).toBe(properties[field].type);
+    }
   });
 });

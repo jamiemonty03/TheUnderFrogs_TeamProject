@@ -16,7 +16,10 @@ paths:
       tags:
         - Authentication
       summary: Register a new user
-      description: Create a new user account and receive an access and refresh token
+      description: >-
+        Creates the user (role TRADER) and opens an ACTIVE trading account with a zero balance in
+        accounts-service, which assigns the account ID. Returns the tokens and the new account ID.
+        If the account cannot be created, the user is removed again and 503 is returned.
       operationId: register
       requestBody:
         required: true
@@ -26,11 +29,11 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: User registered successfully
+          description: User registered and trading account created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthTokens'
+                $ref: '#/components/schemas/RegisterResponse'
         '409':
           description: User already exists (username or email conflict)
           content:
@@ -48,6 +51,17 @@ paths:
                     message: User with email john@example.com already exists
         '422':
           $ref: '#/components/responses/ValidationError'
+        '503':
+          description: The trading account could not be created; nothing was saved, so the request can be retried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                accountsUnavailable:
+                  value:
+                    errorCode: AUTH-503
+                    message: Registration could not be completed, please try again
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -383,6 +397,18 @@ components:
           type: boolean
           description: Always false until multi-factor authentication is added
           example: false
+
+    RegisterResponse:
+      allOf:
+        - $ref: '#/components/schemas/AuthTokens'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+              description: Trading account created for the new user; also in the accessToken accountId claim
+              example: ACC0012
 
     CurrentUser:
       type: object
