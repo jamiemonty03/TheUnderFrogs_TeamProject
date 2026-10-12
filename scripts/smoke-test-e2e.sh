@@ -25,6 +25,8 @@ json() { python3 -c "import sys, json; print(json.load(sys.stdin)$1)"; }
 
 echo "== Starting the stack"
 ./app/auth-service/scripts/generate-signing-key.sh
+# The trade-executor reads its client secret from .env at startup, so create it before starting the stack
+./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env --secret-only
 docker-compose up -d --build --wait $SERVICES
 
 echo "== Loading market data"
