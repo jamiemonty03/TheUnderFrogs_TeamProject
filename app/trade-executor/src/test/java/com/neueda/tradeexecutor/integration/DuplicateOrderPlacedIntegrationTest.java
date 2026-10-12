@@ -60,6 +60,7 @@ import com.neueda.tradeexecutor.events.Topics;
 @Testcontainers
 @SpringBootTest(properties = {
         "jwt.secret=duplicate-replay-test-secret-32-bytes",
+        "auth.client-secret=duplicate-replay-test-client-secret",
         "spring.kafka.consumer.group-id=trade-executor-duplicate-test"
 })
 class DuplicateOrderPlacedIntegrationTest {
