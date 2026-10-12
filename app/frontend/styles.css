@@ -1,0 +1,42 @@
+/* Toadstock colour tokens. Every screen and component links this file; use var(--ts-…) instead of hex codes. */
+:root {
+  /* Brand */
+  --ts-frog: #3DFA8C;
+  --ts-frog-light: #8CFFB9;
+  --ts-frog-tint: #1B3A27;
+  --ts-frog-glow: #0F3A22;
+  --ts-on-frog: #04140A;
+  --ts-on-frog-muted: #0B3B1E;
+
+  /* Backgrounds and surfaces */
+  --ts-bg: #07110B;
+  --ts-bg-raised: #091510;
+  --ts-input-bg: #0B1710;
+  --ts-surface: #0E1A13;
+  --ts-surface-hover: #13241A;
+
+  /* Lines */
+  --ts-divider: #1A2C21;
+  --ts-border: #1F3328;
+  --ts-border-strong: #2B5A3C;
+
+  /* Text */
+  --ts-text: #E8F5EC;
+  --ts-text-secondary: #C3D6CB;
+  --ts-text-muted: #9DB5A7;
+
+  /* Market direction: gains / buy use --ts-frog */
+  --ts-loss: #FF6B4A;
+  --ts-on-loss: #1A0703;
+  --ts-sell: #FF9F5A;
+
+  /* Status pills */
+  --ts-success-bg: #12321F;
+  --ts-danger-text: #FF8A6E;
+  --ts-danger-bg: #3A1A12;
+  --ts-danger-border: #5A2A1E;
+  --ts-info: #6CC4FF;
+  --ts-info-bg: #12283A;
+  --ts-neutral: #5E7468;
+  --ts-neutral-bg: #1D2420;
+}

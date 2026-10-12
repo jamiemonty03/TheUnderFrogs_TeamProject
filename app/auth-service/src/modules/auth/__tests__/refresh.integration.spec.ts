@@ -3,6 +3,9 @@ import { createPublicKey, generateKeyPairSync, JsonWebKey } from 'crypto';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jsonwebtoken from 'jsonwebtoken';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { load } from 'js-yaml';
 import { AuthService } from '../services/auth.service';
 import { AuthRepository } from '../repositories/auth.repository';
 import { AccountsServiceClient } from '../services/accounts-service-client';
@@ -139,5 +142,32 @@ describe('Refresh and logout end to end (real AuthService, TokenService, Refresh
     expect(stored).not.toContain(session.refreshToken);
     expect(stored).not.toContain(refreshed.refreshToken);
     expect(rows.every((r) => /^[0-9a-f]{64}$/.test(r.token_hash))).toBe(true);
+  });
+
+  describe('OpenAPI spec served at /docs', () => {
+    type Operation = { security?: unknown; responses: Record<string, unknown> };
+    const spec = load(readFileSync(join(process.cwd(), 'docs', 'auth-service.yaml'), 'utf8')) as {
+      paths: Record<string, { post: Operation }>;
+      components: { schemas: Record<string, { required: string[]; properties: Record<string, { type: string }> }> };
+    };
+
+    it('documents the refresh response as AuthTokens, matching what refresh returns', async () => {
+      const session = await login();
+      const schema = spec.components.schemas.AuthTokens;
+
+      const refreshed = await authService.refresh({ refresh_token: session.refreshToken });
+
+      expect(Object.keys(refreshed).sort()).toEqual([...schema.required].sort());
+      for (const [field, value] of Object.entries(refreshed)) {
+        expect(typeof value === 'number' ? 'integer' : typeof value).toBe(schema.properties[field].type);
+      }
+    });
+
+    it('documents logout as public, returning 204', () => {
+      const logout = spec.paths['/auth/logout'].post;
+
+      expect(logout.security).toBeUndefined();
+      expect(Object.keys(logout.responses).sort()).toEqual(['204', '422']);
+    });
   });
 });

@@ -45,7 +45,10 @@ export class RefreshTokensService {
       throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
     }
     if (current.revoked_at) {
-      await this.revokeReusedFamily(current.family_id, current.user_id);
+      if (current.replaced_by !== null) {
+        await this.revokeReusedFamily(current.family_id, current.user_id);
+      }
+      throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
     }
     if (current.expires_at.getTime() <= Date.now()) {
       throw new UnauthorizedException(INVALID_REFRESH_TOKEN);

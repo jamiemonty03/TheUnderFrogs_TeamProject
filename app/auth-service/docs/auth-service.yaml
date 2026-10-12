@@ -108,7 +108,12 @@ paths:
       tags:
         - Authentication
       summary: Refresh access token
-      description: Exchange a valid refresh token for a new access token and refresh token
+      description: >-
+        Exchanges a refresh token for a new access token and a new refresh token (rotation). The presented
+        refresh token is revoked and can only be used once. Presenting an already-used refresh token is
+        treated as theft: every token in its family (the chain started by one login) is revoked and 401 is
+        returned, so the user must log in again. The new access token reflects the user's current roles and
+        account. Clients must not send two refreshes with the same token at once.
       operationId: refresh
       requestBody:
         required: true
@@ -118,13 +123,20 @@ paths:
               $ref: '#/components/schemas/RefreshTokenRequest'
       responses:
         '200':
-          description: Token refreshed successfully
+          description: New access token and refresh token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthTokens'
         '401':
-          description: Invalid, expired or revoked refresh token
+          description: >-
+            Unknown, expired, revoked or reused refresh token, or the user is no longer active. All return the
+            same response.
           content:
             application/json:
               schema:
@@ -133,7 +145,7 @@ paths:
                 invalidToken:
                   value:
                     errorCode: AUTH-401
-                    message: Invalid or expired token
+                    message: Invalid refresh token
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -142,10 +154,12 @@ paths:
       tags:
         - Authentication
       summary: Logout user
-      description: Revoke the given refresh token. The caller must present the access token it was issued with.
+      description: >-
+        Revokes every refresh token in the given token's family, so that sign-in can no longer be refreshed.
+        Other sign-ins (other devices) are not affected. No access token is needed, so a user whose access
+        token has expired can still log out. Unknown tokens also return 204, and repeating the call is safe.
+        Access tokens already issued stay valid until they expire (at most 15 minutes).
       operationId: logout
-      security:
-        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -154,9 +168,7 @@ paths:
               $ref: '#/components/schemas/RefreshTokenRequest'
       responses:
         '204':
-          description: Logout successful
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Logged out
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -355,8 +367,9 @@ components:
       properties:
         refresh_token:
           type: string
-          description: Refresh token issued by register, login or refresh
-          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+          maxLength: 128
+          description: Opaque refresh token issued by register, login or refresh (usable once)
+          example: kX9fQ2v7rB1mN8pL0sT4wY6zA3cE5gH7jK9lM1nP2qR
 
     ClientCredentialsRequest:
       type: object

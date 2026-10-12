@@ -204,6 +204,27 @@ describe('RefreshTokensService', () => {
       expect(JSON.stringify(warn.mock.calls)).not.toContain(first.refreshToken);
     });
 
+    it('quietly refuses a token that was revoked by logout, without reporting theft', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const session = await service.issue(5);
+      await service.revokeFamilyOf(session.refreshToken);
+
+      await expect(service.rotate(session.refreshToken)).rejects.toThrow(invalid);
+
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('reports theft only once when the rest of a revoked family is tried afterwards', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+      await expect(service.rotate(first.refreshToken)).rejects.toThrow(invalid);
+
+      await expect(service.rotate(second.refreshToken)).rejects.toThrow(invalid);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+    });
+
     it('revokes the family when it loses a race with another refresh of the same token', async () => {
       jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
       const first = await service.issue(5);
