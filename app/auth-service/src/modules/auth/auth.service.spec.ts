@@ -8,6 +8,7 @@ import { UsersService } from '../users/users.service';
 import { TokenService } from '../tokens/token.service';
 import { RefreshTokensService } from '../tokens/refresh-tokens.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
+import { ServiceClientsService } from '../clients/service-clients.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -15,6 +16,7 @@ describe('AuthService', () => {
   let authRepository: any;
   let tokenService: any;
   let refreshTokensService: any;
+  let module_get: (token: any) => any;
   let accountsServiceClient: any;
 
   const mockUser = {
@@ -79,6 +81,10 @@ describe('AuthService', () => {
           } as any,
         },
         {
+          provide: ServiceClientsService,
+          useValue: { verify: jest.fn() as any } as any,
+        },
+        {
           provide: AccountsServiceClient,
           useValue: {
             createAccount: jest.fn() as any,
@@ -92,6 +98,7 @@ describe('AuthService', () => {
     authRepository = module.get<any>(AuthRepository);
     tokenService = module.get<any>(TokenService);
     refreshTokensService = module.get<any>(RefreshTokensService);
+    module_get = (token) => module.get<any>(token);
     accountsServiceClient = module.get<any>(AccountsServiceClient);
   });
 
@@ -217,6 +224,28 @@ describe('AuthService', () => {
       expect(tokenService.issue).not.toHaveBeenCalled();
       expect(refreshTokensService.issue).not.toHaveBeenCalled();
       expect(authRepository.recordLogin).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clientCredentials', () => {
+    const body = { grant_type: 'client_credentials', client_id: 'trade-executor', client_secret: 'secret' };
+
+    it('returns an OAuth2 token response for a verified client', async () => {
+      const serviceClients = module_get(ServiceClientsService);
+      (serviceClients.verify as jest.Mock).mockResolvedValue({ client_id: 'trade-executor', roles: ['SERVICE'] } as any);
+      tokenService.issueClientToken = jest.fn().mockReturnValue({ accessToken: 'client.jwt', expiresIn: 300 });
+
+      expect(await service.clientCredentials(body)).toEqual({ access_token: 'client.jwt', token_type: 'Bearer', expires_in: 300 });
+      expect(serviceClients.verify).toHaveBeenCalledWith('trade-executor', 'secret');
+      expect(tokenService.issueClientToken).toHaveBeenCalledWith('trade-executor', ['SERVICE']);
+    });
+
+    it('rejects bad credentials with a generic 401 and issues nothing', async () => {
+      (module_get(ServiceClientsService).verify as jest.Mock).mockResolvedValue(null as any);
+      tokenService.issueClientToken = jest.fn();
+
+      await expect(service.clientCredentials(body)).rejects.toThrow(new UnauthorizedException('Invalid client credentials'));
+      expect(tokenService.issueClientToken).not.toHaveBeenCalled();
     });
   });
 

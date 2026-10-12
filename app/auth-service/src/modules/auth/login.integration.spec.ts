@@ -13,6 +13,7 @@ import { RefreshTokensService, hashRefreshToken } from '../tokens/refresh-tokens
 import { TokensRepository } from '../tokens/tokens.repository';
 import { JwksController } from '../tokens/jwks.controller';
 import { AccountsServiceClient } from './services/accounts-service-client';
+import { ServiceClientsService } from '../clients/service-clients.service';
 import { loadSigningKey } from '../../config/signing-key';
 
 describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', () => {
@@ -46,6 +47,7 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
     tokenService,
     new RefreshTokensService(tokensRepository as unknown as TokensRepository, config),
     {} as AccountsServiceClient,
+    {} as ServiceClientsService,
   );
   const jwks = new JwksController(key).getJwks();
 

@@ -129,6 +129,30 @@ describe('TokenService', () => {
     });
   });
 
+  describe('issueClientToken', () => {
+    it('signs an RS256 token for the client with the roles it was given', () => {
+      const { accessToken } = service.issueClientToken('trade-executor', ['SERVICE']);
+      const decoded = service.decode(accessToken)!;
+
+      expect(decoded.header).toMatchObject({ alg: 'RS256', kid: 'auth-key-1' });
+      expect(decoded.claims).toMatchObject({ sub: 'trade-executor', roles: ['SERVICE'], iss: 'auth-service', aud: 'trading-platform' });
+    });
+
+    it('lasts 5 minutes by default and reports expiresIn', () => {
+      const { accessToken, expiresIn } = service.issueClientToken('trade-executor', ['SERVICE']);
+      const claims = service.decode(accessToken)!.claims;
+
+      expect(expiresIn).toBe(300);
+      expect(claims.exp - claims.iat).toBe(300);
+    });
+
+    it('uses JWT_CLIENT_TOKEN_TTL when set', () => {
+      const custom = new TokenService(key, config({ JWT_CLIENT_TOKEN_TTL: 600 }));
+
+      expect(custom.issueClientToken('trade-executor', ['SERVICE']).expiresIn).toBe(600);
+    });
+  });
+
   describe('verify', () => {
     it('returns the claims of a valid token', () => {
       expect(service.verify(service.issue(alice).accessToken)).toMatchObject({ sub: '7', roles: ['TRADER'] });

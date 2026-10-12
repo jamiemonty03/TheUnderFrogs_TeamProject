@@ -1,6 +1,6 @@
-import { Controller, Post, Get, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Body, Header, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from './dto';
+import { ClientCredentialsDto, ClientTokenResponseDto, LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from './dto';
 import { CurrentUser, Public } from '../../common/decorators';
 import { CurrentUserDto } from '../../common/dto/current-user.dto';
 
@@ -19,6 +19,14 @@ export class AuthController {
   @HttpCode(200)
   async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
     return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('token')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async token(@Body() dto: ClientCredentialsDto): Promise<ClientTokenResponseDto> {
+    return this.authService.clientCredentials(dto);
   }
 
   @Get('me')

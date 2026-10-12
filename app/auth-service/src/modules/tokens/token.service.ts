@@ -41,6 +41,7 @@ export class TokenService {
   private readonly issuer: string;
   private readonly audience: string;
   private readonly ttlSeconds: number;
+  private readonly clientTtlSeconds: number;
   private readonly publicKeyPem: string;
 
   constructor(
@@ -50,6 +51,7 @@ export class TokenService {
     this.issuer = configService.get<string>('JWT_ISSUER', 'auth-service');
     this.audience = configService.get<string>('JWT_AUDIENCE', 'trading-platform');
     this.ttlSeconds = configService.get<number>('JWT_ACCESS_TOKEN_TTL', 900);
+    this.clientTtlSeconds = configService.get<number>('JWT_CLIENT_TOKEN_TTL', 300);
     this.publicKeyPem = signingKey.publicKey.export({ type: 'spki', format: 'pem' }).toString();
   }
 
@@ -64,6 +66,10 @@ export class TokenService {
 
   issueServiceToken(serviceName: string): string {
     return this.sign({ roles: [SERVICE_ROLE] }, serviceName, SERVICE_TOKEN_TTL_SECONDS);
+  }
+
+  issueClientToken(clientId: string, roles: string[]): IssuedAccessToken {
+    return { accessToken: this.sign({ roles }, clientId, this.clientTtlSeconds), expiresIn: this.clientTtlSeconds };
   }
 
   private sign(payload: object, subject: string, expiresIn: number): string {

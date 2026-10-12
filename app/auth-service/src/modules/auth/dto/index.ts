@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   IsEmailAddress,
   IsFullName,
@@ -73,6 +73,40 @@ export class RegisterDto {
   @IsOptional()
   @IsFullName()
   full_name?: string;
+}
+
+export const CLIENT_CREDENTIALS_GRANT = 'client_credentials';
+
+export class ClientCredentialsDto {
+  @ApiProperty({ description: 'OAuth2 grant type', enum: [CLIENT_CREDENTIALS_GRANT], example: CLIENT_CREDENTIALS_GRANT })
+  @IsIn([CLIENT_CREDENTIALS_GRANT], { message: `grant_type must be ${CLIENT_CREDENTIALS_GRANT}` })
+  grant_type: string;
+
+  @ApiProperty({ description: 'Service client ID', example: 'trade-executor' })
+  @IsNotEmpty()
+  @Trim()
+  @IsString()
+  @NotBlank()
+  @MaxLength(100)
+  client_id: string;
+
+  @ApiProperty({ description: 'Service client secret' })
+  @IsNotEmpty()
+  @IsString()
+  @NotBlank()
+  @MaxLength(256)
+  client_secret: string;
+}
+
+export class ClientTokenResponseDto {
+  @ApiProperty({ description: 'RS256 JWT with role SERVICE' })
+  access_token: string;
+
+  @ApiProperty({ description: 'Always Bearer', enum: ['Bearer'], example: 'Bearer' })
+  token_type: 'Bearer';
+
+  @ApiProperty({ description: 'Token lifetime in seconds', type: 'integer', example: 300 })
+  expires_in: number;
 }
 
 export class TokenResponseDto {
