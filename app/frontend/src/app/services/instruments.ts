@@ -4,13 +4,11 @@ import { Observable, forkJoin, map } from 'rxjs';
 
 export type AssetClass = 'Equity' | 'ETF' | 'Bond';
 
-/** The price fields shared by /api/stocks, /api/etfs and /api/bonds. */
+
 export interface PricedAsset {
   symbol: string;
   name: string;
-  /** Latest close. Null if the instrument has no price history yet. */
   price: number | null;
-  /** Close from the trading day before tradeDate. Null with fewer than two days of history. */
   previousClose: number | null;
   tradeDate: string | null;
 }
@@ -45,10 +43,6 @@ export class Instruments {
     return this.http.get<PricedAsset[]>('/api/bonds');
   }
 
-  /**
-   * Latest price and previous close for every instrument, keyed by symbol.
-   * Used for market value, day P&L and prefilling the order price.
-   */
   getLatestPrices(): Observable<Map<string, LatestPrice>> {
     return forkJoin({
       Equity: this.getStocks(),
@@ -75,7 +69,6 @@ export class Instruments {
   }
 }
 
-/** Change since the previous close, or null when either close is missing. */
 export function dayChange(price: Pick<LatestPrice, 'price' | 'previousClose'>): DayChange | null {
   if (price.price == null || price.previousClose == null || price.previousClose === 0) {
     return null;
