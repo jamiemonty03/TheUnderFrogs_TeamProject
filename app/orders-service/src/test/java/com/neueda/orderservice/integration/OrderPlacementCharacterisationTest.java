@@ -369,6 +369,6 @@ class OrderPlacementCharacterisationTest {
     }
 
     private String createToken() {
-        return TestJwtIssuer.token().subject("characterisation-user").build();
+        return TestJwtIssuer.token().subject("characterisation-user").accountId(ACCOUNT_ID).build();
     }
 }

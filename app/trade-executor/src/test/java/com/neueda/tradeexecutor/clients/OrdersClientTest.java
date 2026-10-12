@@ -18,7 +18,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.OrderDto;
 import com.neueda.tradeexecutor.dtos.StatusUpdateResult;
@@ -102,10 +101,24 @@ class OrdersClientTest {
                         "{\"expectedStatus\":\"NEW\",\"newStatus\":\"REJECTED\",\"reason\":\"Insufficient funds\"}"))
                 .andRespond(withSuccess(orderJson("REJECTED"), MediaType.APPLICATION_JSON));
 
-        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.REJECTED, "Insufficient funds");
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.REJECTED, null, "Insufficient funds");
 
         assertTrue(result.updated());
         assertEquals(OrderStatus.REJECTED, result.currentStatus());
+        ordersService.verify();
+    }
+
+    @Test
+    void updateStatusToFilledSendsTheFillPrice() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1/status"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andExpect(content().json(
+                        "{\"expectedStatus\":\"NEW\",\"newStatus\":\"FILLED\",\"fillPrice\":148.50}"))
+                .andRespond(withSuccess(orderJson("FILLED"), MediaType.APPLICATION_JSON));
+
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, new BigDecimal("148.50"), null);
+
+        assertTrue(result.updated());
         ordersService.verify();
     }
 
@@ -115,7 +128,7 @@ class OrdersClientTest {
                 .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON)
                         .body("{\"errorCode\":\"ORD-409\",\"message\":\"conflict\",\"currentStatus\":\"CANCELLED\"}"));
 
-        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, null);
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, new BigDecimal("148.50"), null);
 
         assertFalse(result.updated());
         assertEquals(OrderStatus.CANCELLED, result.currentStatus());
@@ -127,6 +140,6 @@ class OrdersClientTest {
                 .andRespond(withResourceNotFound());
 
         assertThrows(UnknownOrderException.class,
-                () -> ordersClient.updateStatus("MISSING", OrderStatus.FILLED, null));
+                () -> ordersClient.updateStatus("MISSING", OrderStatus.FILLED, new BigDecimal("148.50"), null));
     }
 }

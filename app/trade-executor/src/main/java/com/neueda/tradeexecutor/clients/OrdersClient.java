@@ -1,5 +1,6 @@
 package com.neueda.tradeexecutor.clients;
 
+import java.math.BigDecimal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -34,10 +35,10 @@ public class OrdersClient {
 
     private record StatusConflictBody(OrderStatus currentStatus) {}
 
-    public StatusUpdateResult updateStatus(String orderId, OrderStatus newStatus, String reason) {
+    public StatusUpdateResult updateStatus(String orderId, OrderStatus newStatus, BigDecimal fillPrice, String reason) {
         try {
             restTemplate.exchange(ordersServiceUrl + "/{orderId}/status", HttpMethod.PATCH,
-                    new HttpEntity<>(new StatusUpdateRequest(OrderStatus.NEW, newStatus, reason)),
+                    new HttpEntity<>(new StatusUpdateRequest(OrderStatus.NEW, newStatus, fillPrice, reason)),
                     Void.class, orderId);
             return new StatusUpdateResult(true, newStatus);
         } catch (HttpClientErrorException.Conflict e) {

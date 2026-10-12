@@ -143,7 +143,9 @@ paths:
         so when two callers race exactly one succeeds. The only allowed changes are NEW to FILLED,
         NEW to REJECTED and NEW to CANCELLED. A repeated change returns 409 with the current status,
         so a caller that receives 409 with currentStatus equal to newStatus can treat the change as already done.
-        This is the only way to change an order's status.
+        This is the only way to change an order's status. A change to FILLED must include fillPrice, and records
+        the fill in client trade history (GET /client-trades) in the same transaction, so each filled order
+        has exactly one client trade.
       operationId: updateOrderStatus
       security:
         - bearerAuth: []
@@ -163,6 +165,7 @@ paths:
             example:
               expectedStatus: NEW
               newStatus: FILLED
+              fillPrice: 148.50
               reason: "Filled by trade executor"
       responses:
         '200':
@@ -188,7 +191,7 @@ paths:
                 message: "Order 0adf7599-df9d-4176-93b6-3a555e54415d is FILLED, expected NEW"
                 currentStatus: FILLED
         '422':
-          description: The change is not allowed, or the request is invalid (errorCode VAL-422)
+          description: The change is not allowed, or the request is invalid, including FILLED without fillPrice or fillPrice with another newStatus (errorCode VAL-422)
           content:
             application/json:
               schema:
@@ -269,6 +272,149 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/OrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /client-trades:
+    get:
+      summary: Search historical client trades
+      description: >
+        Returns historical trades matching every filter given, newest first (by trade date, then trade ID).
+        All filters are optional; with none, every trade is returned. Read-only: trades are recorded when
+        orders execute, not through this API.
+      operationId: searchClientTrades
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Only trades for this client account (e.g. ACC0001)
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Earliest trade date, inclusive (YYYY-MM-DD)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Latest trade date, inclusive (YYYY-MM-DD); must not be before from
+        - name: assetClass
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [Equity, Bond, ETF]
+          description: >
+            Only trades in instruments of this type (case-insensitive). Resolved against instruments-service,
+            so the request returns 503 if instruments-service is unavailable.
+        - name: symbol
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Only trades in this symbol
+        - name: side
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [BUY, SELL]
+          description: Only trades on this side
+      responses:
+        '200':
+          description: Matching trades (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientTradeResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Invalid filter (bad date format, from after to, unknown assetClass or side)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: assetClass was given and instruments-service could not be reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /client-trades/{tradeId}:
+    get:
+      summary: Retrieve a historical client trade by ID
+      operationId: getClientTradeById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tradeId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The trade identifier
+      responses:
+        '200':
+          description: Trade found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientTradeResponse'
+        '404':
+          description: Trade not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /client-trades/account/{accountId}:
+    get:
+      summary: Retrieve all historical trades for an account
+      operationId: getClientTradesByAccount
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The account identifier
+      responses:
+        '200':
+          description: The account's trades, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientTradeResponse'
         '401':
           description: Unauthorized
           content:
@@ -380,6 +526,51 @@ components:
           type: string
           description: User making the update
 
+    ClientTradeResponse:
+      type: object
+      required: [tradeId, accountId, symbol, tradeType, quantity, price, tradeDate, version, createdAt, lastUpdated, updatedBy]
+      properties:
+        tradeId:
+          type: integer
+          description: Unique trade identifier
+        accountId:
+          type: string
+          description: Client account that made the trade
+        symbol:
+          type: string
+          description: Security symbol (e.g., AAPL)
+        tradeType:
+          type: string
+          enum: [BUY, SELL]
+          description: Trade direction
+        quantity:
+          type: number
+          format: decimal
+          description: Number of units traded (up to 4 decimal places)
+        price:
+          type: number
+          format: decimal
+          description: Price per unit
+        tradeDate:
+          type: string
+          format: date
+          description: Date the trade executed
+        version:
+          type: integer
+          minimum: 0
+          description: Version number for optimistic locking
+        createdAt:
+          type: string
+          format: date-time
+          description: When the record was created
+        lastUpdated:
+          type: string
+          format: date-time
+          description: When the record was last modified
+        updatedBy:
+          type: string
+          description: User or process that last modified the record
+
     ErrorResponse:
       type: object
       required: [message]
@@ -404,6 +595,12 @@ components:
           type: string
           enum: [NEW, FILLED, CANCELLED, REJECTED]
           description: The status to change to; must be FILLED, REJECTED or CANCELLED
+        fillPrice:
+          type: number
+          format: decimal
+          minimum: 0.01
+          nullable: true
+          description: The execution price; required when newStatus is FILLED and not allowed otherwise
         reason:
           type: string
           nullable: true
