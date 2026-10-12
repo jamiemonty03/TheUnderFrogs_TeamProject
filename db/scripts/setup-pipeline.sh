@@ -48,6 +48,9 @@ check_prerequisites() {
         ./app/auth-service/scripts/generate-signing-key.sh || error_exit "Failed to generate the auth-service signing key"
     fi
     echo -e "${GREEN}✓ auth-service signing key present${NC}"
+    ./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env --secret-only >/dev/null \
+        || error_exit "Failed to create the trade-executor client secret"
+    echo -e "${GREEN}✓ trade-executor client secret present${NC}"
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
 }
 
@@ -200,6 +203,9 @@ seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
     seed_db auth-db      users     app/auth-service/db/seed/01-seed-users.sql
     seed_db auth-db      auth      app/auth-service/db/seed/05-seed-auth.sql
+    ./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env >/dev/null \
+        || error_exit "Failed to register the trade-executor client in auth-db"
+    echo -e "${GREEN}✓ trade-executor client registered in auth-db${NC}"
 
 
 echo ""

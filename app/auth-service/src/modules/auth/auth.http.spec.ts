@@ -11,7 +11,7 @@ import { HttpExceptionFilter } from '../../common/filters/http-exception.filter'
 
 describe('Auth endpoints (HTTP)', () => {
   let app: INestApplication<App>;
-  const authService = { register: jest.fn<any>(), login: jest.fn<any>() };
+  const authService = { register: jest.fn<any>(), login: jest.fn<any>(), clientCredentials: jest.fn<any>() };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -65,6 +65,54 @@ describe('Auth endpoints (HTTP)', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({ ...tokens, accountId: 'ACC0012' });
+    });
+  });
+
+  describe('POST /auth/token', () => {
+    const clientToken = { access_token: 'client.jwt', token_type: 'Bearer', expires_in: 300 };
+    const credentials = { grant_type: 'client_credentials', client_id: 'trade-executor', client_secret: 'the-secret' };
+
+    it('returns 200 with the OAuth2 token response and tells clients not to cache it', async () => {
+      authService.clientCredentials.mockResolvedValue(clientToken);
+
+      const response = await request(app.getHttpServer()).post('/auth/token').send(credentials);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(clientToken);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(authService.clientCredentials).toHaveBeenCalledWith(credentials);
+    });
+
+    it('accepts the form-encoded body that OAuth2 clients send', async () => {
+      authService.clientCredentials.mockResolvedValue(clientToken);
+
+      const response = await request(app.getHttpServer()).post('/auth/token').type('form').send(credentials);
+
+      expect(response.status).toBe(200);
+      expect(authService.clientCredentials).toHaveBeenCalledWith(credentials);
+    });
+
+    it('gives identical 401 responses for a wrong secret and an unknown client', async () => {
+      authService.clientCredentials.mockRejectedValue(new UnauthorizedException('Invalid client credentials'));
+
+      const wrongSecret = await request(app.getHttpServer()).post('/auth/token').send({ ...credentials, client_secret: 'wrong' });
+      const unknownClient = await request(app.getHttpServer()).post('/auth/token').send({ ...credentials, client_id: 'nobody' });
+
+      expect(wrongSecret.status).toBe(401);
+      expect(wrongSecret.body).toEqual({ errorCode: 'AUTH-401', message: 'Invalid client credentials' });
+      expect(unknownClient.text).toBe(wrongSecret.text);
+    });
+
+    it.each([
+      ['an unsupported grant type', { ...credentials, grant_type: 'password' }, /grant_type must be client_credentials/],
+      ['a missing client secret', { grant_type: 'client_credentials', client_id: 'trade-executor' }, /client_secret/],
+      ['a blank client ID', { ...credentials, client_id: '   ' }, /client_id/],
+    ])('rejects %s with 422 VAL-422 before checking credentials', async (_label, body, message) => {
+      const response = await request(app.getHttpServer()).post('/auth/token').send(body);
+
+      expect(response.status).toBe(422);
+      expect(response.body).toEqual({ errorCode: 'VAL-422', message: expect.stringMatching(message) });
+      expect(authService.clientCredentials).not.toHaveBeenCalled();
     });
   });
 

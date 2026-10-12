@@ -8,6 +8,7 @@ import { AuthRepository } from './auth.repository';
 import { Auth } from './entities/auth.entity';
 import { UsersModule } from '../users/users.module';
 import { TokensModule } from '../tokens/tokens.module';
+import { ClientsModule } from '../clients/clients.module';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { AccountsServiceClient } from './services/accounts-service-client';
 
@@ -17,6 +18,7 @@ import { AccountsServiceClient } from './services/accounts-service-client';
     HttpModule,
     UsersModule,
     TokensModule,
+    ClientsModule,
   ],
   controllers: [AuthController],
   providers: [
