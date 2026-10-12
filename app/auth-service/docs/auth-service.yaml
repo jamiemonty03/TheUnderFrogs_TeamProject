@@ -167,8 +167,10 @@ paths:
       summary: Client credentials flow
       description: |
         Service-to-service authentication (OAuth2 client credentials, RFC 6749 §4.4).
-        A service exchanges its client_id/client_secret for an access token. No refresh token is issued;
-        the client requests a new token when the current one expires.
+        A service exchanges its client_id/client_secret for an RS256 access token with the client's roles
+        (SERVICE), valid 5 minutes (JWT_CLIENT_TOKEN_TTL). No refresh token is issued; the client requests a
+        new token shortly before the current one expires. Client secrets are stored as argon2id hashes in
+        service_clients. Accepts JSON or the standard form-encoded body.
       operationId: clientCredentials
       requestBody:
         required: true
@@ -176,15 +178,23 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ClientCredentialsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
       responses:
         '200':
           description: Token obtained successfully
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '401':
-          description: Invalid client credentials
+          description: Wrong secret, unknown client or inactive client. All return exactly the same response.
           content:
             application/json:
               schema:
@@ -361,6 +371,7 @@ components:
           example: trade-executor
         client_secret:
           type: string
+          maxLength: 256
           description: Client application secret
           example: secret-key-xyz
         grant_type:
@@ -392,7 +403,7 @@ components:
           type: integer
           format: int32
           description: Access token lifetime in seconds
-          example: 900
+          example: 300
         mfaRequired:
           type: boolean
           description: Always false until multi-factor authentication is added

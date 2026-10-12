@@ -3,6 +3,9 @@ import { createPublicKey, generateKeyPairSync, JsonWebKey } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { UnauthorizedException } from '@nestjs/common';
 import * as jsonwebtoken from 'jsonwebtoken';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { load } from 'js-yaml';
 import { AuthService } from './auth.service';
 import { AuthRepository } from './auth.repository';
 import { AccountsServiceClient } from './services/accounts-service-client';
@@ -75,5 +78,18 @@ describe('Client credentials end to end (real hasher, TokenService and JWKS)', (
     ['a switched-off client', request('old-secret', 'retired-service')],
   ])('rejects %s with the same generic error', async (_label, body) => {
     await expect(authService.clientCredentials(body)).rejects.toThrow(new UnauthorizedException('Invalid client credentials'));
+  });
+
+  it('matches the TokenResponse schema in the OpenAPI spec served at /docs', async () => {
+    type Schema = { required: string[]; properties: Record<string, { type: string }> };
+    const spec = load(readFileSync(join(process.cwd(), 'docs', 'auth-service.yaml'), 'utf8')) as { components: { schemas: Record<string, Schema> } };
+    const schema = spec.components.schemas.TokenResponse;
+
+    const result = await authService.clientCredentials(request('the-right-client-secret'));
+
+    expect(Object.keys(result).sort()).toEqual([...schema.required].sort());
+    for (const [field, value] of Object.entries(result)) {
+      expect(typeof value === 'number' ? 'integer' : typeof value).toBe(schema.properties[field].type);
+    }
   });
 });
