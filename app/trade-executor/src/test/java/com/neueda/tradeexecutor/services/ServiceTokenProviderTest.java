@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -15,14 +16,22 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.test.web.client.ResponseCreator;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -58,6 +67,7 @@ class ServiceTokenProviderTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
                 .andExpect(content().formData(form))
+                .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
                 .andRespond(tokenResponse("token-1"));
 
         assertEquals("token-1", provider.getToken());
@@ -116,6 +126,29 @@ class ServiceTokenProviderTest {
     }
 
     @Test
+    @DisplayName("Many trades asking at once share a single token request")
+    void concurrentCallersShareOneRequest() throws Exception {
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<String>> results = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            results.add(pool.submit(() -> {
+                start.await();
+                return provider.getToken();
+            }));
+        }
+
+        start.countDown();
+        for (Future<String> result : results) {
+            assertEquals("token-1", result.get());
+        }
+        pool.shutdown();
+
+        authService.verify();
+    }
+
+    @Test
     @DisplayName("A rejected client secret fails with a clear error that does not contain the secret")
     void wrongSecretFails() {
         authService.expect(once(), requestTo(TOKEN_URL)).andRespond(withStatus(HttpStatus.UNAUTHORIZED)
@@ -148,11 +181,11 @@ class ServiceTokenProviderTest {
         assertThrows(ServiceTokenUnavailableException.class, provider::getToken);
     }
 
-    private static org.springframework.test.web.client.ResponseCreator tokenResponse(String token) {
+    private static ResponseCreator tokenResponse(String token) {
         return tokenResponse(token, TTL.toSeconds());
     }
 
-    private static org.springframework.test.web.client.ResponseCreator tokenResponse(String token, long expiresIn) {
+    private static ResponseCreator tokenResponse(String token, long expiresIn) {
         return withSuccess("{\"access_token\":\"" + token + "\",\"token_type\":\"Bearer\",\"expires_in\":" + expiresIn + "}",
                 MediaType.APPLICATION_JSON);
     }
