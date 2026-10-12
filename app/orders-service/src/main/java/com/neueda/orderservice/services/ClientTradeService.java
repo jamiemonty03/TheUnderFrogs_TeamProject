@@ -26,7 +26,6 @@ import java.util.Optional;
 @Service
 public class ClientTradeService {
 
-    // Same order as the derived account history queries
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("tradeDate"), Sort.Order.desc("tradeId"));
 
     private final ClientTradeRepository clientTradeRepository;
