@@ -8,13 +8,13 @@ export class Token {
   @Column({ type: 'integer' })
   user_id: number;
 
-  @Column({ type: 'text' })
-  token: string;
+  @Column({ type: 'char', length: 64, unique: true })
+  token_hash: string;
 
   @Column({ type: 'varchar', length: 50, default: 'refresh' })
   token_type: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamp' })
   expires_at: Date;
 
   @Column({ type: 'boolean', default: false })

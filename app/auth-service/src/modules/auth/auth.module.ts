@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { HttpModule } from '@nestjs/axios';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthService } from './auth.service';
@@ -9,6 +7,8 @@ import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
 import { Auth } from './entities/auth.entity';
 import { UsersModule } from '../users/users.module';
+import { TokensModule } from '../tokens/tokens.module';
+import { ClientsModule } from '../clients/clients.module';
 import { JwtAuthGuard, RolesGuard } from '../../common/guards';
 import { AccountsServiceClient } from './services/accounts-service-client';
 
@@ -16,16 +16,9 @@ import { AccountsServiceClient } from './services/accounts-service-client';
   imports: [
     TypeOrmModule.forFeature([Auth]),
     HttpModule,
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: Math.floor(configService.get<number>('JWT_EXPIRATION', 86400000) / 1000),
-        },
-      }),
-    }),
     UsersModule,
+    TokensModule,
+    ClientsModule,
   ],
   controllers: [AuthController],
   providers: [

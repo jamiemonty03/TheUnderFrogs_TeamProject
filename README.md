@@ -37,7 +37,7 @@ done
 ```
 It skips any service that already has a `.env`. If you already have some, copy their `JWT_SECRET` and password into the new ones by hand.
 
-> **`JWT_SECRET` must be the same in every `.env`.** If one service has a different value, its calls to the others fail with `401`. For example, the trade executor stops publishing to `market-data`.
+> **Only auth-service issues tokens.** accounts, instruments, orders and positions verify them with auth-service's public key (`/.well-known/jwks.json`), so they don't need `JWT_SECRET`. auth-service and the trade-executor still read it until they switch to RS256 signing (S8-4 and S8-9).
 
 Optional: add your own free [Alpaca](https://alpaca.markets) paper-trading keys to `app/trade-executor/.env` (`ALPACA_KEY_ID` starts with `PK`, plus `ALPACA_SECRET_KEY`) to get live bid/ask prices. If you leave them blank, the trade executor prices orders from the daily close.
 
@@ -80,25 +80,52 @@ Environment variables:
 | Variable | Service | Purpose |
 |---|---|---|
 | `KAFKA_BOOTSTRAP_SERVERS` | orders-service, trade-executor | Kafka broker, `kafka:9092` inside compose |
-| `JWT_SECRET` | all Java services | Shared signing secret, must match everywhere |
+| `AUTH_JWKS_URI`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | accounts, instruments, orders, positions | Where to fetch auth-service's public keys, and the `iss` / `aud` every token must carry. Optional; the defaults match docker-compose |
+| `JWT_SECRET` | auth-service, trade-executor | Signing secret, until both move to RS256 (S8-4, S8-9) |
 | `SERVICE_TOKEN_TTL` | trade-executor | Lifetime of its service-to-service token |
 | `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
 
-### 3) Check it works
+### 3) Log in and call the APIs
+Only auth-service issues tokens. Every other service needs one on each request, as `Authorization: Bearer <accessToken>`. Tokens last 15 minutes; log in again when you start getting `401`.
+
+**In Swagger**
+1. Open auth-service at http://localhost:8087/docs and call `POST /auth/register` (or `POST /auth/login` if you already have a user). Passwords need at least 12 characters:
+   ```json
+   {"username": "jane", "email": "jane@example.com", "password": "correct-horse-battery", "full_name": "Jane Doe"}
+   ```
+   Registering also creates your trading account; its id is the `accountId` in the response. New accounts start with no cash.
+2. Copy the `accessToken` from the response.
+3. Open a service's Swagger page, click **Authorize**, paste the token, and call any endpoint:
+
+| Service | Swagger |
+|---|---|
+| accounts-service | http://localhost:8081/api/swagger-ui/index.html |
+| instruments-service | http://localhost:8082/api/swagger-ui/index.html |
+| orders-service | http://localhost:8083/api/swagger-ui/index.html |
+| positions-service | http://localhost:8084/api/swagger-ui/index.html |
+
+**With curl**
+```
+TOKEN=$(curl -s -X POST localhost:8087/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"jane","password":"correct-horse-battery"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+curl -H "Authorization: Bearer $TOKEN" localhost:8083/api/orders
+```
+
+### 4) Check it works
 Watch a Kafka topic (or open kafka-ui on port 8086):
 ```
 docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic trade-events --from-beginning
 ```
 
-Run the end-to-end smoke test. It builds and starts the stack, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
+Run the end-to-end smoke test. It builds and starts the stack, registers a user through auth-service, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
 ```
 ./scripts/smoke-test-e2e.sh
 ```
 Set `KEEP_UP=true` to leave the stack running afterwards.
 
-### 4) Tear down
+### 5) Tear down
 Add `--volumes` to also wipe the databases:
 ```
 docker-compose down
@@ -107,7 +134,7 @@ docker-compose down --volumes
 
 ### Troubleshooting
 - **`Schema-validation: missing table`**: the database volume was created from an older schema. Run `docker-compose down --volumes`, then run the setup script again.
-- **`401` errors between services** (for example, `Market-data poll failed ... 401` in the trade-executor logs): `JWT_SECRET` doesn't match across the `.env` files. Fix it, then recreate the container.
+- **`401` errors on every request**: the token wasn't issued by auth-service, or its `iss` / `aud` doesn't match `AUTH_ISSUER` / `AUTH_AUDIENCE`. Log in through auth-service to get a new token. If the services can't reach `AUTH_JWKS_URI`, every token is rejected too.
 - **Database password errors after changing a password in `.env`**: Postgres keeps the password it was created with. Change it back, or wipe the volumes.
 - **`docker: 'compose' is not a docker command`**: use `docker-compose` (with the hyphen).
 

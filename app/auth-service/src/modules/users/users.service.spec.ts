@@ -18,7 +18,7 @@ describe('UsersService', () => {
     email: 'test@example.com',
     password_hash: 'hashedPassword',
     full_name: 'Test User',
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: null,
     is_active: true,
     failed_attempts: 0,
@@ -227,6 +227,23 @@ describe('UsersService', () => {
 
       expect(user?.id).toBe(1);
       expect(user?.password_hash).toBe(bcryptHash);
+    });
+  });
+
+  describe('linkAccount', () => {
+    it('saves the account ID on the user and returns the updated user', async () => {
+      jest.spyOn(repository, 'update').mockResolvedValue({ ...mockUser, account_id: 'ACC0012' } as any);
+
+      const result = await service.linkAccount(1, 'ACC0012');
+
+      expect(repository.update).toHaveBeenCalledWith(1, { account_id: 'ACC0012' });
+      expect(result.account_id).toBe('ACC0012');
+    });
+
+    it('throws NotFoundException when the user no longer exists', async () => {
+      jest.spyOn(repository, 'update').mockResolvedValue(null as any);
+
+      await expect(service.linkAccount(99, 'ACC0099')).rejects.toThrow(NotFoundException);
     });
   });
 

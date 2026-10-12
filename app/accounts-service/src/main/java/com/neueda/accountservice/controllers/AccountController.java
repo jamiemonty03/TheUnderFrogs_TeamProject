@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.services.AccountService;
+import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
@@ -27,8 +28,8 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@Valid @RequestBody Account account) {
-        Account created = accountService.createAccount(account);
+    public ResponseEntity<Account> createAccount(@Valid @RequestBody CreateAccountRequest request) {
+        Account created = accountService.createAccount(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

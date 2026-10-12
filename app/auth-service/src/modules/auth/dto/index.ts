@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   IsEmailAddress,
   IsFullName,
@@ -75,25 +75,70 @@ export class RegisterDto {
   full_name?: string;
 }
 
-export class TokenResponseDto {
-  @ApiProperty({
-    description: 'JWT access token',
-  })
+export const CLIENT_CREDENTIALS_GRANT = 'client_credentials';
+
+export class ClientCredentialsDto {
+  @ApiProperty({ description: 'OAuth2 grant type', enum: [CLIENT_CREDENTIALS_GRANT], example: CLIENT_CREDENTIALS_GRANT })
+  @IsIn([CLIENT_CREDENTIALS_GRANT], { message: `grant_type must be ${CLIENT_CREDENTIALS_GRANT}` })
+  grant_type: string;
+
+  @ApiProperty({ description: 'Service client ID', example: 'trade-executor' })
+  @IsNotEmpty()
+  @Trim()
+  @IsString()
+  @NotBlank()
+  @MaxLength(100)
+  client_id: string;
+
+  @ApiProperty({ description: 'Service client secret' })
+  @IsNotEmpty()
+  @IsString()
+  @NotBlank()
+  @MaxLength(256)
+  client_secret: string;
+}
+
+export class ClientTokenResponseDto {
+  @ApiProperty({ description: 'RS256 JWT with role SERVICE' })
   access_token: string;
 
-  @ApiProperty({
-    description: 'Token type (always Bearer)',
-    enum: ['Bearer'],
-    example: 'Bearer',
-  })
-  token_type: string;
+  @ApiProperty({ description: 'Always Bearer', enum: ['Bearer'], example: 'Bearer' })
+  token_type: 'Bearer';
 
-  @ApiProperty({
-    description: 'Token expiration time in seconds',
-    type: 'integer',
-    example: 86400,
-  })
+  @ApiProperty({ description: 'Token lifetime in seconds', type: 'integer', example: 300 })
   expires_in: number;
 }
 
-export { TokenPayloadDto } from './token-payload.dto';
+export class TokenResponseDto {
+  @ApiProperty({
+    description: 'RS256 JWT access token',
+  })
+  accessToken: string;
+
+  @ApiProperty({
+    description: 'Opaque refresh token',
+  })
+  refreshToken: string;
+
+  @ApiProperty({
+    description: 'Access token lifetime in seconds',
+    type: 'integer',
+    example: 900,
+  })
+  expiresIn: number;
+
+  @ApiProperty({
+    description: 'Whether a second factor is needed before the tokens can be used',
+    example: false,
+  })
+  mfaRequired: boolean;
+}
+
+export class RegisterResponseDto extends TokenResponseDto {
+  @ApiProperty({
+    description: 'Trading account created for the new user in accounts-service',
+    example: 'ACC0012',
+  })
+  accountId: string;
+}
+

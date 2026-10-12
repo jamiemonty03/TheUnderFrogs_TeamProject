@@ -1,2 +1,8 @@
-jwt:
-  secret: orders-test-secret-32-bytes-minimum
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost/jwks-not-used-in-this-test
+          issuer-uri: auth-service
+          audiences: trading-platform

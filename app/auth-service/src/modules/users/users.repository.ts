@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
+
+const UNIQUE_VIOLATION = '23505';
 
 export interface CreateUserPayload {
   username: string;
@@ -19,8 +21,14 @@ export class UsersRepository {
   ) {}
 
   async create(user: CreateUserPayload): Promise<User> {
-    const newUser = this.repository.create(user);
-    return this.repository.save(newUser);
+    try {
+      return await this.repository.save(this.repository.create(user));
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error.driverError as { code?: string }).code === UNIQUE_VIOLATION) {
+        throw new ConflictException('Username or email already exists');
+      }
+      throw error;
+    }
   }
 
   async findById(id: number): Promise<User | null> {

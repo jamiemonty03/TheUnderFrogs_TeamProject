@@ -6,7 +6,7 @@ CREATE TABLE users (
     email           VARCHAR(255) NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     full_name       VARCHAR(255),
-    roles           TEXT[]       NOT NULL DEFAULT ARRAY['USER'],
+    roles           TEXT[]       NOT NULL DEFAULT ARRAY['TRADER'],
     account_id      VARCHAR(32)  UNIQUE,
     is_active       BOOLEAN      NOT NULL DEFAULT true,
     failed_attempts INTEGER      NOT NULL DEFAULT 0 CHECK (failed_attempts >= 0),

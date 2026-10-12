@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.repositories.AccountRepository;
 import com.neueda.accountservice.enums.AccountStatus;
+import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
@@ -28,26 +29,26 @@ public class AccountService {
         this.cashMovementRepository = cashMovementRepository;
     }
 
-    public Account createAccount(Account account) {
-        if (account == null) {
-            throw new IllegalArgumentException("Account cannot be null");
+    public Account createAccount(CreateAccountRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Account request cannot be null");
         }
-        
-        if (account.getCreatedAt() == null) {
-            account.setCreatedAt(LocalDateTime.now());
-        }
-        if (account.getLastUpdated() == null) {
-            account.setLastUpdated(LocalDateTime.now());
-        }
-        if (account.getVersion() == 0) {
-            account.setVersion(1);
-        }
-        if (account.getUpdatedBy() == null) {
-            account.setUpdatedBy("SYSTEM");
-        }
-        
-        accountRepository.save(account);
-        return account;
+        LocalDateTime now = LocalDateTime.now();
+        Account account = new Account(nextFreeAccountId(), request.userId(), request.holderName(),
+                BigDecimal.ZERO, AccountStatus.ACTIVE);
+        account.setCreatedAt(now);
+        account.setLastUpdated(now);
+        account.setVersion(1);
+        account.setUpdatedBy("SYSTEM");
+        return accountRepository.save(account);
+    }
+
+    private String nextFreeAccountId() {
+        String accountId;
+        do {
+            accountId = String.format("ACC%04d", accountRepository.nextAccountNumber());
+        } while (accountRepository.existsById(accountId));
+        return accountId;
     }
 
     public List<Account> getAllAccounts() {
