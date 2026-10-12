@@ -2,7 +2,8 @@ import { jest } from '@jest/globals';
 import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { IsNull, Repository } from 'typeorm';
-import { hashRefreshToken, RefreshTokensService } from './refresh-tokens.service';
+import { hashRefreshToken, INVALID_REFRESH_TOKEN, RefreshTokensService } from './refresh-tokens.service';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { NewRefreshToken, RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
 import { RefreshToken } from '../entities/refresh-token.entity';
 
@@ -17,6 +18,17 @@ describe('RefreshTokensService', () => {
       return saved;
     }),
     findByHash: jest.fn(async (hash: string) => rows.find((r) => r.token_hash === hash) ?? null),
+    rotate: jest.fn(async (currentId: number, next: NewRefreshToken) => {
+      const current = rows.find((r) => r.id === currentId);
+      if (!current || current.revoked_at) {
+        return null;
+      }
+      const created = { id: rows.length + 1, revoked_at: null, replaced_by: null, created_at: new Date(), ...next } as RefreshToken;
+      rows.push(created);
+      current.revoked_at = new Date();
+      current.replaced_by = created.id;
+      return created;
+    }),
     revokeFamily: jest.fn(async (familyId: string) => {
       const active = rows.filter((r) => r.family_id === familyId && !r.revoked_at);
       active.forEach((r) => (r.revoked_at = new Date()));
@@ -32,7 +44,10 @@ describe('RefreshTokensService', () => {
     jest.clearAllMocks();
   });
 
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
 
   describe('issue', () => {
     it('returns a 32-byte random URL-safe token', async () => {
@@ -121,6 +136,112 @@ describe('RefreshTokensService', () => {
     });
   });
 
+  describe('rotate', () => {
+    const invalid = new UnauthorizedException(INVALID_REFRESH_TOKEN);
+
+    it('issues a new token in the same family and retires the old one, recording what replaced it', async () => {
+      const first = await service.issue(5);
+
+      const second = await service.rotate(first.refreshToken);
+
+      expect(second).toMatchObject({ userId: 5, familyId: first.familyId });
+      expect(second.refreshToken).not.toBe(first.refreshToken);
+      expect(rows[0]).toMatchObject({ revoked_at: expect.any(Date), replaced_by: 2 });
+      expect(rows[1]).toMatchObject({ family_id: first.familyId, revoked_at: null, token_hash: hashRefreshToken(second.refreshToken) });
+    });
+
+    it('makes the old token stop working while the new one works', async () => {
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+
+      expect(await service.findValid(first.refreshToken)).toBeNull();
+      expect(await service.findValid(second.refreshToken)).not.toBeNull();
+    });
+
+    it('can be chained: each new token can be used once', async () => {
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+      const third = await service.rotate(second.refreshToken);
+
+      expect(rows.map((r) => [r.id, r.replaced_by, r.revoked_at === null])).toEqual([
+        [1, 2, false],
+        [2, 3, false],
+        [3, null, true],
+      ]);
+      expect(third.familyId).toBe(first.familyId);
+    });
+
+    it('treats an already-used token as theft: revokes the whole family and refuses', async () => {
+      jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+
+      await expect(service.rotate(first.refreshToken)).rejects.toThrow(invalid);
+
+      expect(await service.findValid(second.refreshToken)).toBeNull();
+      expect(rows.every((r) => r.revoked_at !== null)).toBe(true);
+    });
+
+    it('does not touch other families when reuse is detected', async () => {
+      jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const stolen = await service.issue(5);
+      const otherDevice = await service.issue(5);
+      await service.rotate(stolen.refreshToken);
+
+      await expect(service.rotate(stolen.refreshToken)).rejects.toThrow(invalid);
+
+      expect(await service.findValid(otherDevice.refreshToken)).not.toBeNull();
+    });
+
+    it('logs reuse without logging the token', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const first = await service.issue(5);
+      await service.rotate(first.refreshToken);
+
+      await expect(service.rotate(first.refreshToken)).rejects.toThrow();
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('reuse detected for user 5'));
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(first.refreshToken);
+    });
+
+    it('revokes the family when it loses a race with another refresh of the same token', async () => {
+      jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      const first = await service.issue(5);
+      repository.rotate.mockResolvedValueOnce(null);
+
+      await expect(service.rotate(first.refreshToken)).rejects.toThrow(invalid);
+
+      expect(repository.revokeFamily).toHaveBeenCalledWith(first.familyId);
+    });
+
+    it.each([
+      ['an unknown token', 'not-a-real-refresh-token'],
+      ['an empty token', ''],
+    ])('refuses %s', async (_label, token) => {
+      await expect(service.rotate(token)).rejects.toThrow(invalid);
+      expect(repository.rotate).not.toHaveBeenCalled();
+    });
+
+    it('refuses an expired token without rotating it', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-12T10:00:00Z') });
+      const first = await service.issue(5);
+      jest.setSystemTime(new Date('2026-10-19T10:00:01Z'));
+
+      await expect(service.rotate(first.refreshToken)).rejects.toThrow(invalid);
+      expect(repository.rotate).not.toHaveBeenCalled();
+    });
+
+    it('gives the new token a fresh 7-day lifetime', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-12T10:00:00Z') });
+      const first = await service.issue(5);
+      jest.setSystemTime(new Date('2026-10-15T10:00:00Z'));
+
+      await service.rotate(first.refreshToken);
+
+      expect(rows[1].expires_at).toEqual(new Date('2026-10-22T10:00:00Z'));
+    });
+  });
+
   describe('revokeFamily', () => {
     it('revokes every active token in the family and leaves other families alone', async () => {
       const a = await service.issue(5);
@@ -139,7 +260,18 @@ describe('RefreshTokensService', () => {
 });
 
 describe('RefreshTokensRepository', () => {
-  const typeorm = { update: jest.fn<any>(), findOne: jest.fn<any>(), create: jest.fn<any>((row) => row), save: jest.fn<any>(async (row) => row) };
+  const manager = {
+    create: jest.fn<any>((_entity, row) => row),
+    save: jest.fn<any>(async (row) => ({ id: 99, ...row })),
+    update: jest.fn<any>(),
+  };
+  const typeorm = {
+    update: jest.fn<any>(),
+    findOne: jest.fn<any>(),
+    create: jest.fn<any>((row) => row),
+    save: jest.fn<any>(async (row) => row),
+    manager: { transaction: jest.fn<any>(async (work: (m: typeof manager) => unknown) => work(manager)) },
+  };
   const repository = new RefreshTokensRepository(typeorm as unknown as Repository<RefreshToken>);
 
   beforeEach(() => jest.clearAllMocks());
@@ -148,6 +280,37 @@ describe('RefreshTokensRepository', () => {
     await repository.findByHash('h'.repeat(64));
 
     expect(typeorm.findOne).toHaveBeenCalledWith({ where: { token_hash: 'h'.repeat(64) } });
+  });
+
+  it('rotates inside one transaction: saves the new token and retires the old one only if it is still active', async () => {
+    const next = { user_id: 5, token_hash: 'n'.repeat(64), family_id: 'family-1', expires_at: new Date() };
+    manager.update.mockResolvedValue({ affected: 1 });
+
+    const created = await repository.rotate(7, next);
+
+    expect(created).toMatchObject({ id: 99, ...next });
+    expect(typeorm.manager.transaction).toHaveBeenCalledTimes(1);
+    expect(manager.update).toHaveBeenCalledWith(
+      RefreshToken,
+      { id: 7, revoked_at: IsNull() },
+      { revoked_at: expect.any(Date), replaced_by: 99 },
+    );
+  });
+
+  it('returns null and rolls back when the old token was already retired by someone else', async () => {
+    manager.update.mockResolvedValue({ affected: 0 });
+
+    await expect(
+      repository.rotate(7, { user_id: 5, token_hash: 'n'.repeat(64), family_id: 'family-1', expires_at: new Date() }),
+    ).resolves.toBeNull();
+  });
+
+  it('passes on unexpected database errors', async () => {
+    manager.update.mockRejectedValue(new Error('connection lost'));
+
+    await expect(
+      repository.rotate(7, { user_id: 5, token_hash: 'n'.repeat(64), family_id: 'family-1', expires_at: new Date() }),
+    ).rejects.toThrow('connection lost');
   });
 
   it('revokes only the still-active tokens of one family and reports how many', async () => {

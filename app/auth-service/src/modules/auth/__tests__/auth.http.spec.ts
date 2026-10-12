@@ -11,7 +11,7 @@ import { HttpExceptionFilter } from '../../../common/filters/http-exception.filt
 
 describe('Auth endpoints (HTTP)', () => {
   let app: INestApplication<App>;
-  const authService = { register: jest.fn<any>(), login: jest.fn<any>(), clientCredentials: jest.fn<any>() };
+  const authService = { register: jest.fn<any>(), login: jest.fn<any>(), clientCredentials: jest.fn<any>(), refresh: jest.fn<any>() };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -65,6 +65,39 @@ describe('Auth endpoints (HTTP)', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual({ ...tokens, accountId: 'ACC0012' });
+    });
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('returns 200 with a new token pair and tells clients not to cache it', async () => {
+      authService.refresh.mockResolvedValue(tokens);
+
+      const response = await request(app.getHttpServer()).post('/auth/refresh').send({ refresh_token: 'old-refresh' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual(tokens);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(authService.refresh).toHaveBeenCalledWith({ refresh_token: 'old-refresh' });
+    });
+
+    it('returns 401 AUTH-401 for an invalid, expired or reused refresh token', async () => {
+      authService.refresh.mockRejectedValue(new UnauthorizedException('Invalid refresh token'));
+
+      const response = await request(app.getHttpServer()).post('/auth/refresh').send({ refresh_token: 'reused' });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ errorCode: 'AUTH-401', message: 'Invalid refresh token' });
+    });
+
+    it.each([
+      ['a missing refresh_token', {}],
+      ['a blank refresh_token', { refresh_token: '   ' }],
+    ])('rejects %s with 422 VAL-422', async (_label, body) => {
+      const response = await request(app.getHttpServer()).post('/auth/refresh').send(body);
+
+      expect(response.status).toBe(422);
+      expect(response.body.errorCode).toBe('VAL-422');
+      expect(authService.refresh).not.toHaveBeenCalled();
     });
   });
 
