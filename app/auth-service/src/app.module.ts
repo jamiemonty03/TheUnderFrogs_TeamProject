@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { TokensModule } from './modules/tokens/tokens.module';
+import { ClientsModule } from './modules/clients/clients.module';
 import { databaseConfig } from './config/database.config';
 import { validationSchema } from './config/validation';
 
@@ -22,6 +23,7 @@ import { validationSchema } from './config/validation';
     AuthModule,
     UsersModule,
     TokensModule,
+    ClientsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

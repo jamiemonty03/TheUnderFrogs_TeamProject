@@ -13,6 +13,7 @@ import { RefreshTokensService } from '../tokens/refresh-tokens.service';
 import { TokensRepository } from '../tokens/tokens.repository';
 import { JwksController } from '../tokens/jwks.controller';
 import { AccountsServiceClient } from './services/accounts-service-client';
+import { ServiceClientsService } from '../clients/service-clients.service';
 import { loadSigningKey } from '../../config/signing-key';
 
 describe('Register end to end (real TokenService, RefreshTokensService and JWKS)', () => {
@@ -35,6 +36,7 @@ describe('Register end to end (real TokenService, RefreshTokensService and JWKS)
     new TokenService(key, config),
     new RefreshTokensService(tokensRepository as unknown as TokensRepository, config),
     accountsServiceClient as unknown as AccountsServiceClient,
+    {} as ServiceClientsService,
   );
   const jwks = new JwksController(key).getJwks();
 

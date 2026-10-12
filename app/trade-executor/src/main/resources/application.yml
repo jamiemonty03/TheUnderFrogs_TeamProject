@@ -35,9 +35,8 @@ alpaca:
 market-data:
   poll-interval-ms: ${MARKET_DATA_POLL_INTERVAL_MS:5000}
 
-jwt:
-  secret: ${JWT_SECRET}
-
-service-token:
-  ttl: ${SERVICE_TOKEN_TTL:5m}
+auth:
+  token-url: ${AUTH_TOKEN_URL:http://auth-service:8081/auth/token}
+  client-id: ${AUTH_CLIENT_ID:trade-executor}
+  client-secret: ${AUTH_CLIENT_SECRET}
 

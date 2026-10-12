@@ -1,90 +1,193 @@
 package com.neueda.tradeexecutor.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.springframework.test.web.client.ExpectedCount.once;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
-import javax.crypto.spec.SecretKeySpec;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.test.web.client.ResponseCreator;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
-import com.neueda.tradeexecutor.config.JwtEncoderConfig;
+import com.neueda.tradeexecutor.exceptions.ServiceTokenUnavailableException;
 
 class ServiceTokenProviderTest {
 
-    private static final String SECRET = "test-secret-that-is-at-least-32-bytes-long!!";
-    private static final Duration TTL = Duration.ofMinutes(5);
+    private static final String TOKEN_URL = "http://auth-service:8081/auth/token";
+    private static final String CLIENT_SECRET = "the-trade-executor-client-secret";
+    private static final Duration TTL = Duration.ofSeconds(300);
 
+    private MockRestServiceServer authService;
     private MutableClock clock;
     private ServiceTokenProvider provider;
 
     @BeforeEach
     void setUp() {
-        JwtEncoderConfig encoderConfig = new JwtEncoderConfig();
-        ReflectionTestUtils.setField(encoderConfig, "sharedSecret", SECRET);
-        clock = new MutableClock(Instant.now());
-        provider = new ServiceTokenProvider(encoderConfig.jwtEncoder(), TTL, clock);
+        RestTemplate tokenClient = new RestTemplate();
+        authService = MockRestServiceServer.bindTo(tokenClient).build();
+        clock = new MutableClock(Instant.parse("2026-10-12T10:00:00Z"));
+        provider = new ServiceTokenProvider(tokenClient, TOKEN_URL, "trade-executor", CLIENT_SECRET, clock);
     }
 
     @Test
-    @DisplayName("Token is signed with the shared secret and identifies the executor as a SERVICE")
-    void tokenHasServiceClaims() {
-        Jwt jwt = decode(provider.getToken());
+    @DisplayName("Asks auth-service for a token with the client credentials grant, form encoded")
+    void requestsTokenWithClientCredentials() {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "client_credentials");
+        form.add("client_id", "trade-executor");
+        form.add("client_secret", CLIENT_SECRET);
+        authService.expect(once(), requestTo(TOKEN_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(content().formData(form))
+                .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
+                .andRespond(tokenResponse("token-1"));
 
-        assertEquals("trade-executor", jwt.getSubject());
-        assertEquals("trade-executor", jwt.getClaimAsString("iss"));
-        assertEquals(List.of("SERVICE"), jwt.getClaimAsStringList("roles"));
-        assertEquals(TTL, Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt()));
+        assertEquals("token-1", provider.getToken());
+        authService.verify();
     }
 
     @Test
-    @DisplayName("The same token is reused until the refresh window")
+    @DisplayName("Reuses the same token until 30 seconds before it expires")
     void reusesTokenBeforeRefreshWindow() {
-        String first = provider.getToken();
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
 
+        String first = provider.getToken();
         clock.advance(TTL.minus(ServiceTokenProvider.REFRESH_BEFORE_EXPIRY).minusSeconds(1));
 
         assertEquals(first, provider.getToken());
+        authService.verify();
     }
 
     @Test
-    @DisplayName("A new token is created shortly before the current one expires")
+    @DisplayName("Gets a new token automatically 30 seconds before the current one expires")
     void refreshesTokenNearExpiry() {
-        String first = provider.getToken();
-        Instant firstExpiry = decode(first).getExpiresAt();
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-2"));
 
+        assertEquals("token-1", provider.getToken());
         clock.advance(TTL.minus(ServiceTokenProvider.REFRESH_BEFORE_EXPIRY));
-        String second = provider.getToken();
 
-        assertNotEquals(first, second);
-        assertEquals(firstExpiry.plus(TTL.minus(ServiceTokenProvider.REFRESH_BEFORE_EXPIRY)),
-                decode(second).getExpiresAt());
+        assertEquals("token-2", provider.getToken());
+        authService.verify();
     }
 
     @Test
-    @DisplayName("A new token is created once the current one has expired")
+    @DisplayName("Gets a new token once the current one has expired")
     void refreshesTokenAfterExpiry() {
-        String first = provider.getToken();
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-2"));
 
+        provider.getToken();
         clock.advance(TTL.plusMinutes(1));
 
-        assertNotEquals(first, provider.getToken());
+        assertEquals("token-2", provider.getToken());
+        authService.verify();
     }
 
-    private static Jwt decode(String token) {
-        SecretKeySpec key = new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusJwtDecoder.withSecretKey(key).build().decode(token);
+    @Test
+    @DisplayName("Uses the lifetime auth-service reports rather than a local setting")
+    void followsExpiresInFromAuthService() {
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("short", 60));
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("next", 60));
+
+        provider.getToken();
+        clock.advance(Duration.ofSeconds(30));
+
+        assertEquals("next", provider.getToken());
+        authService.verify();
+    }
+
+    @Test
+    @DisplayName("Many trades asking at once share a single token request")
+    void concurrentCallersShareOneRequest() throws Exception {
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<String>> results = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            results.add(pool.submit(() -> {
+                start.await();
+                return provider.getToken();
+            }));
+        }
+
+        start.countDown();
+        for (Future<String> result : results) {
+            assertEquals("token-1", result.get());
+        }
+        pool.shutdown();
+
+        authService.verify();
+    }
+
+    @Test
+    @DisplayName("A rejected client secret fails with a clear error that does not contain the secret")
+    void wrongSecretFails() {
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(withStatus(HttpStatus.UNAUTHORIZED)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"errorCode\":\"AUTH-401\",\"message\":\"Invalid client credentials\"}"));
+
+        ServiceTokenUnavailableException ex = assertThrows(ServiceTokenUnavailableException.class, provider::getToken);
+
+        assertFalse(ex.getMessage().contains(CLIENT_SECRET));
+    }
+
+    @Test
+    @DisplayName("Tries again on the next call after a failure instead of caching it")
+    void retriesAfterFailure() {
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        authService.expect(once(), requestTo(TOKEN_URL)).andRespond(tokenResponse("token-1"));
+
+        assertThrows(ServiceTokenUnavailableException.class, provider::getToken);
+
+        assertEquals("token-1", provider.getToken());
+        authService.verify();
+    }
+
+    @Test
+    @DisplayName("Rejects a response without a usable access token")
+    void rejectsUnusableResponse() {
+        authService.expect(once(), requestTo(TOKEN_URL))
+                .andRespond(withSuccess("{\"token_type\":\"Bearer\",\"expires_in\":300}", MediaType.APPLICATION_JSON));
+
+        assertThrows(ServiceTokenUnavailableException.class, provider::getToken);
+    }
+
+    private static ResponseCreator tokenResponse(String token) {
+        return tokenResponse(token, TTL.toSeconds());
+    }
+
+    private static ResponseCreator tokenResponse(String token, long expiresIn) {
+        return withSuccess("{\"access_token\":\"" + token + "\",\"token_type\":\"Bearer\",\"expires_in\":" + expiresIn + "}",
+                MediaType.APPLICATION_JSON);
     }
 
     private static final class MutableClock extends Clock {
