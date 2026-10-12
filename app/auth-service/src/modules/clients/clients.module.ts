@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServiceClient } from './entities/service-client.entity';
-import { ServiceClientsRepository } from './service-clients.repository';
-import { ServiceClientsService } from './service-clients.service';
+import { ServiceClientsRepository } from './repositories/service-clients.repository';
+import { ServiceClientsService } from './services/service-clients.service';
 import { UsersModule } from '../users/users.module';
 
 @Module({

@@ -5,10 +5,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { createValidationPipe } from './validation.pipe';
 import { JsonBodyAdapter } from './json-body.adapter';
-import { UsersController } from '../../modules/users/users.controller';
-import { UsersService } from '../../modules/users/users.service';
-import { AuthController } from '../../modules/auth/auth.controller';
-import { AuthService } from '../../modules/auth/auth.service';
+import { UsersController } from '../../modules/users/controllers/users.controller';
+import { UsersService } from '../../modules/users/services/users.service';
+import { AuthController } from '../../modules/auth/controllers/auth.controller';
+import { AuthService } from '../../modules/auth/services/auth.service';
 
 describe('Validation errors (HTTP)', () => {
   let app: INestApplication<App>;

@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { isAxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
-import { TokenService } from '../../tokens/token.service';
+import { TokenService } from '../../tokens/services/token.service';
 
 export const SERVICE_NAME = 'auth-service';
 export const ACCOUNTS_REQUEST_TIMEOUT_MS = 5000;

@@ -4,10 +4,10 @@ import { UnauthorizedException, ExecutionContext } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { generateKeyPairSync } from 'crypto';
-import { TokenService } from '../../modules/tokens/token.service';
+import { TokenService } from '../../modules/tokens/services/token.service';
 import { loadSigningKey } from '../../config/signing-key';
 import { Reflector } from '@nestjs/core';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 describe('JwtAuthGuard', () => {

@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { AxiosError, AxiosHeaders, AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
-import { TokenService } from '../../tokens/token.service';
+import { TokenService } from '../../tokens/services/token.service';
 import { AccountsServiceClient } from './accounts-service-client';
 
 const axiosError = (status?: number) =>
