@@ -11,6 +11,12 @@ pipeline {
             }
         }
 
+        stage('API Clients Up To Date') {
+            steps {
+                sh './scripts/check-api-clients.sh'
+            }
+        }
+
         stage('Build Services') {
             parallel {
                 stage('Build Accounts Service') {
