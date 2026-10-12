@@ -25,6 +25,7 @@ import com.neueda.orderservice.dtos.requests.PlaceOrderRequest;
 import com.neueda.orderservice.dtos.requests.UpdateOrderRequest;
 import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
+import com.neueda.orderservice.exceptions.AccountAuthorizationException;
 import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
 import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
@@ -74,7 +75,7 @@ public class OrderController {
     }
 
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrderById(@PathVariable String orderId) {
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable String orderId) throws AccountAuthorizationException {
         Optional<Order> order = orderRepository.findById(orderId);
         if (order.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -86,7 +87,7 @@ public class OrderController {
     }
 
     @GetMapping("/account/{accountId}")
-    public ResponseEntity<List<OrderResponse>> getOrdersByAccountId(@PathVariable String accountId) {
+    public ResponseEntity<List<OrderResponse>> getOrdersByAccountId(@PathVariable String accountId) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         List<Order> orders = orderRepository.findByAccountIdOrderByCreatedAtDesc(accountId);
@@ -97,7 +98,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException {
+    public ResponseEntity<?> placeOrder(@Valid @RequestBody PlaceOrderRequest request) throws TradingException, AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(request.accountId());
         
         log.info("Order placement received {} {} {} {} {}", kv("accountId", request.accountId()),
@@ -160,7 +161,7 @@ public class OrderController {
     @PutMapping("/{orderId}")
     public ResponseEntity<OrderResponse> updateOrder(
             @PathVariable String orderId,
-            @Valid @RequestBody UpdateOrderRequest request) {
+            @Valid @RequestBody UpdateOrderRequest request) throws AccountAuthorizationException {
 
         Optional<Order> existingOrder = orderRepository.findById(orderId);
         if (existingOrder.isEmpty()) {
@@ -205,7 +206,7 @@ public class OrderController {
 
     @DeleteMapping("/{orderId}")
     public ResponseEntity<Void> deleteOrder(@PathVariable String orderId)
-            throws OrderNotFoundException, OrderNotCancellableException {
+            throws OrderNotFoundException, OrderNotCancellableException, AccountAuthorizationException {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found: " + orderId));
         

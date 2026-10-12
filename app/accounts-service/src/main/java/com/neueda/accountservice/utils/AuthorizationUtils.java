@@ -40,10 +40,7 @@ public class AuthorizationUtils {
     }
 
     public static void verifyAccountAccess(String requestedAccountId) throws AccountAuthorizationException {
-        if (isAdmin() || isService()) {
-            // ADMIN and SERVICE roles can access any account
-            return;
-        }
+        if (isAdmin() || isService()) return;
 
         String userAccountId = getAccountIdFromToken();
         if (userAccountId == null || !userAccountId.equals(requestedAccountId)) {

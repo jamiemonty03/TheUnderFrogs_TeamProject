@@ -7,6 +7,7 @@ import com.neueda.positionservice.dtos.requests.CreatePositionRequest;
 import com.neueda.positionservice.dtos.requests.ReplacePositionRequest;
 import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
+import com.neueda.positionservice.exceptions.AccountAuthorizationException;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
 import com.neueda.positionservice.dtos.requests.ReversalRequest;
@@ -27,14 +28,14 @@ public class PositionController {
     }
     
     @GetMapping("/{accountId}")
-    public List<Position> getPositionsByAccount(@PathVariable String accountId) {
+    public List<Position> getPositionsByAccount(@PathVariable String accountId) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return positionService.getPositionsByAccountId(accountId);
     }
     
     @GetMapping("/{accountId}/{symbol}")
-    public Position getPosition(@PathVariable String accountId, @PathVariable String symbol) {
+    public Position getPosition(@PathVariable String accountId, @PathVariable String symbol) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return positionService.getPosition(accountId, symbol)
@@ -42,34 +43,34 @@ public class PositionController {
     }
     
     @PostMapping
-    public Position createPosition(@RequestBody @Valid CreatePositionRequest request) {
+    public Position createPosition(@RequestBody @Valid CreatePositionRequest request) throws AccountAuthorizationException {
         return positionService.createPosition(request);
     }
     
     @DeleteMapping("/{accountId}/{symbol}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletePosition(@PathVariable String accountId, @PathVariable String symbol) {
+    public void deletePosition(@PathVariable String accountId, @PathVariable String symbol) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         positionService.deletePosition(accountId, symbol);
     }
 
     @PutMapping("/{accountId}/{symbol}")
-    public Position updatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReplacePositionRequest request) {
+    public Position updatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReplacePositionRequest request) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return positionService.updatePosition(accountId, symbol, request);
     }
 
     @PatchMapping("/{accountId}/{symbol}")
-    public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid UpdatePositionRequest request) {
+    public Position partiallyUpdatePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid UpdatePositionRequest request) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return positionService.patchPosition(accountId, symbol, request);
     }
 
     @PostMapping("/{accountId}/{symbol}/buy")
-    public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid BuyRequest request) {
+    public Position buyPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid BuyRequest request) throws AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return request.orderId() == null
@@ -78,7 +79,7 @@ public class PositionController {
     }
 
     @PostMapping("/{accountId}/{symbol}/sell")
-    public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid SellRequest request) throws InsufficientHoldingsException {
+    public Position sellPosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid SellRequest request) throws InsufficientHoldingsException, AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return request.orderId() == null
@@ -87,7 +88,7 @@ public class PositionController {
     }
 
     @PostMapping("/{accountId}/{symbol}/reversal")
-    public Position reversePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReversalRequest request) throws InsufficientHoldingsException {
+    public Position reversePosition(@PathVariable String accountId, @PathVariable String symbol, @RequestBody @Valid ReversalRequest request) throws InsufficientHoldingsException, AccountAuthorizationException {
         AuthorizationUtils.verifyAccountAccess(accountId);
         
         return positionService.reverse(accountId, symbol, request.orderId());
