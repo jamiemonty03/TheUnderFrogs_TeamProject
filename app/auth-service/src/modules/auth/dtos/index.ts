@@ -75,6 +75,15 @@ export class RegisterDto {
   full_name?: string;
 }
 
+export class RefreshTokenDto {
+  @ApiProperty({ description: 'Refresh token from register, login or a previous refresh' })
+  @MaxLength(128)
+  @NotBlank()
+  @IsString()
+  @IsNotEmpty()
+  refresh_token: string;
+}
+
 export const CLIENT_CREDENTIALS_GRANT = 'client_credentials';
 
 export class ClientCredentialsDto {

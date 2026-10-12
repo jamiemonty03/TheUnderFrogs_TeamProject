@@ -1,11 +1,19 @@
 import { Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../../users/services/users.service';
 import { AuthRepository } from '../repositories/auth.repository';
-import { ClientCredentialsDto, ClientTokenResponseDto, LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from '../dtos';
+import {
+  ClientCredentialsDto,
+  ClientTokenResponseDto,
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+  RegisterResponseDto,
+  TokenResponseDto,
+} from '../dtos';
 import { ServiceClientsService } from '../../clients/services/service-clients.service';
 import { DEFAULT_ROLE } from '../../users/dtos';
 import { AccessTokenClaims, TokenService } from '../../tokens/services/token.service';
-import { RefreshTokensService } from '../../tokens/services/refresh-tokens.service';
+import { INVALID_REFRESH_TOKEN, RefreshTokensService } from '../../tokens/services/refresh-tokens.service';
 import { AccountsServiceClient } from './accounts-service-client';
 import { User } from '../../users/entities/user.entity';
 
@@ -81,6 +89,21 @@ export class AuthService {
     await this.authRepository.recordLogin(authenticatedUser.id);
 
     return this.issueTokens(authenticatedUser);
+  }
+
+  async logout(dto: RefreshTokenDto): Promise<void> {
+    await this.refreshTokensService.revokeFamilyOf(dto.refresh_token);
+  }
+
+  async refresh(dto: RefreshTokenDto): Promise<TokenResponseDto> {
+    const rotated = await this.refreshTokensService.rotate(dto.refresh_token);
+    const user = await this.usersService.getUserById(rotated.userId).catch(() => null);
+    if (!user || !user.is_active) {
+      await this.refreshTokensService.revokeFamily(rotated.familyId);
+      throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    }
+    const { accessToken, expiresIn } = this.tokenService.issue(user);
+    return { accessToken, refreshToken: rotated.refreshToken, expiresIn, mfaRequired: false };
   }
 
 

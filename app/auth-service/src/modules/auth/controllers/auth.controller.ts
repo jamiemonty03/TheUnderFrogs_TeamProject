@@ -1,7 +1,15 @@
 import { Controller, Post, Get, Body, Header, HttpCode, HttpException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../services/auth.service';
-import { ClientCredentialsDto, ClientTokenResponseDto, LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from '../dtos';
+import {
+  ClientCredentialsDto,
+  ClientTokenResponseDto,
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+  RegisterResponseDto,
+  TokenResponseDto,
+} from '../dtos';
 import { CurrentUser, Public } from '../../../common/decorators';
 import { CurrentUserDto } from '../../../common/dtos/current-user.dto';
 
@@ -36,6 +44,21 @@ export class AuthController {
       }
       throw error;
     }
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async refresh(@Body() dto: RefreshTokenDto): Promise<TokenResponseDto> {
+    return this.authService.refresh(dto);
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(204)
+  async logout(@Body() dto: RefreshTokenDto): Promise<void> {
+    await this.authService.logout(dto);
   }
 
   @Public()
