@@ -33,6 +33,7 @@ public class BondService {
                 bond.getSymbol(),
                 bond.getName(),
                 bond.getPrice(),
+                bond.getPreviousClose(),
                 bond.getTradeDate(),
                 bond.getCreatedAt(),
                 bond.getLastUpdated(),

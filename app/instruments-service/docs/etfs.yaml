@@ -65,6 +65,7 @@ paths:
                     symbol: "SPY"
                     name: "State Street SPDR S&P 500 ETF T"
                     price: 770.82
+                    previousClose: 761.69
                     tradeDate: "2026-09-21T00:00:00"
                     createdAt: "2026-09-21T16:02:58.408844"
                     lastUpdated: "2026-09-21T16:02:58.408844"
@@ -109,6 +110,12 @@ components:
           format: decimal
           nullable: true
           example: 770.82
+        previousClose:
+          type: number
+          format: decimal
+          nullable: true
+          description: Close from the trading day before tradeDate, for day-change P&L. Null if fewer than two days of price history exist.
+          example: 761.69
         tradeDate:
           type: string
           format: date-time

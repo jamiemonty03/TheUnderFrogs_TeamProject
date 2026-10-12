@@ -33,6 +33,7 @@ public class StockService {
                 stock.getSymbol(),
                 stock.getName(),
                 stock.getPrice(),
+                stock.getPreviousClose(),
                 stock.getTradeDate(),
                 stock.getCreatedAt(),
                 stock.getLastUpdated(),

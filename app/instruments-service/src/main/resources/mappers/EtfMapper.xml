@@ -6,6 +6,7 @@
         <id column="symbol" property="symbol" />
         <result column="name" property="name" />
         <result column="price" property="price" />
+        <result column="previous_close" property="previousClose" />
         <result column="trade_date" property="tradeDate" />
         <result column="category" property="category" />
         <result column="fund_family" property="fundFamily" />
@@ -26,7 +27,7 @@
     </resultMap>
 
     <sql id="selectEtf">
-        SELECT i.symbol, i.name, lp.close AS price, lp.trade_date,
+        SELECT i.symbol, i.name, lp.close AS price, lp.previous_close, lp.trade_date,
                ce.category, ce.fund_family, ce.legal_type, ce.net_expense_ratio,
                ce.nav_price, ce.total_assets, ce.net_assets, ce.ytd_return,
                ce.three_year_avg_return, ce.five_year_avg_return, ce.beta_3_year,
@@ -34,7 +35,9 @@
         FROM clean_etfs ce
         JOIN instruments i ON i.symbol = ce.symbol
         LEFT JOIN LATERAL (
-            SELECT close, date::timestamp AS trade_date
+            <!-- LEAD runs before LIMIT, so the latest row carries the prior day's close -->
+            SELECT close, LEAD(close) OVER (ORDER BY cp.date DESC) AS previous_close,
+                   date::timestamp AS trade_date
             FROM clean_prices cp
             WHERE cp.symbol = ce.symbol
             ORDER BY cp.date DESC
