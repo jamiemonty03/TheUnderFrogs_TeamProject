@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.neueda.orderservice.config.SecurityConfig;
@@ -51,7 +53,7 @@ class ClientTradeControllerTest {
             LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), null, OrderSide.BUY);
         when(clientTradeService.search(expected)).thenReturn(List.of(aaplBuy()));
 
-        mockMvc.perform(get("/client-trades").with(jwt())
+        mockMvc.perform(get("/client-trades").with(owner())
                 .param("accountId", "ACC0001").param("from", "2026-01-01").param("to", "2026-01-31").param("side", "BUY"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].tradeId").value(7))
@@ -73,7 +75,7 @@ class ClientTradeControllerTest {
         when(instrumentDirectory.symbolsInAssetClass("ETF")).thenReturn(Set.of("SPY", "TLT"));
         when(clientTradeService.search(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/client-trades").with(jwt()).param("assetClass", "ETF"))
+        mockMvc.perform(get("/client-trades").with(admin()).param("assetClass", "ETF"))
             .andExpect(status().isOk());
 
         verify(clientTradeService).search(new ClientTradeFilter(null, null, null, Set.of("SPY", "TLT"), null));
@@ -85,7 +87,7 @@ class ClientTradeControllerTest {
         when(instrumentDirectory.symbolsInAssetClass("ETF")).thenReturn(Set.of("SPY"));
         when(clientTradeService.search(any())).thenReturn(List.of());
 
-        mockMvc.perform(get("/client-trades").with(jwt()).param("assetClass", "ETF").param("symbol", "AAPL"))
+        mockMvc.perform(get("/client-trades").with(admin()).param("assetClass", "ETF").param("symbol", "AAPL"))
             .andExpect(status().isOk());
 
         verify(clientTradeService).search(new ClientTradeFilter(null, null, null, Set.of(), null));
@@ -95,15 +97,15 @@ class ClientTradeControllerTest {
     @DisplayName("Invalid filters are rejected with 422 VAL-422")
     void invalidFilters() throws Exception {
         when(clientTradeService.search(any())).thenThrow(new IllegalArgumentException("'from' date must be on or before 'to' date"));
-        mockMvc.perform(get("/client-trades").with(jwt()).param("from", "2026-03-01").param("to", "2026-02-01"))
+        mockMvc.perform(get("/client-trades").with(owner()).param("from", "2026-03-01").param("to", "2026-02-01"))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.errorCode").value("VAL-422"));
 
-        mockMvc.perform(get("/client-trades").with(jwt()).param("from", "01/02/2026"))
+        mockMvc.perform(get("/client-trades").with(owner()).param("from", "01/02/2026"))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.errorCode").value("VAL-422"));
 
-        mockMvc.perform(get("/client-trades").with(jwt()).param("side", "HOLD"))
+        mockMvc.perform(get("/client-trades").with(owner()).param("side", "HOLD"))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.errorCode").value("VAL-422"));
     }
@@ -114,7 +116,7 @@ class ClientTradeControllerTest {
         when(instrumentDirectory.symbolsInAssetClass("Equity"))
             .thenThrow(new InstrumentServiceUnavailableException("Instrument data is unavailable", null));
 
-        mockMvc.perform(get("/client-trades").with(jwt()).param("assetClass", "Equity"))
+        mockMvc.perform(get("/client-trades").with(owner()).param("assetClass", "Equity"))
             .andExpect(status().isServiceUnavailable())
             .andExpect(jsonPath("$.errorCode").value("INS-503"));
     }
@@ -125,10 +127,10 @@ class ClientTradeControllerTest {
         when(clientTradeService.getTradeById(7)).thenReturn(Optional.of(aaplBuy()));
         when(clientTradeService.getTradeById(99)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/client-trades/7").with(jwt()))
+        mockMvc.perform(get("/client-trades/7").with(owner()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.tradeId").value(7));
-        mockMvc.perform(get("/client-trades/99").with(jwt()))
+        mockMvc.perform(get("/client-trades/99").with(owner()))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.errorCode").value("TRD-404"));
     }
@@ -138,7 +140,7 @@ class ClientTradeControllerTest {
     void getTradesByAccount() throws Exception {
         when(clientTradeService.getAccountHistory("ACC0001")).thenReturn(List.of(aaplBuy()));
 
-        mockMvc.perform(get("/client-trades/account/ACC0001").with(jwt()))
+        mockMvc.perform(get("/client-trades/account/ACC0001").with(owner()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1))
             .andExpect(jsonPath("$[0].symbol").value("AAPL"));
@@ -150,6 +152,81 @@ class ClientTradeControllerTest {
         mockMvc.perform(get("/client-trades")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/client-trades/7")).andExpect(status().isUnauthorized());
         verifyNoInteractions(clientTradeService);
+    }
+
+    @Test
+    @DisplayName("GET /client-trades without accountId only returns the caller's own trades")
+    void searchScopedToCallersAccount() throws Exception {
+        when(clientTradeService.search(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/client-trades").with(owner()).param("side", "BUY"))
+            .andExpect(status().isOk());
+
+        verify(clientTradeService).search(new ClientTradeFilter("ACC0001", null, null, null, OrderSide.BUY));
+    }
+
+    @Test
+    @DisplayName("Searching another account's trades is rejected with 403 AUTH-403")
+    void searchOtherAccountForbidden() throws Exception {
+        mockMvc.perform(get("/client-trades").with(owner()).param("accountId", "ACC0002"))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.errorCode").value("AUTH-403"));
+
+        verifyNoInteractions(clientTradeService, instrumentDirectory);
+    }
+
+    @Test
+    @DisplayName("A token without an accountId claim cannot search trades")
+    void searchWithoutAccountClaimForbidden() throws Exception {
+        mockMvc.perform(get("/client-trades").with(jwt()))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.errorCode").value("AUTH-403"));
+
+        verifyNoInteractions(clientTradeService);
+    }
+
+    @Test
+    @DisplayName("GET /client-trades/{tradeId} for another account's trade is rejected with 403")
+    void getTradeByIdOtherAccountForbidden() throws Exception {
+        when(clientTradeService.getTradeById(7)).thenReturn(Optional.of(aaplBuy()));
+
+        mockMvc.perform(get("/client-trades/7").with(user("ACC0002")))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.errorCode").value("AUTH-403"));
+    }
+
+    @Test
+    @DisplayName("GET /client-trades/account/{accountId} for another account is rejected with 403")
+    void getTradesByOtherAccountForbidden() throws Exception {
+        mockMvc.perform(get("/client-trades/account/ACC0002").with(owner()))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.errorCode").value("AUTH-403"));
+
+        verifyNoInteractions(clientTradeService);
+    }
+
+    @Test
+    @DisplayName("Admin and service tokens can read any account's trades")
+    void adminAndServiceCanReadAnyAccount() throws Exception {
+        when(clientTradeService.getAccountHistory("ACC0002")).thenReturn(List.of());
+        when(clientTradeService.getTradeById(7)).thenReturn(Optional.of(aaplBuy()));
+
+        mockMvc.perform(get("/client-trades/account/ACC0002").with(admin()))
+            .andExpect(status().isOk());
+        mockMvc.perform(get("/client-trades/7").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SERVICE"))))
+            .andExpect(status().isOk());
+    }
+
+    private static JwtRequestPostProcessor user(String accountId) {
+        return jwt().jwt(token -> token.claim("accountId", accountId));
+    }
+
+    private static JwtRequestPostProcessor owner() {
+        return user("ACC0001");
+    }
+
+    private static JwtRequestPostProcessor admin() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 
     private static ClientTrade aaplBuy() {

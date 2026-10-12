@@ -13,12 +13,14 @@ import org.springframework.web.bind.annotation.*;
 
 import com.neueda.orderservice.dtos.responses.ClientTradeResponse;
 import com.neueda.orderservice.enums.OrderSide;
+import com.neueda.orderservice.exceptions.AccountAuthorizationException;
 import com.neueda.orderservice.exceptions.ClientTradeNotFoundException;
 import com.neueda.orderservice.exceptions.InstrumentServiceUnavailableException;
 import com.neueda.orderservice.models.ClientTrade;
 import com.neueda.orderservice.models.ClientTradeFilter;
 import com.neueda.orderservice.services.ClientTradeService;
 import com.neueda.orderservice.services.InstrumentDirectory;
+import com.neueda.orderservice.utils.AuthorizationUtils;
 
 @RestController
 @RequestMapping("/client-trades")
@@ -41,8 +43,16 @@ public class ClientTradeController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String symbol,
             @RequestParam(required = false) String assetClass,
-            @RequestParam(required = false) OrderSide side) throws InstrumentServiceUnavailableException {
-        log.info("Trade history search received {} {} {} {} {} {}", kv("accountId", accountId), kv("from", from),
+            @RequestParam(required = false) OrderSide side)
+            throws InstrumentServiceUnavailableException, AccountAuthorizationException {
+        // Users without an accountId filter only see their own trades; admins and services see all
+        String scopedAccountId = accountId;
+        if (scopedAccountId == null && !AuthorizationUtils.isAdmin() && !AuthorizationUtils.isService()) {
+            scopedAccountId = AuthorizationUtils.getAccountIdFromToken();
+        }
+        AuthorizationUtils.verifyAccountAccess(scopedAccountId);
+
+        log.info("Trade history search received {} {} {} {} {} {}", kv("accountId", scopedAccountId), kv("from", from),
             kv("to", to), kv("symbol", symbol), kv("assetClass", assetClass), kv("side", side));
 
         Set<String> symbols = null;
@@ -53,20 +63,23 @@ public class ClientTradeController {
             symbols = symbols == null || symbols.contains(symbol) ? Set.of(symbol) : Set.of();
         }
 
-        List<ClientTrade> trades = clientTradeService.search(new ClientTradeFilter(accountId, from, to, symbols, side));
+        List<ClientTrade> trades = clientTradeService.search(new ClientTradeFilter(scopedAccountId, from, to, symbols, side));
         return ResponseEntity.ok(trades.stream().map(this::toClientTradeResponse).toList());
     }
 
     @GetMapping("/{tradeId}")
     public ResponseEntity<ClientTradeResponse> getTradeById(@PathVariable Integer tradeId)
-            throws ClientTradeNotFoundException {
+            throws ClientTradeNotFoundException, AccountAuthorizationException {
         ClientTrade trade = clientTradeService.getTradeById(tradeId)
             .orElseThrow(() -> new ClientTradeNotFoundException("Client trade not found: " + tradeId));
+        AuthorizationUtils.verifyAccountAccess(trade.getAccountId());
         return ResponseEntity.ok(toClientTradeResponse(trade));
     }
 
     @GetMapping("/account/{accountId}")
-    public ResponseEntity<List<ClientTradeResponse>> getTradesByAccountId(@PathVariable String accountId) {
+    public ResponseEntity<List<ClientTradeResponse>> getTradesByAccountId(@PathVariable String accountId)
+            throws AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
         List<ClientTradeResponse> responses = clientTradeService.getAccountHistory(accountId).stream()
             .map(this::toClientTradeResponse)
             .toList();

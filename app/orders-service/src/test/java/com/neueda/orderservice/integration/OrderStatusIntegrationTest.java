@@ -308,8 +308,9 @@ class OrderStatusIntegrationTest {
     }
 
     private MockHttpServletResponse put(String orderId, String body) throws Exception {
+        String ownerToken = TestJwtIssuer.token().subject("status-test-user").accountId(ACCOUNT_ID).build();
         return mockMvc.perform(MockMvcRequestBuilders.put("/orders/{orderId}", orderId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + createToken("status-test-user", null))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn()
