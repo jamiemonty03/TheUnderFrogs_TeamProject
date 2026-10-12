@@ -23,7 +23,7 @@ public class OrderStatusService {
     private static final Logger log = LoggerFactory.getLogger(OrderStatusService.class);
     private static final Set<OrderStatus> ALLOWED_FROM_NEW =
             EnumSet.of(OrderStatus.FILLED, OrderStatus.REJECTED, OrderStatus.CANCELLED);
-            
+
     private static final BigDecimal MIN_FILL_PRICE = new BigDecimal("0.01");
 
     private final OrderRepository orderRepository;
@@ -34,11 +34,6 @@ public class OrderStatusService {
         this.clientTradeService = clientTradeService;
     }
 
-    /**
-     * Changes the status if the order is still in expectedStatus. A change to FILLED also
-     * records the fill in client_trades in the same transaction, so every filled order has
-     * exactly one trade: a repeated fill loses the guarded update and records nothing.
-     */
     @Transactional(rollbackFor = Exception.class)
     public Order changeStatus(String orderId, OrderStatus expectedStatus, OrderStatus newStatus,
             BigDecimal fillPrice, String reason)

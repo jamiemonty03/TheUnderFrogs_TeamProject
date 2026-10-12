@@ -46,9 +46,7 @@ public class ClientTradeService {
     }
 
 
-    /**
-     * Finds the trades matching every filter that is set, newest first.
-     */
+
     public List<ClientTrade> search(ClientTradeFilter filter) {
         if (filter == null) {
             throw new IllegalArgumentException("Filter cannot be null");
@@ -144,7 +142,6 @@ public class ClientTradeService {
 
         List<PositionStep> history = getPositionHistory(accountId, symbol);
 
-        // A history that sells shares the client didn't hold can't explain any position
         boolean neverShort = history.stream()
             .allMatch(step -> step.quantityAfter().signum() >= 0);
         BigDecimal expectedQuantity = history.isEmpty()
@@ -154,10 +151,6 @@ public class ClientTradeService {
         return neverShort && expectedQuantity.compareTo(currentPositionQuantity) == 0;
     }
 
-    /**
-     * Replays the client's trades in a symbol oldest first, giving the quantity held after each one.
-     * The last step's quantity is the position the history explains.
-     */
     public List<PositionStep> getPositionHistory(String accountId, String symbol) {
         List<PositionStep> steps = new ArrayList<>();
         BigDecimal held = BigDecimal.ZERO;
