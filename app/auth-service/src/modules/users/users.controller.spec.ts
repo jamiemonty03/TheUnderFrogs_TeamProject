@@ -10,7 +10,7 @@ describe('UsersController', () => {
     email: 'alice@example.com',
     password_hash: '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA',
     full_name: 'Alice Johnson',
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: 'ACC0001',
     is_active: true,
     failed_attempts: 2,
@@ -40,7 +40,7 @@ describe('UsersController', () => {
       username: 'alice',
       email: 'alice@example.com',
       full_name: 'Alice Johnson',
-      roles: ['USER'],
+      roles: ['TRADER'],
       account_id: 'ACC0001',
     });
   };

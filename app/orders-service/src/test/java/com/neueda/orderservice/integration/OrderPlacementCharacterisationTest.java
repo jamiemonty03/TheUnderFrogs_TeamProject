@@ -20,11 +20,6 @@ import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.events.EventEnvelope;
 import com.neueda.orderservice.events.OrderPlacedPayload;
@@ -50,6 +45,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.neueda.orderservice.config.TestJwtIssuer;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -86,6 +82,7 @@ class OrderPlacementCharacterisationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        TestJwtIssuer.registerProperties(registry);
     }
 
     @LocalServerPort
@@ -114,8 +111,6 @@ class OrderPlacementCharacterisationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${jwt.secret}")
-    private String configuredJwtSecret;
 
     @BeforeEach
     void clearOrders() {
@@ -373,14 +368,7 @@ class OrderPlacementCharacterisationTest {
                 """;
     }
 
-    private String createToken() throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("characterisation-user")
-                .issueTime(Date.from(Instant.now()))
-                .expirationTime(Date.from(Instant.now().plusSeconds(300)))
-                .build();
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-        jwt.sign(new MACSigner(configuredJwtSecret.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+    private String createToken() {
+        return TestJwtIssuer.token().subject("characterisation-user").build();
     }
 }

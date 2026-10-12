@@ -30,6 +30,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.neueda.orderservice.config.TestJwtIssuer;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -38,11 +39,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.enums.OrderStatus;
 
 @Testcontainers
@@ -65,6 +61,7 @@ class OrderStatusIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        TestJwtIssuer.registerProperties(registry);
     }
 
     @Autowired
@@ -79,8 +76,6 @@ class OrderStatusIntegrationTest {
     @MockBean
     private KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
     @BeforeEach
     void clearOrders() {
@@ -251,16 +246,11 @@ class OrderStatusIntegrationTest {
         return objectMapper.readTree(response.getBody());
     }
 
-    private String createToken(String subject, List<String> roles) throws Exception {
-        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
-                .subject(subject)
-                .issueTime(Date.from(Instant.now()))
-                .expirationTime(Date.from(Instant.now().plusSeconds(300)));
+    private String createToken(String subject, List<String> roles) {
+        TestJwtIssuer.Builder token = TestJwtIssuer.token().subject(subject);
         if (roles != null) {
-            claims.claim("roles", roles);
+            token.roles(roles.toArray(String[]::new));
         }
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());
-        jwt.sign(new MACSigner(jwtSecret.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+        return token.build();
     }
 }

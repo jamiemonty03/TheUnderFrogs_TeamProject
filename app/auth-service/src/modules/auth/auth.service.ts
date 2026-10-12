@@ -1,88 +1,87 @@
-import { Injectable, UnauthorizedException, HttpException, HttpStatus } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { AuthRepository } from './auth.repository';
-import { LoginDto, RegisterDto, TokenResponseDto, TokenPayloadDto } from './dto';
+import { LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from './dto';
+import { DEFAULT_ROLE } from '../users/dto';
+import { AccessTokenClaims, TokenService } from '../tokens/token.service';
+import { RefreshTokensService } from '../tokens/refresh-tokens.service';
 import { AccountsServiceClient } from './services/accounts-service-client';
 import { User } from '../users/entities/user.entity';
 
+export const REGISTRATION_FAILED = 'Registration could not be completed, please try again';
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly authRepository: AuthRepository,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    private readonly tokenService: TokenService,
+    private readonly refreshTokensService: RefreshTokensService,
     private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
-  register(registerDto: RegisterDto): Promise<TokenResponseDto> {
-    return this.usersService.createUser({
+  async register(registerDto: RegisterDto): Promise<RegisterResponseDto> {
+    const user = await this.usersService.createUser({
       username: registerDto.username,
       email: registerDto.email,
       password: registerDto.password,
       full_name: registerDto.full_name,
-      role: 'USER',
+      role: DEFAULT_ROLE,
     });
 
-    return this.generateToken(user.id, user.username, user.roles);
+    let accountId: string;
+    try {
+      ({ accountId } = await this.accountsServiceClient.createAccount({
+        userId: user.id,
+        holderName: user.full_name ?? user.username,
+      }));
+    } catch {
+      await this.removeUnfinishedUser(user.id);
+      throw new ServiceUnavailableException(REGISTRATION_FAILED);
+    }
+
+    let linked: User;
+    try {
+      linked = await this.usersService.linkAccount(user.id, accountId);
+    } catch (error) {
+      this.logger.error(`Account ${accountId} was created but could not be linked to user ${user.id}: ${(error as Error).message}`);
+      await this.removeUnfinishedUser(user.id);
+      throw new ServiceUnavailableException(REGISTRATION_FAILED);
+    }
+
+    return { ...(await this.issueTokens(linked)), accountId };
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
     const user = await this.usersService.verifyCredentials(loginDto.username, loginDto.password);
 
-    if (!user) {
+    if (!user || !user.is_active) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (!user.is_active) {
-      throw new UnauthorizedException('User account is inactive');
-    }
+    await this.authRepository.recordLogin(user.id);
 
-    await this.authRepository.update(user.id, {
-      last_login: new Date().toISOString(),
-      failed_login_attempts: 0,
-    });
-
-    return this.generateToken(user.id, user.username, user.roles);
+    return this.issueTokens(user);
   }
 
 
-  async validateToken(token: string): Promise<TokenPayloadDto> {
+  async validateToken(token: string): Promise<AccessTokenClaims> {
+    return this.tokenService.verify(token);
+  }
+
+  private async removeUnfinishedUser(userId: number): Promise<void> {
     try {
-      return this.jwtService.verify(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      await this.usersService.deleteUser(userId);
+    } catch (error) {
+      this.logger.error(`Could not remove user ${userId} after a failed registration: ${(error as Error).message}`);
     }
   }
 
-  private generateToken(
-    userId: number,
-    username: string,
-    roles: string[],
-  ): TokenResponseDto {
-    const expiresIn = this.configService.get<number>('JWT_EXPIRATION', 86400000);
-    const expiresInSeconds = Math.floor(expiresIn / 1000);
-
-    const payload: any = {
-      sub: userId,
-      username,
-      roles,
-    };
-
-    if (accountId) {
-      payload.accountId = accountId;
-    }
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: expiresInSeconds,
-    });
-
-    return {
-      access_token: accessToken,
-      token_type: 'Bearer',
-      expires_in: expiresInSeconds,
-    };
+  private async issueTokens(user: User): Promise<TokenResponseDto> {
+    const { accessToken, expiresIn } = this.tokenService.issue(user);
+    const { refreshToken } = await this.refreshTokensService.issue(user.id);
+    return { accessToken, refreshToken, expiresIn, mfaRequired: false };
   }
 }

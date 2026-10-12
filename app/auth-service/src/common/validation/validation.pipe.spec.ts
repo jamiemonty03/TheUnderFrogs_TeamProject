@@ -19,7 +19,7 @@ describe('Validation errors (HTTP)', () => {
     email: 'alice@example.com',
     password_hash: '$argon2id$v=19$m=19456,p=1,t=2$c2FsdA$aGFzaA',
     full_name: null,
-    roles: ['USER'],
+    roles: ['TRADER'],
     account_id: null,
     is_active: true,
     failed_attempts: 0,

@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, HttpCode } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto, TokenResponseDto } from './dto';
+import { LoginDto, RegisterDto, RegisterResponseDto, TokenResponseDto } from './dto';
 import { CurrentUser, Public } from '../../common/decorators';
 import { CurrentUserDto } from '../../common/dto/current-user.dto';
 
@@ -10,12 +10,13 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  async register(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
+  async register(@Body() registerDto: RegisterDto): Promise<RegisterResponseDto> {
     return this.authService.register(registerDto);
   }
 
   @Public()
   @Post('login')
+  @HttpCode(200)
   async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
     return this.authService.login(loginDto);
   }

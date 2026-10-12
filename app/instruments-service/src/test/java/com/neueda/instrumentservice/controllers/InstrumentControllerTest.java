@@ -9,47 +9,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Date;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.context.annotation.Import;
 import com.neueda.instrumentservice.config.SecurityConfig;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 
 import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.services.InstrumentService;
+import com.neueda.instrumentservice.config.TestJwtIssuer;
 
 @WebMvcTest(InstrumentController.class)
 @Import(SecurityConfig.class)
 @WithMockUser
 public class InstrumentControllerTest {
 
-    private static final String TEST_SECRET = "instrument-test-secret-32-bytes-minimum";
-
-    private String createJwt() throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .issuer("accounts-service")
-                .subject("test-user")
-                .issueTime(new Date())
-                .expirationTime(Date.from(Instant.now().plusSeconds(60)))
-                .build();
-        SignedJWT jwt = new SignedJWT(
-                new JWSHeader.Builder(JWSAlgorithm.HS256).keyID("key-1").build(), claims);
-        jwt.sign(new MACSigner(TEST_SECRET.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+    @DynamicPropertySource
+    static void auth(DynamicPropertyRegistry registry) {
+        TestJwtIssuer.registerProperties(registry);
     }
 
 
@@ -75,7 +61,7 @@ public class InstrumentControllerTest {
         when(instrumentService.getAllInstruments()).thenReturn(List.of());
 
         mockMvc.perform(get("/instruments")
-                        .header("Authorization", "Bearer " + createJwt()))
+                        .header("Authorization", "Bearer " + TestJwtIssuer.userToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }

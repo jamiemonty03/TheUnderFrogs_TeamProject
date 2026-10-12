@@ -35,6 +35,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.neueda.orderservice.config.TestJwtIssuer;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -42,11 +43,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.events.EventEnvelope;
 import com.neueda.orderservice.events.EventTypes;
@@ -73,6 +69,7 @@ class OrderCancellationIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        TestJwtIssuer.registerProperties(registry);
     }
 
     @LocalServerPort
@@ -96,8 +93,6 @@ class OrderCancellationIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
     @BeforeEach
     void clearOrders() {
@@ -199,14 +194,7 @@ class OrderCancellationIntegrationTest {
                 HttpMethod.DELETE, new HttpEntity<>(headers), String.class);
     }
 
-    private String createToken() throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("cancellation-test-user")
-                .issueTime(Date.from(Instant.now()))
-                .expirationTime(Date.from(Instant.now().plusSeconds(300)))
-                .build();
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-        jwt.sign(new MACSigner(jwtSecret.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+    private String createToken() {
+        return TestJwtIssuer.token().subject("cancellation-test-user").build();
     }
 }

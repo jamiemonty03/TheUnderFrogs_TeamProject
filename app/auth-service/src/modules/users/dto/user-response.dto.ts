@@ -33,7 +33,7 @@ export class UserResponseDto {
   @ApiProperty({
     description: 'User roles',
     type: [String],
-    example: ['USER'],
+    example: ['TRADER'],
   })
   roles: string[];
 

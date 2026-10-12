@@ -81,7 +81,7 @@ pipeline {
                 sh '''
                     DB_PASSWORD=$(openssl rand -hex 16)
                     JWT_SECRET=$(openssl rand -hex 32)
-                    for s in accounts-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
+                    for s in accounts-service auth-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
                         if [ ! -f app/$s/.env ]; then
                             sed -e "s/ENTER_PASSWORD_HERE/$DB_PASSWORD/" -e "s/your-generated-secret-token-here/$JWT_SECRET/" \
                                 app/$s/.env.example > app/$s/.env

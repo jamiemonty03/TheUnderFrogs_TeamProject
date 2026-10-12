@@ -1,6 +1,16 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmailAddress, IsFullName, IsPassword, IsRole, IsUsername, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from './validation';
+import {
+  DEFAULT_ROLE,
+  IsEmailAddress,
+  IsFullName,
+  IsPassword,
+  IsRole,
+  IsUsername,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  ROLES,
+} from './validation';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -44,9 +54,9 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'User role',
-    enum: ['USER', 'ADMIN'],
-    default: 'USER',
-    example: 'USER',
+    enum: ROLES,
+    default: DEFAULT_ROLE,
+    example: DEFAULT_ROLE,
     required: false,
   })
   @IsOptional()
@@ -99,8 +109,8 @@ export class UpdateUserDto {
 
   @ApiProperty({
     description: 'User role',
-    enum: ['USER', 'ADMIN'],
-    example: 'USER',
+    enum: ROLES,
+    example: DEFAULT_ROLE,
     required: false,
   })
   @IsOptional()
@@ -117,4 +127,4 @@ export class UpdateUserDto {
 }
 
 export { UserResponseDto, toUserResponse } from './user-response.dto';
-export { PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from './validation';
+export { DEFAULT_ROLE, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH } from './validation';
