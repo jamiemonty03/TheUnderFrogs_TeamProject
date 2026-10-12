@@ -72,6 +72,7 @@ docker-compose up -d --force-recreate <service>
 | kafka-ui | 8086 |
 | auth-service | 8087 |
 | sonarqube (`quality` profile only) | 8088 |
+| frontend (Angular app, served by nginx) | 8089 |
 | kafka (external listener) | 127.0.0.1:9094 |
 | accounts / instruments / orders / positions / analytics / auth DBs | 127.0.0.1:5433-5438 |
 
