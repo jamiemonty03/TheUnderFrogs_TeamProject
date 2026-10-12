@@ -87,19 +87,45 @@ Environment variables:
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
 
-### 3) Check it works
+### 3) Log in and call the APIs
+Only auth-service issues tokens. Every other service needs one on each request, as `Authorization: Bearer <accessToken>`. Tokens last 15 minutes; log in again when you start getting `401`.
+
+**In Swagger**
+1. Open auth-service at http://localhost:8087/docs and call `POST /auth/register` (or `POST /auth/login` if you already have a user). Passwords need at least 12 characters:
+   ```json
+   {"username": "jane", "email": "jane@example.com", "password": "correct-horse-battery", "full_name": "Jane Doe"}
+   ```
+   Registering also creates your trading account; its id is the `accountId` in the response. New accounts start with no cash.
+2. Copy the `accessToken` from the response.
+3. Open a service's Swagger page, click **Authorize**, paste the token, and call any endpoint:
+
+| Service | Swagger |
+|---|---|
+| accounts-service | http://localhost:8081/api/swagger-ui/index.html |
+| instruments-service | http://localhost:8082/api/swagger-ui/index.html |
+| orders-service | http://localhost:8083/api/swagger-ui/index.html |
+| positions-service | http://localhost:8084/api/swagger-ui/index.html |
+
+**With curl**
+```
+TOKEN=$(curl -s -X POST localhost:8087/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"jane","password":"correct-horse-battery"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+curl -H "Authorization: Bearer $TOKEN" localhost:8083/api/orders
+```
+
+### 4) Check it works
 Watch a Kafka topic (or open kafka-ui on port 8086):
 ```
 docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic trade-events --from-beginning
 ```
 
-Run the end-to-end smoke test. It builds and starts the stack, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
+Run the end-to-end smoke test. It builds and starts the stack, registers a user through auth-service, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
 ```
 ./scripts/smoke-test-e2e.sh
 ```
 Set `KEEP_UP=true` to leave the stack running afterwards.
 
-### 4) Tear down
+### 5) Tear down
 Add `--volumes` to also wipe the databases:
 ```
 docker-compose down
