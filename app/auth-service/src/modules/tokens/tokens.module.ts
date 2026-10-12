@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { RefreshTokensService } from './refresh-tokens.service';
-import { TokensRepository } from './tokens.repository';
+import { RefreshTokensService } from './services/refresh-tokens.service';
+import { TokensRepository } from './repositories/tokens.repository';
 import { Token } from './entities/token.entity';
-import { SIGNING_KEY, TokenService } from './token.service';
+import { SIGNING_KEY, TokenService } from './services/token.service';
 import { loadSigningKey } from '../../config/signing-key';
-import { JwksController } from './jwks.controller';
+import { JwksController } from './controllers/jwks.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Token])],

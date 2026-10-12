@@ -9,9 +9,11 @@ import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.config.TestSecurityConfig;
+import com.neueda.accountservice.utils.AuthorizationUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -25,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -46,6 +49,7 @@ public class AccountControllerTest {
     private ObjectMapper objectMapper;
 
     private Account testAccount;
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
     @BeforeEach
     public void setUp() {
@@ -53,6 +57,16 @@ public class AccountControllerTest {
         testAccount.setVersion(1);
         testAccount.setCreatedAt(LocalDateTime.now());
         testAccount.setLastUpdated(LocalDateTime.now());
+        
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
     }
 
     // ==================== CREATE ACCOUNT TESTS ====================

@@ -1,0 +1,42 @@
+{
+  "/auth": {
+    "target": "http://localhost:8087",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/accounts": {
+    "target": "http://localhost:8081",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/instruments": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/stocks": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/bonds": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/etfs": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/orders": {
+    "target": "http://localhost:8083",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/api/positions": {
+    "target": "http://localhost:8084",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

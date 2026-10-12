@@ -26,7 +26,7 @@ SECRET=$(grep '^AUTH_CLIENT_SECRET=' "$ENV_FILE" | tail -1 | cut -d= -f2-)
 
 HASH=$(printf '%s' "$SECRET" | docker exec -i auth-service node -e '
 require("reflect-metadata");
-const { PasswordHasher } = require("./dist/modules/users/password-hasher.service.js");
+const { PasswordHasher } = require("./dist/modules/users/services/password-hasher.service.js");
 let secret = "";
 process.stdin.on("data", (chunk) => (secret += chunk)).on("end", async () => console.log(await new PasswordHasher().hash(secret)));
 ')

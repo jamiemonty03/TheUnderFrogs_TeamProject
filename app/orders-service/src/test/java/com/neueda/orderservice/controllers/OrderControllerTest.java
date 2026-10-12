@@ -13,11 +13,14 @@ import com.neueda.orderservice.dtos.responses.ErrorResponse;
 import com.neueda.orderservice.dtos.responses.OrderResponse;
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.enums.OrderStatus;
+import com.neueda.orderservice.exceptions.AccountAuthorizationException;
 import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
 import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.services.OrderStatusService;
+import com.neueda.orderservice.utils.AuthorizationUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
@@ -32,9 +35,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 
 @DisplayName("OrderController Unit Tests")
@@ -59,11 +60,15 @@ public class OrderControllerTest {
 
     private Order testOrder1;
     private Order testOrder2;
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         orderController = new OrderController(orderProcessor, orderRepository, restTemplate, orderCancellationService, orderStatusService);
+
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
 
         testOrder1 = new Order(
             "ORD001",
@@ -91,10 +96,17 @@ public class OrderControllerTest {
         when(orderRepository.findByAccountIdOrderByCreatedAtDesc("ACC001")).thenReturn(java.util.List.of(testOrder1, testOrder2));
         when(orderRepository.findByAccountIdOrderByCreatedAtDesc("ACC999")).thenReturn(java.util.List.of());
     }
+    
+    @AfterEach
+    void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
+    }
 
     @Test
     @DisplayName("GET /orders/{orderId} returns order when found")
-    void testGetOrderByIdSuccess() {
+    void testGetOrderByIdSuccess() throws AccountAuthorizationException {
         var response = orderController.getOrderById("ORD001");
         
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -110,14 +122,14 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("GET /orders/{orderId} returns 404 when order not found")
-    void testGetOrderByIdNotFound() {
+    void testGetOrderByIdNotFound() throws AccountAuthorizationException {
         var response = orderController.getOrderById("NONEXISTENT");
         assertTrue(response.getStatusCode().is4xxClientError());
     }
 
     @Test
     @DisplayName("GET /orders/account/{accountId} returns all orders for account")
-    void testGetOrdersByAccountIdSuccess() {
+    void testGetOrdersByAccountIdSuccess() throws AccountAuthorizationException {
         var response = orderController.getOrdersByAccountId("ACC001");
         
         assertTrue(response.getStatusCode().is2xxSuccessful());
@@ -129,7 +141,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("GET /orders/account/{accountId} returns empty list for unknown account")
-    void testGetOrdersByAccountIdEmpty() {
+    void testGetOrdersByAccountIdEmpty() throws AccountAuthorizationException {
         var response = orderController.getOrdersByAccountId("ACC999");
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(response.getBody().isEmpty());
@@ -137,7 +149,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} updates quantity successfully")
-    void testUpdateOrderQuantitySuccess() {
+    void testUpdateOrderQuantitySuccess() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(200, null, null, null, null);
         
         var response = orderController.updateOrder("ORD001", updateRequest);
@@ -147,7 +159,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} updates price limit successfully")
-    void testUpdateOrderPriceSuccess() {
+    void testUpdateOrderPriceSuccess() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(null, new BigDecimal("160.50"), null, null, null);
         
         var response = orderController.updateOrder("ORD001", updateRequest);
@@ -157,7 +169,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} does not change order status")
-    void testUpdateOrderDoesNotChangeStatus() {
+    void testUpdateOrderDoesNotChangeStatus() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(null, null, null, OrderStatus.FILLED, "system");
 
         var response = orderController.updateOrder("ORD001", updateRequest);
@@ -168,7 +180,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} partial update (only some fields)")
-    void testUpdateOrderPartialUpdate() {
+    void testUpdateOrderPartialUpdate() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(150, new BigDecimal("155.00"), null, null, null);
         
         var response = orderController.updateOrder("ORD001", updateRequest);
@@ -181,7 +193,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} increments version on update")
-    void testUpdateOrderVersionIncrement() {
+    void testUpdateOrderVersionIncrement() throws AccountAuthorizationException {
         int initialVersion = testOrder1.getVersion();
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(120, null, null, null, null);
         
@@ -192,7 +204,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} updates lastUpdated timestamp")
-    void testUpdateOrderLastUpdatedTimestamp() {
+    void testUpdateOrderLastUpdatedTimestamp() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(120, null, null, null, null);
         
         var response = orderController.updateOrder("ORD001", updateRequest);
@@ -202,7 +214,7 @@ public class OrderControllerTest {
 
     @Test
     @DisplayName("PUT /orders/{orderId} returns 404 for non-existent order")
-    void testUpdateOrderNotFound() {
+    void testUpdateOrderNotFound() throws AccountAuthorizationException {
         UpdateOrderRequest updateRequest = new UpdateOrderRequest(200, null, null, null, null);
         
         var response = orderController.updateOrder("NONEXISTENT", updateRequest);

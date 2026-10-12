@@ -13,7 +13,9 @@ import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.utils.AuthorizationUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -51,6 +54,7 @@ public class PositionControllerTest {
     private ObjectMapper objectMapper;
 
     private Position testPosition;
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
     @BeforeEach
     public void setUp() {
@@ -58,6 +62,16 @@ public class PositionControllerTest {
         testPosition.setVersion(1);
         testPosition.setLastUpdated(LocalDateTime.now());
         testPosition.setUpdatedBy("SYSTEM");
+        
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
     }
 
     // ==================== CREATE POSITION TESTS ====================

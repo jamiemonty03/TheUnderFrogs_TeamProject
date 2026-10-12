@@ -12,9 +12,11 @@ import com.neueda.accountservice.services.AccountService;
 import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
+import com.neueda.accountservice.exceptions.AccountAuthorizationException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.dtos.requests.CashMovementRequest;
 import com.neueda.accountservice.dtos.requests.ReversalRequest;
+import com.neueda.accountservice.utils.AuthorizationUtils;
 
 
 @RestController
@@ -40,7 +42,9 @@ public class AccountController {
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<Account> getAccount(@PathVariable String accountId) throws AccountNotFoundException {
+    public ResponseEntity<Account> getAccount(@PathVariable String accountId) throws AccountNotFoundException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         Account account = accountService.getAccountById(accountId);
         return ResponseEntity.ok(account);
     }
@@ -48,13 +52,17 @@ public class AccountController {
     @PutMapping("/{accountId}")
     public ResponseEntity<Account> updateAccount(
             @PathVariable String accountId,
-            @Valid @RequestBody Account account) throws AccountNotFoundException {
+            @Valid @RequestBody Account account) throws AccountNotFoundException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         Account updated = accountService.updateAccount(accountId, account);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{accountId}")
-    public ResponseEntity<Void> deleteAccount(@PathVariable String accountId) throws AccountNotFoundException {
+    public ResponseEntity<Void> deleteAccount(@PathVariable String accountId) throws AccountNotFoundException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         accountService.deleteAccount(accountId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
@@ -62,7 +70,9 @@ public class AccountController {
     @PostMapping("/{accountId}/credit")
     public ResponseEntity<Account> creditAccount(
             @PathVariable String accountId,
-            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException {
+            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         Account updated = request.orderId() == null
             ? accountService.credit(accountId, request.amount())
             : accountService.credit(accountId, request.amount(), request.orderId());
@@ -72,7 +82,9 @@ public class AccountController {
     @PostMapping("/{accountId}/debit")
     public ResponseEntity<Account> debitAccount(
             @PathVariable String accountId,
-            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException {
+            @RequestBody CashMovementRequest request) throws AccountNotFoundException, AccountNotActiveException, InsufficientFundsException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         Account updated = request.orderId() == null
             ? accountService.debit(accountId, request.amount())
             : accountService.debit(accountId, request.amount(), request.orderId());
@@ -82,7 +94,9 @@ public class AccountController {
     @PostMapping("/{accountId}/reversal")
     public ResponseEntity<Account> reverseMovement(
             @PathVariable String accountId,
-            @Valid @RequestBody ReversalRequest request) throws AccountNotFoundException, InsufficientFundsException {
+            @Valid @RequestBody ReversalRequest request) throws AccountNotFoundException, InsufficientFundsException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        
         return ResponseEntity.ok(accountService.reverse(accountId, request.orderId()));
     }
 

@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +31,7 @@ import org.springframework.test.web.servlet.RequestBuilder;
 
 import com.neueda.positionservice.controllers.PositionController;
 import com.neueda.positionservice.services.PositionService;
+import com.neueda.positionservice.utils.AuthorizationUtils;
 
 @WebMvcTest(PositionController.class)
 @Import(SecurityConfig.class)
@@ -47,6 +52,21 @@ class ServiceTokenSecurityTest {
 
     @MockBean
     private PositionService positionService;
+    
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
+
+    @BeforeEach
+    void setUp() {
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
+    }
+    
+    @AfterEach
+    void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
+    }
 
     @Test
     @DisplayName("Service token from auth-service is accepted")
