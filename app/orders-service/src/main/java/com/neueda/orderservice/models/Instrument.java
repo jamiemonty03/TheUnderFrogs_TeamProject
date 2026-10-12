@@ -7,6 +7,7 @@ public class Instrument {
     private String name;
     private BigDecimal price;
     private boolean tradable;
+    private String assetClass;
 
     public Instrument() {
     }
@@ -48,5 +49,13 @@ public class Instrument {
 
     public void setTradable(boolean tradable) {
         this.tradable = tradable;
+    }
+
+    public String getAssetClass() {
+        return assetClass;
+    }
+
+    public void setAssetClass(String assetClass) {
+        this.assetClass = assetClass;
     }
 }

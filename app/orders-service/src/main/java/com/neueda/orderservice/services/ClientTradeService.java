@@ -1,9 +1,13 @@
 package com.neueda.orderservice.services;
 
 import com.neueda.orderservice.models.ClientTrade;
+import com.neueda.orderservice.models.ClientTradeFilter;
 import com.neueda.orderservice.models.PositionStep;
 import com.neueda.orderservice.repositories.ClientTradeRepository;
 import com.neueda.orderservice.enums.OrderSide;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
@@ -22,6 +26,9 @@ import java.util.Optional;
 @Service
 public class ClientTradeService {
 
+    // Same order as the derived account history queries
+    private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("tradeDate"), Sort.Order.desc("tradeId"));
+
     private final ClientTradeRepository clientTradeRepository;
 
     public ClientTradeService(ClientTradeRepository clientTradeRepository) {
@@ -36,6 +43,43 @@ public class ClientTradeService {
             throw new IllegalArgumentException("AccountId cannot be null or blank");
         }
         return clientTradeRepository.findByAccountIdOrderByTradeDateDescTradeIdDesc(accountId);
+    }
+
+
+    /**
+     * Finds the trades matching every filter that is set, newest first.
+     */
+    public List<ClientTrade> search(ClientTradeFilter filter) {
+        if (filter == null) {
+            throw new IllegalArgumentException("Filter cannot be null");
+        }
+        if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
+            throw new IllegalArgumentException("'from' date must be on or before 'to' date");
+        }
+        if (filter.symbols() != null && filter.symbols().isEmpty()) {
+            return List.of();
+        }
+
+        Specification<ClientTrade> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (filter.accountId() != null) {
+                predicates.add(cb.equal(root.get("accountId"), filter.accountId()));
+            }
+            if (filter.from() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("tradeDate"), filter.from()));
+            }
+            if (filter.to() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("tradeDate"), filter.to()));
+            }
+            if (filter.symbols() != null) {
+                predicates.add(root.get("symbol").in(filter.symbols()));
+            }
+            if (filter.side() != null) {
+                predicates.add(cb.equal(root.get("tradeType"), filter.side()));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+        return clientTradeRepository.findAll(spec, NEWEST_FIRST);
     }
 
 

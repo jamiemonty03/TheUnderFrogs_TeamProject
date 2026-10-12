@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,11 +22,11 @@ import org.testcontainers.utility.MountableFile;
 
 import com.neueda.orderservice.enums.OrderSide;
 import com.neueda.orderservice.models.ClientTrade;
+import com.neueda.orderservice.models.ClientTradeFilter;
 import com.neueda.orderservice.models.PositionStep;
 import com.neueda.orderservice.repositories.ClientTradeRepository;
 import com.neueda.orderservice.services.ClientTradeService;
 
-// Runs against the real orders-db schema and client_trades seed, so a mapping that drifts from the table fails here.
 @Testcontainers
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -90,6 +91,39 @@ class ClientTradePersistenceIntegrationTest {
 
         assertThat(service.getSymbolHistory("ACC0099", "NVDA")).extracting(ClientTrade::getTradeId)
                 .containsExactly(thirdSameDay.getTradeId(), secondSameDay.getTradeId(), first.getTradeId());
+    }
+
+    @Test
+    void searchByAccountReturnsItsTradesNewestFirst() {
+        List<ClientTrade> trades = service.search(new ClientTradeFilter("ACC0001", null, null, null, null));
+
+        assertThat(trades).extracting(ClientTrade::getTradeDate)
+                .containsExactly(LocalDate.of(2026, 2, 2), LocalDate.of(2026, 1, 19), LocalDate.of(2026, 1, 8));
+        assertThat(trades).allMatch(trade -> trade.getAccountId().equals("ACC0001"));
+    }
+
+    @Test
+    void searchByDateRangeIncludesBothEnds() {
+        List<ClientTrade> trades = service.search(new ClientTradeFilter(null,
+                LocalDate.of(2026, 2, 6), LocalDate.of(2026, 2, 21), null, null));
+
+        assertThat(trades).extracting(ClientTrade::getSymbol).containsExactly("JPM", "JPM", "MSFT");
+    }
+
+    @Test
+    void searchCombinesSymbolsAndSide() {
+        List<ClientTrade> trades = service.search(new ClientTradeFilter(null, null, null,
+                Set.of("TSLA", "SPY"), OrderSide.SELL));
+
+        assertThat(trades).singleElement().satisfies(trade -> {
+            assertThat(trade.getAccountId()).isEqualTo("ACC0005");
+            assertThat(trade.getSymbol()).isEqualTo("TSLA");
+        });
+    }
+
+    @Test
+    void searchWithEmptySymbolSetFindsNothing() {
+        assertThat(service.search(new ClientTradeFilter("ACC0001", null, null, Set.of(), null))).isEmpty();
     }
 
     @Test

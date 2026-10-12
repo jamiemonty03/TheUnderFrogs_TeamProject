@@ -1,6 +1,7 @@
 package com.neueda.orderservice.services;
 
 import com.neueda.orderservice.models.ClientTrade;
+import com.neueda.orderservice.models.ClientTradeFilter;
 import com.neueda.orderservice.models.PositionStep;
 import com.neueda.orderservice.repositories.ClientTradeRepository;
 import com.neueda.orderservice.enums.OrderSide;
@@ -17,10 +18,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @DisplayName("ClientTradeService Unit Tests")
@@ -421,6 +424,28 @@ public class ClientTradeServiceTest {
             quantitiesAfter(steps));
         assertTrue(clientTradeService.reconcileWithPosition("ACC001", "AAPL", BigDecimal.ZERO));
         assertFalse(clientTradeService.reconcileWithPosition("ACC001", "AAPL", new BigDecimal("10")));
+    }
+
+    @Test
+    @DisplayName("Search rejects a date range that ends before it starts")
+    void testSearchRejectsFromAfterTo() {
+        ClientTradeFilter filter = new ClientTradeFilter(null, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 2, 1), null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> clientTradeService.search(filter));
+        verifyNoInteractions(clientTradeRepository);
+    }
+
+    @Test
+    @DisplayName("Search with an empty symbol set returns nothing without querying")
+    void testSearchEmptySymbolsSkipsQuery() {
+        assertTrue(clientTradeService.search(new ClientTradeFilter("ACC001", null, null, Set.of(), null)).isEmpty());
+        verifyNoInteractions(clientTradeRepository);
+    }
+
+    @Test
+    @DisplayName("Search throws for a null filter")
+    void testSearchNullFilter() {
+        assertThrows(IllegalArgumentException.class, () -> clientTradeService.search(null));
     }
 
     @Test

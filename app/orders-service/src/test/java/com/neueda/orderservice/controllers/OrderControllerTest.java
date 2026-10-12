@@ -36,12 +36,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * OrderController Unit Tests
- * 
- * Tests are written to work with InMemoryOrderRepository for fast unit testing.
- * See Docker Integration Test section below for conversion to real PostgreSQL database.
- */
+
 @DisplayName("OrderController Unit Tests")
 public class OrderControllerTest {
 
