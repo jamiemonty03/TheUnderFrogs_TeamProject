@@ -242,6 +242,45 @@ describe('RefreshTokensService', () => {
     });
   });
 
+  describe('revokeFamilyOf', () => {
+    it('revokes the whole family of the presented token, including tokens issued after it', async () => {
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+
+      expect(await service.revokeFamilyOf(second.refreshToken)).toBe(1);
+      expect(rows.every((r) => r.revoked_at !== null)).toBe(true);
+      await expect(service.rotate(second.refreshToken)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('works with an already-used token from the chain too', async () => {
+      const first = await service.issue(5);
+      const second = await service.rotate(first.refreshToken);
+
+      await service.revokeFamilyOf(first.refreshToken);
+
+      expect(await service.findValid(second.refreshToken)).toBeNull();
+    });
+
+    it('leaves other sign-ins alone', async () => {
+      const laptop = await service.issue(5);
+      const phone = await service.issue(5);
+
+      await service.revokeFamilyOf(laptop.refreshToken);
+
+      expect(await service.findValid(phone.refreshToken)).not.toBeNull();
+    });
+
+    it.each([
+      ['an unknown token', 'not-a-real-refresh-token'],
+      ['an empty token', ''],
+    ])('does nothing for %s', async (_label, token) => {
+      await service.issue(5);
+
+      expect(await service.revokeFamilyOf(token)).toBe(0);
+      expect(repository.revokeFamily).not.toHaveBeenCalled();
+    });
+  });
+
   describe('revokeFamily', () => {
     it('revokes every active token in the family and leaves other families alone', async () => {
       const a = await service.issue(5);

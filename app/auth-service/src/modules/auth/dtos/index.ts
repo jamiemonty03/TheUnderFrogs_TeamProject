@@ -77,10 +77,10 @@ export class RegisterDto {
 
 export class RefreshTokenDto {
   @ApiProperty({ description: 'Refresh token from register, login or a previous refresh' })
-  @IsNotEmpty()
-  @IsString()
-  @NotBlank()
   @MaxLength(128)
+  @NotBlank()
+  @IsString()
+  @IsNotEmpty()
   refresh_token: string;
 }
 

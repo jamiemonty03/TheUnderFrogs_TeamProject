@@ -11,7 +11,7 @@ import { HttpExceptionFilter } from '../../../common/filters/http-exception.filt
 
 describe('Auth endpoints (HTTP)', () => {
   let app: INestApplication<App>;
-  const authService = { register: jest.fn<any>(), login: jest.fn<any>(), clientCredentials: jest.fn<any>(), refresh: jest.fn<any>() };
+  const authService = { register: jest.fn<any>(), login: jest.fn<any>(), clientCredentials: jest.fn<any>(), refresh: jest.fn<any>(), logout: jest.fn<any>() };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -98,6 +98,26 @@ describe('Auth endpoints (HTTP)', () => {
       expect(response.status).toBe(422);
       expect(response.body.errorCode).toBe('VAL-422');
       expect(authService.refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /auth/logout', () => {
+    it('returns 204 with no body and needs no access token', async () => {
+      authService.logout.mockResolvedValue(undefined);
+
+      const response = await request(app.getHttpServer()).post('/auth/logout').send({ refresh_token: 'current-refresh' });
+
+      expect(response.status).toBe(204);
+      expect(response.text).toBe('');
+      expect(authService.logout).toHaveBeenCalledWith({ refresh_token: 'current-refresh' });
+    });
+
+    it('rejects a missing refresh_token with 422 VAL-422 and a clear message', async () => {
+      const response = await request(app.getHttpServer()).post('/auth/logout').send({});
+
+      expect(response.status).toBe(422);
+      expect(response.body).toEqual({ errorCode: 'VAL-422', message: 'refresh_token should not be empty' });
+      expect(authService.logout).not.toHaveBeenCalled();
     });
   });
 

@@ -38,6 +38,13 @@ export class AuthController {
   }
 
   @Public()
+  @Post('logout')
+  @HttpCode(204)
+  async logout(@Body() dto: RefreshTokenDto): Promise<void> {
+    await this.authService.logout(dto);
+  }
+
+  @Public()
   @Post('token')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')

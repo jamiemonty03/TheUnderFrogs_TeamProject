@@ -73,6 +73,11 @@ export class RefreshTokensService {
     return this.refreshTokensRepository.revokeFamily(familyId);
   }
 
+  async revokeFamilyOf(presented: string): Promise<number> {
+    const token = presented ? await this.refreshTokensRepository.findByHash(hashRefreshToken(presented)) : null;
+    return token ? this.refreshTokensRepository.revokeFamily(token.family_id) : 0;
+  }
+
   private async revokeReusedFamily(familyId: string, userId: number): Promise<never> {
     const revoked = await this.refreshTokensRepository.revokeFamily(familyId);
     this.logger.warn(`Refresh token reuse detected for user ${userId}: revoked ${revoked} token(s) in family ${familyId}`);

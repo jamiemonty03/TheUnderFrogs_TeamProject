@@ -80,6 +80,7 @@ describe('AuthService', () => {
           useValue: {
             issue: jest.fn().mockResolvedValue({ refreshToken: 'opaque-refresh', expiresAt: new Date() }) as any,
             rotate: jest.fn() as any,
+            revokeFamilyOf: jest.fn() as any,
             revokeFamily: jest.fn() as any,
           } as any,
         },
@@ -227,6 +228,21 @@ describe('AuthService', () => {
       expect(tokenService.issue).not.toHaveBeenCalled();
       expect(refreshTokensService.issue).not.toHaveBeenCalled();
       expect(authRepository.recordLogin).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes the family of the given refresh token', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(3 as any);
+
+      await expect(service.logout({ refresh_token: 'current-refresh' })).resolves.toBeUndefined();
+      expect(refreshTokensService.revokeFamilyOf).toHaveBeenCalledWith('current-refresh');
+    });
+
+    it('succeeds quietly for a token it does not know', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(0 as any);
+
+      await expect(service.logout({ refresh_token: 'unknown' })).resolves.toBeUndefined();
     });
   });
 

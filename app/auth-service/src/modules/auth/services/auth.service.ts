@@ -76,6 +76,10 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  async logout(dto: RefreshTokenDto): Promise<void> {
+    await this.refreshTokensService.revokeFamilyOf(dto.refresh_token);
+  }
+
   async refresh(dto: RefreshTokenDto): Promise<TokenResponseDto> {
     const rotated = await this.refreshTokensService.rotate(dto.refresh_token);
     const user = await this.usersService.getUserById(rotated.userId).catch(() => null);
