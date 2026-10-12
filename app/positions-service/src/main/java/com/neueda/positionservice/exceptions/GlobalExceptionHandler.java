@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "POS-409", ex.getMessage());
     }
 
+    @ExceptionHandler(AccountAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountAuthorization(AccountAuthorizationException ex) {
+        return error(HttpStatus.FORBIDDEN, "AUTH-403", ex.getMessage());
+    }
+
     @ExceptionHandler(OptimisticLockingFailureException.class)
     public ResponseEntity<ErrorResponse> handleConcurrentUpdate(OptimisticLockingFailureException ex) {
         return error(HttpStatus.CONFLICT, "POS-409", "Position was changed by another request, please retry");
