@@ -1,6 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
@@ -18,14 +19,16 @@ export class JwksService extends BaseService {
 
   static readonly GetJwksPath = '/.well-known/jwks.json';
 
-  getJwks$Response(params?: GetJwks$Params, context?: HttpContext): Promise<StrictHttpResponse<Jwks>> {
+  getJwks$Response(params?: GetJwks$Params, context?: HttpContext): Observable<StrictHttpResponse<Jwks>> {
     const obs = getJwks(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  getJwks(params?: GetJwks$Params, context?: HttpContext): Promise<Jwks> {
+  getJwks(params?: GetJwks$Params, context?: HttpContext): Observable<Jwks> {
     const resp = this.getJwks$Response(params, context);
-    return resp.then((r: StrictHttpResponse<Jwks>): Jwks => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<Jwks>): Jwks => r.body)
+    );
   }
 
 }

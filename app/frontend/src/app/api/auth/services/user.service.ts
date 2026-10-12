@@ -1,6 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
@@ -18,14 +19,16 @@ export class UserService extends BaseService {
 
   static readonly GetCurrentUserPath = '/auth/me';
 
-  getCurrentUser$Response(params?: GetCurrentUser$Params, context?: HttpContext): Promise<StrictHttpResponse<CurrentUser>> {
+  getCurrentUser$Response(params?: GetCurrentUser$Params, context?: HttpContext): Observable<StrictHttpResponse<CurrentUser>> {
     const obs = getCurrentUser(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  getCurrentUser(params?: GetCurrentUser$Params, context?: HttpContext): Promise<CurrentUser> {
+  getCurrentUser(params?: GetCurrentUser$Params, context?: HttpContext): Observable<CurrentUser> {
     const resp = this.getCurrentUser$Response(params, context);
-    return resp.then((r: StrictHttpResponse<CurrentUser>): CurrentUser => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<CurrentUser>): CurrentUser => r.body)
+    );
   }
 
 }

@@ -62,6 +62,7 @@ for (const { name, spec } of clients) {
       '--services', 'true',
       '--skipJsonSuffix', 'true',
       '--enumStyle', 'alias',
+      '--promises', 'false',
       '--silent', 'true',
     ],
     { stdio: 'inherit' },

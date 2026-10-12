@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpContext, HttpResponse } from '@angular/common/http';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
 import { filter, map } from 'rxjs/operators';
 import { ApiConfiguration } from './api-configuration';
 import { StrictHttpResponse } from './strict-http-response';
@@ -26,20 +26,20 @@ export class Api {
     this._rootUrl = rootUrl;
   }
 
-  invoke<P, R>(fn: ApiFnRequired<P, R>, params: P, context?: HttpContext): Promise<R>;
-  invoke<P, R>(fn: ApiFnOptional<P, R>, params?: P, context?: HttpContext): Promise<R>;
-  async invoke<P, R>(fn: ApiFnRequired<P, R> | ApiFnOptional<P, R>, params: P, context?: HttpContext): Promise<R> {
+  invoke<P, R>(fn: ApiFnRequired<P, R>, params: P, context?: HttpContext): Observable<R>;
+  invoke<P, R>(fn: ApiFnOptional<P, R>, params?: P, context?: HttpContext): Observable<R>;
+  invoke<P, R>(fn: ApiFnRequired<P, R> | ApiFnOptional<P, R>, params: P, context?: HttpContext): Observable<R> {
     const resp = this.invoke$Response(fn, params, context);
-    return (await resp).body;
+    return resp.pipe(map(r => r.body));
   }
 
-  invoke$Response<P, R>(fn: ApiFnRequired<P, R>, params: P, context?: HttpContext): Promise<StrictHttpResponse<R>>;
-  invoke$Response<P, R>(fn: ApiFnOptional<P, R>, params?: P, context?: HttpContext): Promise<StrictHttpResponse<R>>;
-  invoke$Response<P, R>(fn: ApiFnRequired<P, R> | ApiFnOptional<P, R>, params: P, context?: HttpContext): Promise<StrictHttpResponse<R>> {
+  invoke$Response<P, R>(fn: ApiFnRequired<P, R>, params: P, context?: HttpContext): Observable<StrictHttpResponse<R>>;
+  invoke$Response<P, R>(fn: ApiFnOptional<P, R>, params?: P, context?: HttpContext): Observable<StrictHttpResponse<R>>;
+  invoke$Response<P, R>(fn: ApiFnRequired<P, R> | ApiFnOptional<P, R>, params: P, context?: HttpContext): Observable<StrictHttpResponse<R>> {
     const obs = fn(this.http, this.rootUrl, params, context)
       .pipe(
         filter(r => r instanceof HttpResponse),
         map(r => r as StrictHttpResponse<R>));
-    return firstValueFrom(obs);
+    return obs;
   }
 }

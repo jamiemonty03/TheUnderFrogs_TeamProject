@@ -1,6 +1,7 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { BaseService } from '../base-service';
 import { ApiConfiguration } from '../api-configuration';
@@ -30,72 +31,84 @@ export class AuthenticationService extends BaseService {
 
   static readonly RegisterPath = '/auth/register';
 
-  register$Response(params: Register$Params, context?: HttpContext): Promise<StrictHttpResponse<RegisterResponse>> {
+  register$Response(params: Register$Params, context?: HttpContext): Observable<StrictHttpResponse<RegisterResponse>> {
     const obs = register(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  register(params: Register$Params, context?: HttpContext): Promise<RegisterResponse> {
+  register(params: Register$Params, context?: HttpContext): Observable<RegisterResponse> {
     const resp = this.register$Response(params, context);
-    return resp.then((r: StrictHttpResponse<RegisterResponse>): RegisterResponse => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<RegisterResponse>): RegisterResponse => r.body)
+    );
   }
 
   static readonly LoginPath = '/auth/login';
 
-  login$Response(params: Login$Params, context?: HttpContext): Promise<StrictHttpResponse<AuthTokens>> {
+  login$Response(params: Login$Params, context?: HttpContext): Observable<StrictHttpResponse<AuthTokens>> {
     const obs = login(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  login(params: Login$Params, context?: HttpContext): Promise<AuthTokens> {
+  login(params: Login$Params, context?: HttpContext): Observable<AuthTokens> {
     const resp = this.login$Response(params, context);
-    return resp.then((r: StrictHttpResponse<AuthTokens>): AuthTokens => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<AuthTokens>): AuthTokens => r.body)
+    );
   }
 
   static readonly RefreshPath = '/auth/refresh';
 
-  refresh$Response(params: Refresh$Params, context?: HttpContext): Promise<StrictHttpResponse<AuthTokens>> {
+  refresh$Response(params: Refresh$Params, context?: HttpContext): Observable<StrictHttpResponse<AuthTokens>> {
     const obs = refresh(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  refresh(params: Refresh$Params, context?: HttpContext): Promise<AuthTokens> {
+  refresh(params: Refresh$Params, context?: HttpContext): Observable<AuthTokens> {
     const resp = this.refresh$Response(params, context);
-    return resp.then((r: StrictHttpResponse<AuthTokens>): AuthTokens => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<AuthTokens>): AuthTokens => r.body)
+    );
   }
 
   static readonly LogoutPath = '/auth/logout';
 
-  logout$Response(params: Logout$Params, context?: HttpContext): Promise<StrictHttpResponse<void>> {
+  logout$Response(params: Logout$Params, context?: HttpContext): Observable<StrictHttpResponse<void>> {
     const obs = logout(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  logout(params: Logout$Params, context?: HttpContext): Promise<void> {
+  logout(params: Logout$Params, context?: HttpContext): Observable<void> {
     const resp = this.logout$Response(params, context);
-    return resp.then((r: StrictHttpResponse<void>): void => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<void>): void => r.body)
+    );
   }
 
   static readonly ClientCredentialsPath = '/auth/token';
 
-  clientCredentials$Response(params: ClientCredentials$Params, context?: HttpContext): Promise<StrictHttpResponse<TokenResponse>> {
+  clientCredentials$Response(params: ClientCredentials$Params, context?: HttpContext): Observable<StrictHttpResponse<TokenResponse>> {
     const obs = clientCredentials(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  clientCredentials(params: ClientCredentials$Params, context?: HttpContext): Promise<TokenResponse> {
+  clientCredentials(params: ClientCredentials$Params, context?: HttpContext): Observable<TokenResponse> {
     const resp = this.clientCredentials$Response(params, context);
-    return resp.then((r: StrictHttpResponse<TokenResponse>): TokenResponse => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<TokenResponse>): TokenResponse => r.body)
+    );
   }
 
-  clientCredentials$XWwwFormUrlencoded$Response(params: ClientCredentials$XWwwFormUrlencoded$Params, context?: HttpContext): Promise<StrictHttpResponse<TokenResponse>> {
+  clientCredentials$XWwwFormUrlencoded$Response(params: ClientCredentials$XWwwFormUrlencoded$Params, context?: HttpContext): Observable<StrictHttpResponse<TokenResponse>> {
     const obs = clientCredentials$XWwwFormUrlencoded(this.http, this.rootUrl, params, context);
-    return firstValueFrom(obs);
+    return obs;
   }
 
-  clientCredentials$XWwwFormUrlencoded(params: ClientCredentials$XWwwFormUrlencoded$Params, context?: HttpContext): Promise<TokenResponse> {
+  clientCredentials$XWwwFormUrlencoded(params: ClientCredentials$XWwwFormUrlencoded$Params, context?: HttpContext): Observable<TokenResponse> {
     const resp = this.clientCredentials$XWwwFormUrlencoded$Response(params, context);
-    return resp.then((r: StrictHttpResponse<TokenResponse>): TokenResponse => r.body);
+    return resp.pipe(
+      map((r: StrictHttpResponse<TokenResponse>): TokenResponse => r.body)
+    );
   }
 
 }
