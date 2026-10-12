@@ -1,12 +1,12 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { CurrentUser } from '../decorators/current-user.decorator';
-import { CurrentUserDto } from '../dto/current-user.dto';
-import { Public } from '../decorators/public.decorator';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { Roles } from '../decorators/roles.decorator';
-import { ROLES_KEY } from '../decorators/roles.decorator';
+import { CurrentUser } from './current-user.decorator';
+import { CurrentUserDto } from '../dtos/current-user.dto';
+import { Public } from './public.decorator';
+import { IS_PUBLIC_KEY } from './public.decorator';
+import { Roles } from './roles.decorator';
+import { ROLES_KEY } from './roles.decorator';
 
 describe('CurrentUser Decorator', () => {
   // CurrentUser is a param decorator, so we test it by verifying it's a function
