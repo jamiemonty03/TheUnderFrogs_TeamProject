@@ -5,12 +5,11 @@ set -euo pipefail
 
 RUN_ID=$(date +%s)
 USERNAME="smoke$RUN_ID"
-ACCOUNT="SMK$RUN_ID"
 SYMBOL=AAPL
 LIMIT=100000
 QTY=1
 STARTING_CASH=100000
-SERVICES="accounts-service instruments-service orders-service positions-service trade-executor"
+SERVICES="auth-service accounts-service instruments-service orders-service positions-service trade-executor"
 
 cd "$(dirname "$0")/.."
 
@@ -25,6 +24,9 @@ fail() { echo "FAIL: $1" >&2; exit 1; }
 json() { python3 -c "import sys, json; print(json.load(sys.stdin)$1)"; }
 
 echo "== Starting the stack"
+./app/auth-service/scripts/generate-signing-key.sh
+# The trade-executor reads its client secret from .env at startup, so create it before starting the stack
+./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env --secret-only
 docker-compose up -d --build --wait $SERVICES
 
 echo "== Loading market data"
@@ -32,17 +34,18 @@ docker-compose up -d python trade-analytics-db
 ./db/scripts/setup-pipeline.sh populate
 docker-compose stop python trade-analytics-service
 
-echo "== Registering $USERNAME with account $ACCOUNT"
-REGISTER=$(curl -sf -X POST http://localhost:8081/api/auth/register -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$USERNAME\",\"email\":\"$USERNAME@example.com\",\"password\":\"$(openssl rand -hex 16)\",\"fullName\":\"Smoke Test\"}") \
-    || fail "could not register $USERNAME"
-TOKEN=$(echo "$REGISTER" | json "['token']")
+echo "== Registering $USERNAME through auth-service"
+REGISTER=$(curl -sf -X POST http://localhost:8087/auth/register -H 'Content-Type: application/json' \
+    -d "{\"username\":\"$USERNAME\",\"email\":\"$USERNAME@example.com\",\"password\":\"$(openssl rand -hex 16)\",\"full_name\":\"Smoke Test\"}") \
+    || fail "could not register $USERNAME with auth-service"
+TOKEN=$(echo "$REGISTER" | json "['accessToken']")
+ACCOUNT=$(echo "$REGISTER" | json "['accountId']")
 AUTH="Authorization: Bearer $TOKEN"
 
+echo "== Funding account $ACCOUNT with $STARTING_CASH"
 docker exec accounts-db sh -c 'psql -q -v ON_ERROR_STOP=1 -U "$SPRING_DATASOURCE_USERNAME" -d "${SPRING_DATASOURCE_URL##*/}" -c "$1"' _ \
-    "INSERT INTO accounts (account_id, user_id, holder_name, cash_balance, status)
-     SELECT '$ACCOUNT', id, 'Smoke Test', $STARTING_CASH, 'ACTIVE' FROM users WHERE username = '$USERNAME'" \
-    || fail "could not create account $ACCOUNT"
+    "UPDATE accounts SET cash_balance = $STARTING_CASH WHERE account_id = '$ACCOUNT'" \
+    || fail "could not fund account $ACCOUNT"
 
 echo "== Placing BUY $QTY $SYMBOL"
 RESPONSE=$(curl -s -w '\n%{http_code}' -X POST http://localhost:8083/api/orders -H "$AUTH" -H 'Content-Type: application/json' \

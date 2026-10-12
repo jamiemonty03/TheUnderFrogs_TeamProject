@@ -48,6 +48,9 @@ check_prerequisites() {
         ./app/auth-service/scripts/generate-signing-key.sh || error_exit "Failed to generate the auth-service signing key"
     fi
     echo -e "${GREEN}✓ auth-service signing key present${NC}"
+    ./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env --secret-only >/dev/null \
+        || error_exit "Failed to create the trade-executor client secret"
+    echo -e "${GREEN}✓ trade-executor client secret present${NC}"
     echo -e "${GREEN}✓ All prerequisites satisfied${NC}\n"
 }
 
@@ -200,6 +203,9 @@ seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     seed_db positions-db positions app/positions-service/db/seed/dummy-data.sql
     seed_db auth-db      users     app/auth-service/db/seed/01-seed-users.sql
     seed_db auth-db      auth      app/auth-service/db/seed/05-seed-auth.sql
+    ./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env >/dev/null \
+        || error_exit "Failed to register the trade-executor client in auth-db"
+    echo -e "${GREEN}✓ trade-executor client registered in auth-db${NC}"
 
 
 echo ""
@@ -276,10 +282,11 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -Atc "$1"' _ "$ROW_COUNTS" \
         | sed 's/^/    /' || error_exit "Could not read tables in trade-analytics-db"
 
-    accounts=$(db_psql accounts-db -Atc "SELECT COUNT(*) FROM accounts;")
-    linked_users=$(db_psql auth-db -Atc "SELECT COUNT(*) FROM users WHERE account_id IS NOT NULL;")
-    [ "$accounts" -eq "$linked_users" ] || error_exit "accounts-db has $accounts accounts, but auth-db has $linked_users users linked to an account"
-    echo -e "${GREEN}✓ every account has a user in auth-db ($accounts)${NC}"
+    account_users=$(db_psql accounts-db -Atc "SELECT DISTINCT user_id FROM accounts ORDER BY 1;")
+    auth_users=$(db_psql auth-db -Atc "SELECT id FROM users ORDER BY 1;")
+    missing=$(comm -23 <(echo "$account_users" | sort) <(echo "$auth_users" | sort) | tr '\n' ' ')
+    [ -z "${missing// /}" ] || error_exit "accounts-db has accounts for user ids missing from auth-db: $missing"
+    echo -e "${GREEN}✓ every account belongs to a user in auth-db${NC}"
 
     echo -e "${GREEN}Kafka topics${NC}"
     docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe 2>/dev/null \

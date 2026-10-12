@@ -330,6 +330,8 @@ services:
         condition: service_healthy
       positions-service:
         condition: service_healthy
+      auth-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8081/actuator/health || exit 1"]
       interval: 10s
