@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Leapfrog">
+  <rect width="64" height="64" rx="15" fill="#FFFFFF"/>
+  <g fill="#34D17F">
+    <ellipse cx="32" cy="41" rx="23" ry="14"/>
+    <circle cx="20" cy="25" r="9"/>
+    <circle cx="44" cy="25" r="9"/>
+  </g>
+  <g fill="#FFFFFF">
+    <circle cx="20" cy="25" r="5"/>
+    <circle cx="44" cy="25" r="5"/>
+  </g>
+  <g fill="#0B3B2C">
+    <circle cx="21.2" cy="23.8" r="2.6"/>
+    <circle cx="45.2" cy="23.8" r="2.6"/>
+  </g>
+  <g fill="none" stroke="#0B3B2C" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="17,48 25.5,42 32.5,46 45,37"/>
+    <polyline points="39.5,37 45,37 45,42.5"/>
+  </g>
+</svg>
