@@ -56,6 +56,7 @@ describe('AuthService', () => {
             createUser: jest.fn(),
             verifyCredentials: jest.fn(),
             linkAccount: jest.fn(),
+            getUserById: jest.fn(),
             updateUser: jest.fn(),
             deleteUser: jest.fn(),
           },
@@ -78,6 +79,9 @@ describe('AuthService', () => {
           provide: RefreshTokensService,
           useValue: {
             issue: jest.fn().mockResolvedValue({ refreshToken: 'opaque-refresh', expiresAt: new Date() }) as any,
+            rotate: jest.fn() as any,
+            revokeFamilyOf: jest.fn() as any,
+            revokeFamily: jest.fn() as any,
           } as any,
         },
         {
@@ -224,6 +228,56 @@ describe('AuthService', () => {
       expect(tokenService.issue).not.toHaveBeenCalled();
       expect(refreshTokensService.issue).not.toHaveBeenCalled();
       expect(authRepository.recordLogin).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes the family of the given refresh token', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(3 as any);
+
+      await expect(service.logout({ refresh_token: 'current-refresh' })).resolves.toBeUndefined();
+      expect(refreshTokensService.revokeFamilyOf).toHaveBeenCalledWith('current-refresh');
+    });
+
+    it('succeeds quietly for a token it does not know', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(0 as any);
+
+      await expect(service.logout({ refresh_token: 'unknown' })).resolves.toBeUndefined();
+    });
+  });
+
+  describe('refresh', () => {
+    const rotated = { userId: 1, refreshToken: 'next-refresh', familyId: 'family-1' };
+
+    it('rotates the refresh token and issues an access token from the current user record', async () => {
+      const promoted = { ...mockUser, roles: ['ADMIN'], account_id: 'ACC0001' };
+      (refreshTokensService.rotate as jest.Mock).mockResolvedValue(rotated as any);
+      (usersService.getUserById as jest.Mock).mockResolvedValue(promoted as any);
+
+      const result = await service.refresh({ refresh_token: 'old-refresh' });
+
+      expect(refreshTokensService.rotate).toHaveBeenCalledWith('old-refresh');
+      expect(tokenService.issue).toHaveBeenCalledWith(promoted);
+      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'next-refresh', expiresIn: 900, mfaRequired: false });
+    });
+
+    it('passes on the 401 from an invalid or reused refresh token without issuing an access token', async () => {
+      (refreshTokensService.rotate as jest.Mock).mockRejectedValue(new UnauthorizedException('Invalid refresh token') as any);
+
+      await expect(service.refresh({ refresh_token: 'reused' })).rejects.toThrow(new UnauthorizedException('Invalid refresh token'));
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['deactivated', async () => ({ ...mockUser, is_active: false })],
+      ['deleted', async () => { throw new Error('User with id 1 not found'); }],
+    ])('revokes the family and refuses when the user has been %s', async (_label, lookup) => {
+      (refreshTokensService.rotate as jest.Mock).mockResolvedValue(rotated as any);
+      (usersService.getUserById as jest.Mock).mockImplementation(lookup as any);
+
+      await expect(service.refresh({ refresh_token: 'old-refresh' })).rejects.toThrow(new UnauthorizedException('Invalid refresh token'));
+      expect(refreshTokensService.revokeFamily).toHaveBeenCalledWith('family-1');
+      expect(tokenService.issue).not.toHaveBeenCalled();
     });
   });
 

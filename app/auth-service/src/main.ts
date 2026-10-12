@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
+import { NextFunction, Request, Response } from 'express';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { load } from 'js-yaml';
@@ -11,6 +13,26 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
+
+  app.use(helmet());
+
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  app.use((
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    if (req.headers['content-length'] && parseInt(req.headers['content-length']) > 1048576) {
+      return res.status(413).json({ statusCode: 413, message: 'Payload too large' });
+    }
+    next();
+  });
 
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new HttpExceptionFilter());

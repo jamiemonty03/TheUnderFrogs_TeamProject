@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,17 +16,16 @@ public class ClientTradeTest {
     @Test
     @DisplayName("Valid ClientTrade creation with all required fields")
     void testValidClientTradeCreation() {
-        String tradeId = "TRADE001";
         String accountId = "ACC001";
         String symbol = "AAPL";
         OrderSide tradeType = OrderSide.BUY;
         BigDecimal quantity = new BigDecimal("100");
         BigDecimal price = new BigDecimal("150.25");
-        LocalDateTime tradeDate = LocalDateTime.now();
+        LocalDate tradeDate = LocalDate.of(2026, 1, 8);
 
-        ClientTrade trade = new ClientTrade(tradeId, accountId, symbol, tradeType, quantity, price, tradeDate);
+        ClientTrade trade = new ClientTrade(accountId, symbol, tradeType, quantity, price, tradeDate);
 
-        assertEquals(tradeId, trade.getTradeId());
+        assertNull(trade.getTradeId());
         assertEquals(accountId, trade.getAccountId());
         assertEquals(symbol, trade.getSymbol());
         assertEquals(tradeType, trade.getTradeType());
@@ -33,6 +33,8 @@ public class ClientTradeTest {
         assertEquals(price, trade.getPrice());
         assertEquals(tradeDate, trade.getTradeDate());
         assertNotNull(trade.getCreatedAt());
+        assertEquals(0, trade.getVersion());
+        assertEquals("SYSTEM", trade.getUpdatedBy());
     }
 
     @Test
@@ -41,13 +43,12 @@ public class ClientTradeTest {
         LocalDateTime beforeCreation = LocalDateTime.now();
         
         ClientTrade trade = new ClientTrade(
-            "TRADE001",
             "ACC001",
             "AAPL",
             OrderSide.BUY,
             new BigDecimal("100"),
             new BigDecimal("150.25"),
-            LocalDateTime.now()
+            LocalDate.now()
         );
 
         LocalDateTime afterCreation = LocalDateTime.now();
@@ -57,27 +58,13 @@ public class ClientTradeTest {
         assertTrue(trade.getCreatedAt().isBefore(afterCreation) || trade.getCreatedAt().isEqual(afterCreation));
     }
 
-    @Test
-    @DisplayName("Null tradeId throws IllegalArgumentException")
-    void testNullTradeIdThrows() {
-        assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade(null, "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
-        );
-    }
 
-    @Test
-    @DisplayName("Empty tradeId throws IllegalArgumentException")
-    void testEmptyTradeIdThrows() {
-        assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("  ", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
-        );
-    }
 
     @Test
     @DisplayName("Null accountId throws IllegalArgumentException")
     void testNullAccountIdThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", null, "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade(null, "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -85,7 +72,7 @@ public class ClientTradeTest {
     @DisplayName("Empty accountId throws IllegalArgumentException")
     void testEmptyAccountIdThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "  ", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("  ", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -93,7 +80,7 @@ public class ClientTradeTest {
     @DisplayName("Null symbol throws IllegalArgumentException")
     void testNullSymbolThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", null, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", null, OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -101,7 +88,7 @@ public class ClientTradeTest {
     @DisplayName("Empty symbol throws IllegalArgumentException")
     void testEmptySymbolThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "  ", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", "  ", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -109,7 +96,7 @@ public class ClientTradeTest {
     @DisplayName("Null tradeType throws IllegalArgumentException")
     void testNullTradeTypeThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", null, new BigDecimal("100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", null, new BigDecimal("100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -117,7 +104,7 @@ public class ClientTradeTest {
     @DisplayName("Zero quantity throws IllegalArgumentException")
     void testZeroQuantityThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, BigDecimal.ZERO, new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, BigDecimal.ZERO, new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -125,7 +112,7 @@ public class ClientTradeTest {
     @DisplayName("Negative quantity throws IllegalArgumentException")
     void testNegativeQuantityThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("-100"), new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("-100"), new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -133,7 +120,7 @@ public class ClientTradeTest {
     @DisplayName("Null quantity throws IllegalArgumentException")
     void testNullQuantityThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, null, new BigDecimal("150.25"), LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, null, new BigDecimal("150.25"), LocalDate.now())
         );
     }
 
@@ -141,7 +128,7 @@ public class ClientTradeTest {
     @DisplayName("Price below 0.01 throws IllegalArgumentException")
     void testPriceTooLowThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("0.001"), LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("0.001"), LocalDate.now())
         );
     }
 
@@ -149,7 +136,7 @@ public class ClientTradeTest {
     @DisplayName("Zero price throws IllegalArgumentException")
     void testZeroPriceThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), BigDecimal.ZERO, LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), BigDecimal.ZERO, LocalDate.now())
         );
     }
 
@@ -157,7 +144,7 @@ public class ClientTradeTest {
     @DisplayName("Null price throws IllegalArgumentException")
     void testNullPriceThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), null, LocalDateTime.now())
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), null, LocalDate.now())
         );
     }
 
@@ -165,7 +152,7 @@ public class ClientTradeTest {
     @DisplayName("Null tradeDate throws IllegalArgumentException")
     void testNullTradeDateThrows() {
         assertThrows(IllegalArgumentException.class, () ->
-            new ClientTrade("TRADE001", "ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), null)
+            new ClientTrade("ACC001", "AAPL", OrderSide.BUY, new BigDecimal("100"), new BigDecimal("150.25"), null)
         );
     }
 
@@ -188,16 +175,16 @@ public class ClientTradeTest {
     void testGettersAndSetters() {
         ClientTrade trade = new ClientTrade();
         
-        trade.setTradeId("TRADE001");
+        trade.setTradeId(1);
         trade.setAccountId("ACC001");
         trade.setSymbol("AAPL");
         trade.setTradeType(OrderSide.SELL);
         trade.setQuantity(new BigDecimal("50"));
         trade.setPrice(new BigDecimal("160.50"));
-        LocalDateTime tradeDate = LocalDateTime.now();
+        LocalDate tradeDate = LocalDate.of(2026, 1, 8);
         trade.setTradeDate(tradeDate);
 
-        assertEquals("TRADE001", trade.getTradeId());
+        assertEquals(1, trade.getTradeId());
         assertEquals("ACC001", trade.getAccountId());
         assertEquals("AAPL", trade.getSymbol());
         assertEquals(OrderSide.SELL, trade.getTradeType());
@@ -211,13 +198,12 @@ public class ClientTradeTest {
     @DisplayName("SELL trade can be created")
     void testSellTradeCreation() {
         ClientTrade trade = new ClientTrade(
-            "TRADE002",
             "ACC001",
             "AAPL",
             OrderSide.SELL,
             new BigDecimal("50"),
             new BigDecimal("160.00"),
-            LocalDateTime.now()
+            LocalDate.now()
         );
 
         assertEquals(OrderSide.SELL, trade.getTradeType());
@@ -227,13 +213,12 @@ public class ClientTradeTest {
     @DisplayName("Large quantity values are accepted")
     void testLargeQuantity() {
         ClientTrade trade = new ClientTrade(
-            "TRADE003",
             "ACC001",
             "AAPL",
             OrderSide.BUY,
             new BigDecimal("999999999"),
             new BigDecimal("150.25"),
-            LocalDateTime.now()
+            LocalDate.now()
         );
 
         assertEquals(new BigDecimal("999999999"), trade.getQuantity());
@@ -243,13 +228,12 @@ public class ClientTradeTest {
     @DisplayName("High precision prices are accepted")
     void testHighPrecisionPrice() {
         ClientTrade trade = new ClientTrade(
-            "TRADE004",
             "ACC001",
             "AAPL",
             OrderSide.BUY,
             new BigDecimal("100"),
             new BigDecimal("150.25999999"),
-            LocalDateTime.now()
+            LocalDate.now()
         );
 
         assertEquals(new BigDecimal("150.25999999"), trade.getPrice());

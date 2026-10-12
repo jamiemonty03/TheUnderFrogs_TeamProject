@@ -37,6 +37,16 @@ public class GlobalExceptionHandler {
         return reject(HttpStatus.NOT_FOUND, "INS-404", ex.getMessage());
     }
 
+    @ExceptionHandler(InstrumentServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleInstrumentServiceUnavailable(InstrumentServiceUnavailableException ex) {
+        return reject(HttpStatus.SERVICE_UNAVAILABLE, "INS-503", ex.getMessage());
+    }
+
+    @ExceptionHandler(ClientTradeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleClientTradeNotFound(ClientTradeNotFoundException ex) {
+        return reject(HttpStatus.NOT_FOUND, "TRD-404", ex.getMessage());
+    }
+
     @ExceptionHandler(InsufficientFundsException.class)
     public ResponseEntity<ErrorResponse> handleInsufficientFunds(InsufficientFundsException ex) {
         return reject(HttpStatus.BAD_REQUEST, "ORD-400", ex.getMessage());

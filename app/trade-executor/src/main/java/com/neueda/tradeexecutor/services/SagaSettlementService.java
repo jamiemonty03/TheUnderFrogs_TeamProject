@@ -86,7 +86,7 @@ public class SagaSettlementService implements SettlementService {
     }
 
     private void complete(OrderDto order, OrderStatus status, BigDecimal fillPrice, String reason) {
-        StatusUpdateResult result = ordersClient.updateStatus(order.orderId(), status, reason);
+        StatusUpdateResult result = ordersClient.updateStatus(order.orderId(), status, fillPrice, reason);
         if (result.updated()) {
             publisher.publishOutcome(new OrderOutcomePayload(order.orderId(), order.accountId(), order.symbol(),
                     order.side(), order.quantity(), fillPrice, status, reason));

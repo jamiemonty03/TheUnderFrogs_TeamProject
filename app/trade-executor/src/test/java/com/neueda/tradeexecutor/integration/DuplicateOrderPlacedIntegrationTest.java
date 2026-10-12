@@ -119,19 +119,19 @@ class DuplicateOrderPlacedIntegrationTest {
     void replayAfterFillIsSkipped() throws Exception {
         String orderId = "ORD-A-" + UUID.randomUUID();
         when(ordersClient.getOrder(orderId)).thenReturn(order(orderId, OrderStatus.NEW), order(orderId, OrderStatus.FILLED));
-        when(ordersClient.updateStatus(eq(orderId), eq(OrderStatus.FILLED), any()))
+        when(ordersClient.updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any()))
                 .thenReturn(new StatusUpdateResult(true, OrderStatus.FILLED));
         String message = orderPlacedMessage(orderId);
 
         publish(message);
-        verify(ordersClient, timeout(WAIT.toMillis())).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any());
+        verify(ordersClient, timeout(WAIT.toMillis())).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any());
 
         publish(message);
         verify(ordersClient, timeout(WAIT.toMillis()).times(2)).getOrder(orderId);
 
         verify(accountsClient, times(1)).debit(ACCOUNT_ID, orderId, DEBIT);
         verify(positionsClient, times(1)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET);
-        verify(ordersClient, times(1)).updateStatus(anyString(), any(), any());
+        verify(ordersClient, times(1)).updateStatus(anyString(), any(), any(), any());
         assertThat(tradeEventsFor(orderId)).singleElement()
                 .satisfies(event -> assertThat(event.get("eventType").asText()).isEqualTo(EventTypes.ORDER_FILLED));
     }
@@ -141,16 +141,16 @@ class DuplicateOrderPlacedIntegrationTest {
     void replayBeforeStatusUpdatePublishesOnce() throws Exception {
         String orderId = "ORD-B-" + UUID.randomUUID();
         when(ordersClient.getOrder(orderId)).thenReturn(order(orderId, OrderStatus.NEW));
-        when(ordersClient.updateStatus(eq(orderId), eq(OrderStatus.FILLED), any()))
+        when(ordersClient.updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any()))
                 .thenReturn(new StatusUpdateResult(true, OrderStatus.FILLED))
                 .thenReturn(new StatusUpdateResult(false, OrderStatus.FILLED));
         String message = orderPlacedMessage(orderId);
 
         publish(message);
-        verify(ordersClient, timeout(WAIT.toMillis())).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any());
+        verify(ordersClient, timeout(WAIT.toMillis())).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any());
 
         publish(message);
-        verify(ordersClient, timeout(WAIT.toMillis()).times(2)).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any());
+        verify(ordersClient, timeout(WAIT.toMillis()).times(2)).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any());
 
         verify(accountsClient, times(2)).debit(ACCOUNT_ID, orderId, DEBIT);
         verify(positionsClient, times(2)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET);

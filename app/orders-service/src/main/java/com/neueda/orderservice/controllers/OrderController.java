@@ -200,7 +200,7 @@ public class OrderController {
             @Valid @RequestBody UpdateOrderStatusRequest request)
             throws OrderNotFoundException, OrderStatusConflictException {
         Order order = orderStatusService.changeStatus(
-                orderId, request.expectedStatus(), request.newStatus(), request.reason());
+                orderId, request.expectedStatus(), request.newStatus(), request.fillPrice(), request.reason());
         return ResponseEntity.ok(toOrderResponse(order));
     }
 
