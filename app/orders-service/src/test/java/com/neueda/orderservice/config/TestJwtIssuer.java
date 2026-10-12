@@ -83,6 +83,7 @@ public final class TestJwtIssuer {
     public static final class Builder {
         private String subject = "alice";
         private List<String> roles;
+        private String accountId;
         private String issuer = ISSUER;
         private String audience = AUDIENCE;
         private Instant expiresAt = Instant.now().plus(Duration.ofMinutes(5));
@@ -90,6 +91,7 @@ public final class TestJwtIssuer {
 
         public Builder subject(String subject) { this.subject = subject; return this; }
         public Builder roles(String... roles) { this.roles = List.of(roles); return this; }
+        public Builder accountId(String accountId) { this.accountId = accountId; return this; }
         public Builder issuer(String issuer) { this.issuer = issuer; return this; }
         public Builder audience(String audience) { this.audience = audience; return this; }
         public Builder expiresAt(Instant expiresAt) { this.expiresAt = expiresAt; return this; }
@@ -118,6 +120,9 @@ public final class TestJwtIssuer {
                     .expirationTime(Date.from(expiresAt));
             if (roles != null) {
                 claims.claim("roles", roles);
+            }
+            if (accountId != null) {
+                claims.claim("accountId", accountId);
             }
             return claims.build();
         }
