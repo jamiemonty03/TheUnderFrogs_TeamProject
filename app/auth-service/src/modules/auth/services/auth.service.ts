@@ -57,15 +57,30 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<TokenResponseDto> {
-    const user = await this.usersService.verifyCredentials(loginDto.username, loginDto.password);
+    const user = await this.usersService.getUserByUsername(loginDto.username);
+    if (user && user.locked_until && user.locked_until > new Date()) {
+      this.logger.warn(`Login attempt on locked account (ID: ${user.id})`);
+      throw new UnauthorizedException('Account is locked due to too many failed login attempts. Please try again later.');
+    }
 
-    if (!user || !user.is_active) {
+    const authenticatedUser = await this.usersService.verifyCredentials(loginDto.username, loginDto.password);
+
+    if (!authenticatedUser || !authenticatedUser.is_active) {
+      if (user) {
+        await this.usersService.recordFailedLogin(user.id);
+        this.logger.warn(`Failed login attempt for user ID: ${user.id}`);
+      } else {
+        this.logger.warn(`Login attempt with non-existent or inactive user`);
+      }
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.authRepository.recordLogin(user.id);
+    await this.usersService.recordSuccessfulLogin(authenticatedUser.id);
+    this.logger.log(`Successful login for user ID: ${authenticatedUser.id}`);
 
-    return this.issueTokens(user);
+    await this.authRepository.recordLogin(authenticatedUser.id);
+
+    return this.issueTokens(authenticatedUser);
   }
 
 
