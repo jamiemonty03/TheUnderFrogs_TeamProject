@@ -1,1 +1,10 @@
-[{ "name": "auth", "spec": "../auth-service/docs/auth-service.yaml" }]
+[
+  { "name": "auth", "spec": "../auth-service/docs/auth-service.yaml" },
+  { "name": "accounts", "spec": "../accounts-service/docs/accounts-service.yaml" },
+  { "name": "orders", "spec": "../orders-service/docs/order-service.yaml" },
+  { "name": "positions", "spec": "../positions-service/docs/positions-service.yaml" },
+  { "name": "instruments", "spec": "../instruments-service/docs/instruments.yaml" },
+  { "name": "stocks", "spec": "../instruments-service/docs/stocks.yaml" },
+  { "name": "etfs", "spec": "../instruments-service/docs/etfs.yaml" },
+  { "name": "bonds", "spec": "../instruments-service/docs/bonds.yaml" }
+]

@@ -11,10 +11,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: https://accounts-service.example.com
-    description: Production Server
-  - url: http://localhost:8081
-    description: Local Development Server
+  - url: /api
+    description: Every service is served under the /api context path. The Angular dev proxy and nginx route /api/<resource> to the right service.
 
 tags:
   - name: Accounts
@@ -26,6 +24,21 @@ tags:
 
 paths:
   /accounts:
+    get:
+      tags:
+        - Accounts
+      summary: List all accounts
+      description: Returns every user's records, not only the caller's. Intended for admin use only and due to be restricted to the ADMIN role; do not call it from trader screens.
+      operationId: listAccounts
+      responses:
+        '200':
+          description: All accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
     post:
       tags:
         - Accounts
@@ -115,6 +128,18 @@ paths:
                     version: 1
                     createdAt: "2026-09-22T10:30:00Z"
                     lastUpdated: "2026-09-22T10:30:00Z"
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -175,6 +200,18 @@ paths:
                     version: 2
                     createdAt: "2026-09-22T10:30:00Z"
                     lastUpdated: "2026-09-22T10:45:00Z"
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -217,6 +254,18 @@ paths:
       responses:
         '204':
           description: Account deleted successfully
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -296,7 +345,7 @@ paths:
                     errorCode: "ORD-400"
                     message: "Insufficient funds. Balance: 5000, Requested: 6000"
         '403':
-          description: Forbidden - Account is not active
+          description: Forbidden - Account is not active; or the account does not belong to the caller (AUTH-403)
           content:
             application/json:
               schema:
@@ -307,6 +356,11 @@ paths:
                   value:
                     errorCode: "ACC-403"
                     message: "Cannot credit an inactive account"
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -403,7 +457,7 @@ paths:
                     errorCode: "ORD-400"
                     message: "Insufficient funds. Balance: 3000, Requested: 5000"
         '403':
-          description: Forbidden - Account is not active
+          description: Forbidden - Account is not active; or the account does not belong to the caller (AUTH-403)
           content:
             application/json:
               schema:
@@ -414,6 +468,11 @@ paths:
                   value:
                     errorCode: "ACC-403"
                     message: "Cannot debit an inactive account"
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -493,6 +552,18 @@ paths:
                   value:
                     errorCode: "ORD-400"
                     message: "Insufficient funds to reverse order 0adf7599-df9d-4176-93b6-3a555e54415d. Balance: 50.00"
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Account not found
           content:
@@ -528,6 +599,11 @@ components:
           type: string
           description: Unique account identifier
           example: "ACC001"
+        userId:
+          type: integer
+          format: int64
+          description: ID of the auth-service user who owns the account
+          example: 11
         holderName:
           type: string
           description: Name of the account holder
@@ -542,6 +618,10 @@ components:
           enum: [ACTIVE, SUSPENDED, CLOSED]
           description: Current status of the account
           example: "ACTIVE"
+        active:
+          type: boolean
+          description: True when status is ACTIVE
+          example: true
         version:
           type: integer
           description: Optimistic locking version

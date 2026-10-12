@@ -11,10 +11,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: https://positions-service.example.com
-    description: Production Server
-  - url: http://localhost:8084
-    description: Local Development Server
+  - url: /api
+    description: Every service is served under the /api context path. The Angular dev proxy and nginx route /api/<resource> to the right service.
 
 security: []
 
@@ -64,6 +62,18 @@ paths:
                     version: 1
                     createdAt: "2026-09-22T10:30:00Z"
                     lastUpdated: "2026-09-22T10:30:00Z"
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '422':
           description: Unprocessable Entity - Invalid request body
           content:
@@ -134,6 +144,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
   /positions/{accountId}/{symbol}:
     get:
       tags:
@@ -174,6 +196,18 @@ paths:
                     version: 1
                     createdAt: "2026-09-22T10:30:00Z"
                     lastUpdated: "2026-09-22T10:30:00Z"
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Position not found
           content:
@@ -227,6 +261,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Position'
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Position not found
           content:
@@ -283,6 +329,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Position'
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Position not found
           content:
@@ -314,6 +372,18 @@ paths:
       responses:
         '204':
           description: Position deleted successfully (no response body)
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '404':
           description: Position not found
           content:
@@ -377,6 +447,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '422':
           description: Unprocessable Entity - Invalid request parameters
           content:
@@ -439,6 +521,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '409':
           description: Conflict - Insufficient holdings to complete sale
           content:
@@ -498,6 +592,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Position'
+        '403':
+          description: 'Forbidden: the account does not belong to the caller (also returned for an unknown account, because ownership is checked first)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notYourAccount:
+                  summary: Account belongs to another user
+                  value:
+                    errorCode: AUTH-403
+                    message: 'User is not authorized to access account: ACC0001'
         '409':
           description: Conflict - The bought shares have since been sold, so the buy cannot be reversed
           content:
@@ -539,6 +645,10 @@ components:
           format: decimal
           description: The average purchase price per share/unit (FIFO calculated)
           example: 150.50
+        totalCostBasis:
+          type: number
+          description: quantity x averageCost
+          example: 1500.0
         version:
           readOnly: true
           type: integer

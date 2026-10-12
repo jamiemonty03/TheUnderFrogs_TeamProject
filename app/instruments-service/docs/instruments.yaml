@@ -11,10 +11,8 @@ info:
     url: https://www.apache.org/licenses/LICENSE-2.0.html
 
 servers:
-  - url: https://instruments-service.example.com
-    description: Production Server
-  - url: http://localhost:8082/api
-    description: Local Development Server
+  - url: /api
+    description: Every service is served under the /api context path. The Angular dev proxy and nginx route /api/<resource> to the right service.
 
 tags:
   - name: Instruments
