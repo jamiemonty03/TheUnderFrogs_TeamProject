@@ -1,31 +1,31 @@
 import { jest } from '@jest/globals';
 import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { hashRefreshToken, RefreshTokensService } from './refresh-tokens.service';
-import { TokensRepository } from '../repositories/tokens.repository';
-import { Token } from '../entities/token.entity';
+import { NewRefreshToken, RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import { RefreshToken } from '../entities/refresh-token.entity';
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 describe('RefreshTokensService', () => {
-  let rows: Token[];
+  let rows: RefreshToken[];
   const repository = {
-    create: jest.fn(async (row: Pick<Token, 'user_id' | 'token_hash' | 'expires_at'>) => {
-      const saved = { id: rows.length + 1, token_type: 'refresh', is_revoked: false, ...row } as Token;
+    create: jest.fn(async (row: NewRefreshToken) => {
+      const saved = { id: rows.length + 1, revoked_at: null, replaced_by: null, created_at: new Date(), ...row } as RefreshToken;
       rows.push(saved);
       return saved;
     }),
-    findActiveByHash: jest.fn(async (hash: string) => rows.find((r) => r.token_hash === hash && !r.is_revoked) ?? null),
-    revoke: jest.fn(async (id: number) => {
-      const row = rows.find((r) => r.id === id && !r.is_revoked);
-      if (row) {
-        row.is_revoked = true;
-      }
-      return !!row;
+    findByHash: jest.fn(async (hash: string) => rows.find((r) => r.token_hash === hash) ?? null),
+    revokeFamily: jest.fn(async (familyId: string) => {
+      const active = rows.filter((r) => r.family_id === familyId && !r.revoked_at);
+      active.forEach((r) => (r.revoked_at = new Date()));
+      return active.length;
     }),
   };
   const config = (ttl?: number) =>
     ({ get: (name: string, fallback: unknown) => (name === 'JWT_REFRESH_TOKEN_TTL' && ttl ? ttl : fallback) }) as unknown as ConfigService;
-  const service = new RefreshTokensService(repository as unknown as TokensRepository, config());
+  const service = new RefreshTokensService(repository as unknown as RefreshTokensRepository, config());
 
   beforeEach(() => {
     rows = [];
@@ -45,56 +45,58 @@ describe('RefreshTokensService', () => {
     it('stores only the SHA-256 hash, never the token itself', async () => {
       const { refreshToken } = await service.issue(5);
 
-      expect(rows).toHaveLength(1);
       expect(rows[0].token_hash).toBe(createHash('sha256').update(refreshToken).digest('hex'));
       expect(JSON.stringify(rows)).not.toContain(refreshToken);
     });
 
-    it('stores the token against the user', async () => {
-      await service.issue(5);
+    it('starts a new family for each login', async () => {
+      const first = await service.issue(5);
+      const second = await service.issue(5);
 
-      expect(rows[0].user_id).toBe(5);
+      expect(first.familyId).toMatch(UUID);
+      expect(second.familyId).not.toBe(first.familyId);
+      expect(rows.map((r) => r.family_id)).toEqual([first.familyId, second.familyId]);
     });
 
-    it('expires after 7 days by default', async () => {
-      jest.useFakeTimers({ now: new Date('2026-10-07T10:00:00Z') });
+    it('can add a token to an existing family', async () => {
+      const { familyId } = await service.issue(5);
+
+      await service.issue(5, familyId);
+
+      expect(rows.map((r) => r.family_id)).toEqual([familyId, familyId]);
+    });
+
+    it('starts active and expires after 7 days by default', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-12T10:00:00Z') });
 
       const { expiresAt } = await service.issue(5);
 
-      expect(expiresAt).toEqual(new Date('2026-10-14T10:00:00Z'));
-      expect(rows[0].expires_at).toEqual(expiresAt);
+      expect(expiresAt).toEqual(new Date('2026-10-19T10:00:00Z'));
+      expect(rows[0]).toMatchObject({ user_id: 5, expires_at: expiresAt, revoked_at: null, replaced_by: null });
     });
 
-    it('uses the configured lifetime', async () => {
-      jest.useFakeTimers({ now: new Date('2026-10-07T10:00:00Z') });
-      const shortLived = new RefreshTokensService(repository as unknown as TokensRepository, config(3600));
+    it('uses JWT_REFRESH_TOKEN_TTL', async () => {
+      jest.useFakeTimers({ now: new Date('2026-10-12T10:00:00Z') });
+      const shortLived = new RefreshTokensService(repository as unknown as RefreshTokensRepository, config(3600));
 
-      expect((await shortLived.issue(5)).expiresAt).toEqual(new Date('2026-10-07T11:00:00Z'));
-    });
-
-    it('gives a different token every time', async () => {
-      const tokens = await Promise.all([1, 2, 3, 4, 5].map(() => service.issue(5)));
-
-      expect(new Set(tokens.map((t) => t.refreshToken)).size).toBe(5);
+      expect((await shortLived.issue(5)).expiresAt).toEqual(new Date('2026-10-12T11:00:00Z'));
     });
   });
 
   describe('findValid', () => {
-    it('finds an issued token by its plain value', async () => {
+    it('finds an active token by its plain value', async () => {
       const { refreshToken } = await service.issue(5);
 
       expect((await service.findValid(refreshToken))?.user_id).toBe(5);
     });
 
-    it('returns null for an unknown token', async () => {
+    it.each([
+      ['an unknown token', 'not-a-real-refresh-token'],
+      ['an empty token', ''],
+    ])('returns null for %s', async (_label, token) => {
       await service.issue(5);
 
-      expect(await service.findValid('not-a-real-refresh-token')).toBeNull();
-    });
-
-    it('returns null for an empty token without querying', async () => {
-      expect(await service.findValid('')).toBeNull();
-      expect(repository.findActiveByHash).not.toHaveBeenCalled();
+      expect(await service.findValid(token)).toBeNull();
     });
 
     it('returns null for the stored hash, so a leaked database row cannot be used as a token', async () => {
@@ -104,27 +106,29 @@ describe('RefreshTokensService', () => {
     });
 
     it('returns null once the token has expired', async () => {
-      jest.useFakeTimers({ now: new Date('2026-10-07T10:00:00Z') });
+      jest.useFakeTimers({ now: new Date('2026-10-12T10:00:00Z') });
       const { refreshToken } = await service.issue(5);
-      jest.setSystemTime(new Date('2026-10-14T10:00:00Z'));
+      jest.setSystemTime(new Date('2026-10-19T10:00:00Z'));
 
       expect(await service.findValid(refreshToken)).toBeNull();
     });
 
     it('returns null for a revoked token', async () => {
-      const { refreshToken } = await service.issue(5);
-      await service.revoke(rows[0].id);
+      const { refreshToken, familyId } = await service.issue(5);
+      await service.revokeFamily(familyId);
 
       expect(await service.findValid(refreshToken)).toBeNull();
     });
   });
 
-  describe('revoke', () => {
-    it('returns false when the token was already revoked', async () => {
-      await service.issue(5);
+  describe('revokeFamily', () => {
+    it('revokes every active token in the family and leaves other families alone', async () => {
+      const a = await service.issue(5);
+      await service.issue(5, a.familyId);
+      const other = await service.issue(5);
 
-      expect(await service.revoke(1)).toBe(true);
-      expect(await service.revoke(1)).toBe(false);
+      expect(await service.revokeFamily(a.familyId)).toBe(2);
+      expect(await service.findValid(other.refreshToken)).not.toBeNull();
     });
   });
 
@@ -134,22 +138,25 @@ describe('RefreshTokensService', () => {
   });
 });
 
-describe('TokensRepository', () => {
-  const typeorm = { update: jest.fn(), findOne: jest.fn(), create: jest.fn((row) => row), save: jest.fn(async (row) => row) };
-  const repository = new TokensRepository(typeorm as unknown as Repository<Token>);
+describe('RefreshTokensRepository', () => {
+  const typeorm = { update: jest.fn<any>(), findOne: jest.fn<any>(), create: jest.fn<any>((row) => row), save: jest.fn<any>(async (row) => row) };
+  const repository = new RefreshTokensRepository(typeorm as unknown as Repository<RefreshToken>);
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('only looks up tokens that are not revoked', async () => {
-    await repository.findActiveByHash('h'.repeat(64));
+  it('looks a token up by hash whether or not it is revoked, so reuse can be detected', async () => {
+    await repository.findByHash('h'.repeat(64));
 
-    expect(typeorm.findOne).toHaveBeenCalledWith({ where: { token_hash: 'h'.repeat(64), is_revoked: false } });
+    expect(typeorm.findOne).toHaveBeenCalledWith({ where: { token_hash: 'h'.repeat(64) } });
   });
 
-  it('only revokes a token that is still active', async () => {
-    typeorm.update.mockResolvedValue({ affected: 0 } as never);
+  it('revokes only the still-active tokens of one family and reports how many', async () => {
+    typeorm.update.mockResolvedValue({ affected: 3 });
 
-    expect(await repository.revoke(3)).toBe(false);
-    expect(typeorm.update).toHaveBeenCalledWith({ id: 3, is_revoked: false }, { is_revoked: true });
+    expect(await repository.revokeFamily('family-1')).toBe(3);
+    expect(typeorm.update).toHaveBeenCalledWith(
+      { family_id: 'family-1', revoked_at: IsNull() },
+      { revoked_at: expect.any(Date) },
+    );
   });
 });

@@ -10,7 +10,7 @@ import { AuthRepository } from '../repositories/auth.repository';
 import { UsersService } from '../../users/services/users.service';
 import { TokenService } from '../../tokens/services/token.service';
 import { RefreshTokensService, hashRefreshToken } from '../../tokens/services/refresh-tokens.service';
-import { TokensRepository } from '../../tokens/repositories/tokens.repository';
+import { RefreshTokensRepository } from '../../tokens/repositories/refresh-tokens.repository';
 import { JwksController } from '../../tokens/controllers/jwks.controller';
 import { AccountsServiceClient } from '../services/accounts-service-client';
 import { ServiceClientsService } from '../../clients/services/service-clients.service';
@@ -45,7 +45,7 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
     usersService as unknown as UsersService,
     authRepository as unknown as AuthRepository,
     tokenService,
-    new RefreshTokensService(tokensRepository as unknown as TokensRepository, config),
+    new RefreshTokensService(tokensRepository as unknown as RefreshTokensRepository, config),
     {} as AccountsServiceClient,
     {} as ServiceClientsService,
   );

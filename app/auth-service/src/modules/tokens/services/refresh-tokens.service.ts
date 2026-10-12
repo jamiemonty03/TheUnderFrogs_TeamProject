@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomBytes } from 'crypto';
-import { TokensRepository } from '../repositories/tokens.repository';
-import { Token } from '../entities/token.entity';
+import { createHash, randomBytes, randomUUID } from 'crypto';
+import { RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import { RefreshToken } from '../entities/refresh-token.entity';
 
 export interface IssuedRefreshToken {
   refreshToken: string;
+  familyId: string;
   expiresAt: Date;
 }
 
@@ -17,31 +18,36 @@ export class RefreshTokensService {
   private readonly ttlSeconds: number;
 
   constructor(
-    private readonly tokensRepository: TokensRepository,
+    private readonly refreshTokensRepository: RefreshTokensRepository,
     configService: ConfigService,
   ) {
     this.ttlSeconds = configService.get<number>('JWT_REFRESH_TOKEN_TTL', 604800);
   }
 
-  async issue(userId: number): Promise<IssuedRefreshToken> {
+  async issue(userId: number, familyId: string = randomUUID()): Promise<IssuedRefreshToken> {
     const refreshToken = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000);
-    await this.tokensRepository.create({ user_id: userId, token_hash: hashRefreshToken(refreshToken), expires_at: expiresAt });
-    return { refreshToken, expiresAt };
+    await this.refreshTokensRepository.create({
+      user_id: userId,
+      token_hash: hashRefreshToken(refreshToken),
+      family_id: familyId,
+      expires_at: expiresAt,
+    });
+    return { refreshToken, familyId, expiresAt };
   }
 
-  async findValid(refreshToken: string): Promise<Token | null> {
+  async findValid(refreshToken: string): Promise<RefreshToken | null> {
     if (!refreshToken) {
       return null;
     }
-    const token = await this.tokensRepository.findActiveByHash(hashRefreshToken(refreshToken));
-    if (!token || token.expires_at.getTime() <= Date.now()) {
+    const token = await this.refreshTokensRepository.findByHash(hashRefreshToken(refreshToken));
+    if (!token || token.revoked_at || token.expires_at.getTime() <= Date.now()) {
       return null;
     }
     return token;
   }
 
-  revoke(id: number): Promise<boolean> {
-    return this.tokensRepository.revoke(id);
+  revokeFamily(familyId: string): Promise<number> {
+    return this.refreshTokensRepository.revokeFamily(familyId);
   }
 }
