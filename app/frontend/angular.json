@@ -69,7 +69,10 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "coverageExclude": ["src/app/api/**"]
+          }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
