@@ -47,12 +47,9 @@ export class UsersService {
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User> {
+  async getUserByUsername(username: string): Promise<User | null> {
     const user = await this.usersRepository.findByUsername(username);
-    if (!user) {
-      throw new NotFoundException(`User with username ${username} not found`);
-    }
-    return user;
+    return user || null;
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -125,5 +122,31 @@ export class UsersService {
   private getDummyHash(): Promise<string> {
     this.dummyHash ??= this.passwordHasher.hash('dummy-password-for-timing');
     return this.dummyHash;
+  }
+
+  async recordFailedLogin(userId: number): Promise<void> {
+    const MAX_FAILED_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MINUTES = 15;
+
+    const user = await this.getUserById(userId);
+    const failedAttempts = (user.failed_attempts || 0) + 1;
+
+    const update: Partial<User> = { failed_attempts: failedAttempts };
+
+    if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
+      const lockedUntil = new Date();
+      lockedUntil.setMinutes(lockedUntil.getMinutes() + LOCKOUT_DURATION_MINUTES);
+      update.locked_until = lockedUntil;
+      this.logger.warn(`Account locked for user ID ${userId} due to ${failedAttempts} failed login attempts`);
+    }
+
+    await this.usersRepository.update(userId, update);
+  }
+
+  async recordSuccessfulLogin(userId: number): Promise<void> {
+    await this.usersRepository.update(userId, {
+      failed_attempts: 0,
+      locked_until: null,
+    });
   }
 }
