@@ -276,10 +276,11 @@ if [[ "$STAGE" == "all" || "$STAGE" == "populate" ]]; then
     docker exec trade-analytics-db sh -c 'psql -U "$ANALYTICS_DB_USERNAME" -d "${ANALYTICS_DB_URL##*/}" -Atc "$1"' _ "$ROW_COUNTS" \
         | sed 's/^/    /' || error_exit "Could not read tables in trade-analytics-db"
 
-    accounts=$(db_psql accounts-db -Atc "SELECT COUNT(*) FROM accounts;")
-    linked_users=$(db_psql auth-db -Atc "SELECT COUNT(*) FROM users WHERE account_id IS NOT NULL;")
-    [ "$accounts" -eq "$linked_users" ] || error_exit "accounts-db has $accounts accounts, but auth-db has $linked_users users linked to an account"
-    echo -e "${GREEN}✓ every account has a user in auth-db ($accounts)${NC}"
+    account_users=$(db_psql accounts-db -Atc "SELECT DISTINCT user_id FROM accounts ORDER BY 1;")
+    auth_users=$(db_psql auth-db -Atc "SELECT id FROM users ORDER BY 1;")
+    missing=$(comm -23 <(echo "$account_users" | sort) <(echo "$auth_users" | sort) | tr '\n' ' ')
+    [ -z "${missing// /}" ] || error_exit "accounts-db has accounts for user ids missing from auth-db: $missing"
+    echo -e "${GREEN}✓ every account belongs to a user in auth-db${NC}"
 
     echo -e "${GREEN}Kafka topics${NC}"
     docker exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe 2>/dev/null \
