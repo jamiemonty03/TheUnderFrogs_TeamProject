@@ -34,6 +34,19 @@ module.exports = defineConfig([
           style: 'kebab-case',
         },
       ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@angular/common/http',
+              importNames: ['HttpClient'],
+              message:
+                "Use the generated API clients in src/app/api instead of HttpClient. If the endpoint is missing, add it to the service's docs/*.yaml and run npm run generate:api.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
