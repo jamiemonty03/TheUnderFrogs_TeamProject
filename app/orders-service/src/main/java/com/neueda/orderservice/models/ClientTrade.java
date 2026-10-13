@@ -1,7 +1,16 @@
 package com.neueda.orderservice.models;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -10,20 +19,28 @@ import com.neueda.orderservice.enums.OrderSide;
 
 /**
  * Represents a completed trade from client data.
- * 
+ *
  * Tracks historical trade information imported from client_trades table,
  * providing a historical record of all trades executed within an account.
  * Used for reconciliation and weighted average cost calculations.
- * 
+ *
+ * trade_id is a SERIAL column, so the database assigns it on insert.
+ *
  * @see ClientTradeService
  * @see Position
  */
+@Entity
+@Table(name = "client_trades")
 public class ClientTrade {
 
-    private String tradeId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "trade_id")
+    private Integer tradeId;
 
     @NotNull(message = "AccountId is mandatory")
     @NotBlank(message = "AccountId cannot be blank")
+    @Column(name = "account_id")
     private String accountId;
 
     @NotNull(message = "Symbol is mandatory")
@@ -31,6 +48,8 @@ public class ClientTrade {
     private String symbol;
 
     @NotNull(message = "Trade type (BUY/SELL) is mandatory")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trade_type")
     private OrderSide tradeType;
 
     @NotNull(message = "Quantity is mandatory")
@@ -42,19 +61,26 @@ public class ClientTrade {
     private BigDecimal price;
 
     @NotNull(message = "Trade date is mandatory")
-    private LocalDateTime tradeDate;
+    @Column(name = "trade_date")
+    private LocalDate tradeDate;
 
+    private int version;
+
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "last_updated")
+    private LocalDateTime lastUpdated;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 
 
     public ClientTrade() {}
 
-    public ClientTrade(String tradeId, String accountId, String symbol, OrderSide tradeType,
-                      BigDecimal quantity, BigDecimal price, LocalDateTime tradeDate) {
+    public ClientTrade(String accountId, String symbol, OrderSide tradeType,
+                      BigDecimal quantity, BigDecimal price, LocalDate tradeDate) {
 
-        if (tradeId == null || tradeId.trim().isEmpty()) {
-            throw new IllegalArgumentException("Trade ID is mandatory and cannot be blank");
-        }
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("AccountId is mandatory and cannot be blank");
         }
@@ -74,21 +100,23 @@ public class ClientTrade {
             throw new IllegalArgumentException("Trade date is mandatory");
         }
 
-        this.tradeId = tradeId;
         this.accountId = accountId;
         this.symbol = symbol;
         this.tradeType = tradeType;
         this.quantity = quantity;
         this.price = price;
         this.tradeDate = tradeDate;
+        this.version = 0;
         this.createdAt = LocalDateTime.now();
+        this.lastUpdated = LocalDateTime.now();
+        this.updatedBy = "SYSTEM";
     }
 
-    public String getTradeId() {
+    public Integer getTradeId() {
         return tradeId;
     }
 
-    public void setTradeId(String tradeId) {
+    public void setTradeId(Integer tradeId) {
         this.tradeId = tradeId;
     }
 
@@ -132,15 +160,52 @@ public class ClientTrade {
         this.price = price;
     }
 
-    public LocalDateTime getTradeDate() {
+    public LocalDate getTradeDate() {
         return tradeDate;
     }
 
-    public void setTradeDate(LocalDateTime tradeDate) {
+    public void setTradeDate(LocalDate tradeDate) {
         this.tradeDate = tradeDate;
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
     }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(LocalDateTime lastUpdated) {
+        this.lastUpdated = lastUpdated;
+    }
+
+    public String getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(String updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    @Override
+    public String toString() {
+        return "ClientTrade{" +
+                "tradeId=" + tradeId +
+                ", accountId='" + accountId + '\'' +
+                ", symbol='" + symbol + '\'' +
+                ", tradeType=" + tradeType +
+                ", quantity=" + quantity +
+                ", price=" + price +
+                ", tradeDate=" + tradeDate +
+                '}';
     }
 }

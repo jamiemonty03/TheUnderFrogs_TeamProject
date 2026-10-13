@@ -37,12 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-/**
- * OrderController Unit Tests
- * 
- * Tests are written to work with InMemoryOrderRepository for fast unit testing.
- * See Docker Integration Test section below for conversion to real PostgreSQL database.
- */
+
 @DisplayName("OrderController Unit Tests")
 public class OrderControllerTest {
 

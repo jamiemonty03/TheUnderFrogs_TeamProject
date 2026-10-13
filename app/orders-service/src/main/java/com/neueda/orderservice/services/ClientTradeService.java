@@ -1,9 +1,18 @@
 package com.neueda.orderservice.services;
 
 import com.neueda.orderservice.models.ClientTrade;
+import com.neueda.orderservice.models.ClientTradeFilter;
+import com.neueda.orderservice.models.PositionStep;
 import com.neueda.orderservice.repositories.ClientTradeRepository;
 import com.neueda.orderservice.enums.OrderSide;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,7 +23,10 @@ import java.util.Optional;
  * historical trade records stored in the client_trades table.
  * Used for reconciliation and weighted average cost calculations.
  */
+@Service
 public class ClientTradeService {
+
+    private static final Sort NEWEST_FIRST = Sort.by(Sort.Order.desc("tradeDate"), Sort.Order.desc("tradeId"));
 
     private final ClientTradeRepository clientTradeRepository;
 
@@ -29,7 +41,42 @@ public class ClientTradeService {
         if (accountId == null || accountId.trim().isEmpty()) {
             throw new IllegalArgumentException("AccountId cannot be null or blank");
         }
-        return clientTradeRepository.findByAccountId(accountId);
+        return clientTradeRepository.findByAccountIdOrderByTradeDateDescTradeIdDesc(accountId);
+    }
+
+
+
+    public List<ClientTrade> search(ClientTradeFilter filter) {
+        if (filter == null) {
+            throw new IllegalArgumentException("Filter cannot be null");
+        }
+        if (filter.from() != null && filter.to() != null && filter.from().isAfter(filter.to())) {
+            throw new IllegalArgumentException("'from' date must be on or before 'to' date");
+        }
+        if (filter.symbols() != null && filter.symbols().isEmpty()) {
+            return List.of();
+        }
+
+        Specification<ClientTrade> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (filter.accountId() != null) {
+                predicates.add(cb.equal(root.get("accountId"), filter.accountId()));
+            }
+            if (filter.from() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("tradeDate"), filter.from()));
+            }
+            if (filter.to() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("tradeDate"), filter.to()));
+            }
+            if (filter.symbols() != null) {
+                predicates.add(root.get("symbol").in(filter.symbols()));
+            }
+            if (filter.side() != null) {
+                predicates.add(cb.equal(root.get("tradeType"), filter.side()));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+        return clientTradeRepository.findAll(spec, NEWEST_FIRST);
     }
 
 
@@ -40,7 +87,7 @@ public class ClientTradeService {
         if (symbol == null || symbol.trim().isEmpty()) {
             throw new IllegalArgumentException("Symbol cannot be null or blank");
         }
-        return clientTradeRepository.findByAccountAndSymbol(accountId, symbol);
+        return clientTradeRepository.findByAccountIdAndSymbolOrderByTradeDateDescTradeIdDesc(accountId, symbol);
     }
 
 
@@ -92,11 +139,30 @@ public class ClientTradeService {
             throw new IllegalArgumentException("Current position quantity cannot be null");
         }
 
-        BigDecimal totalBought = getHistoricalBuyQuantity(accountId, symbol);
-        BigDecimal totalSold = getHistoricalSellQuantity(accountId, symbol);
-        BigDecimal expectedQuantity = totalBought.subtract(totalSold);
+        List<PositionStep> history = getPositionHistory(accountId, symbol);
 
-        return expectedQuantity.compareTo(currentPositionQuantity) == 0;
+        boolean neverShort = history.stream()
+            .allMatch(step -> step.quantityAfter().signum() >= 0);
+        BigDecimal expectedQuantity = history.isEmpty()
+            ? BigDecimal.ZERO
+            : history.get(history.size() - 1).quantityAfter();
+
+        return neverShort && expectedQuantity.compareTo(currentPositionQuantity) == 0;
+    }
+
+    public List<PositionStep> getPositionHistory(String accountId, String symbol) {
+        List<PositionStep> steps = new ArrayList<>();
+        BigDecimal held = BigDecimal.ZERO;
+        // History comes back newest first; replaying needs oldest first
+        List<ClientTrade> oldestFirst = new ArrayList<>(getSymbolHistory(accountId, symbol));
+        Collections.reverse(oldestFirst);
+        for (ClientTrade trade : oldestFirst) {
+            held = trade.getTradeType() == OrderSide.BUY
+                ? held.add(trade.getQuantity())
+                : held.subtract(trade.getQuantity());
+            steps.add(new PositionStep(trade, held));
+        }
+        return steps;
     }
 
     public ClientTrade saveTrade(ClientTrade trade) {
@@ -106,17 +172,22 @@ public class ClientTradeService {
         return clientTradeRepository.save(trade);
     }
 
-    public Optional<ClientTrade> getTradeById(String tradeId) {
-        if (tradeId == null || tradeId.trim().isEmpty()) {
-            throw new IllegalArgumentException("TradeId cannot be null or blank");
+    public Optional<ClientTrade> getTradeById(Integer tradeId) {
+        if (tradeId == null) {
+            throw new IllegalArgumentException("TradeId cannot be null");
         }
         return clientTradeRepository.findById(tradeId);
     }
 
-    public boolean deleteTrade(String tradeId) {
-        if (tradeId == null || tradeId.trim().isEmpty()) {
-            throw new IllegalArgumentException("TradeId cannot be null or blank");
+    @Transactional
+    public boolean deleteTrade(Integer tradeId) {
+        if (tradeId == null) {
+            throw new IllegalArgumentException("TradeId cannot be null");
         }
-        return clientTradeRepository.delete(tradeId);
+        if (!clientTradeRepository.existsById(tradeId)) {
+            return false;
+        }
+        clientTradeRepository.deleteById(tradeId);
+        return true;
     }
 }
