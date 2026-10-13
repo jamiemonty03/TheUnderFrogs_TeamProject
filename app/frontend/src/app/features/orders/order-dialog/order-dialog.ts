@@ -10,7 +10,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
-import { Instruments, TradingInstrument } from '../../../services/instruments';
+import { Instruments } from '../../../services/instruments';
+import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;

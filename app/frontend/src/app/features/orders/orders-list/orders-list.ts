@@ -4,7 +4,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTableModule } from '@angular/material/table';
-import { Orders, OrderResponse } from '../../../services/orders';
+import { Auth } from '../../../services/auth/auth';
+import { Orders } from '../../../services/orders';
+import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog } from '../order-dialog/order-dialog';
 
 type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
@@ -30,9 +32,11 @@ interface OrderRow {
 })
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
+  private readonly auth = inject(Auth);
   private readonly ordersApi = inject(Orders);
 
-  readonly accountId = 'ACC-10042';
+  readonly currentUser = this.auth.currentUser;
+  readonly accountId = computed(() => this.currentUser()?.accountId ?? '');
 
   readonly filters: OrderFilter[] = ['ALL', 'NEW', 'FILLED', 'REJECTED', 'CANCELLED'];
 
@@ -79,10 +83,17 @@ export class OrdersList implements OnInit {
   }
 
   private loadOrders(): void {
+    const accountId = this.accountId();
+    if (!accountId) {
+      this.orders.set([]);
+      this.loadError.set('No account is associated with the current user.');
+      return;
+    }
+
     this.isLoading.set(true);
     this.loadError.set(null);
 
-    this.ordersApi.getOrdersByAccount(this.accountId).subscribe({
+    this.ordersApi.getOrdersByAccount(accountId).subscribe({
       next: (rows) => {
         this.orders.set(rows.map((row) => this.toOrderRow(row)));
         this.isLoading.set(false);

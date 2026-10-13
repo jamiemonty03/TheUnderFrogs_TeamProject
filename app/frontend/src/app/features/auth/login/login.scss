@@ -1,0 +1,39 @@
+.login-page {
+	display: grid;
+	min-height: 70vh;
+	place-items: center;
+	padding: 2rem;
+}
+
+.login-page__form {
+	display: grid;
+	width: min(100%, 24rem);
+	gap: 0.65rem;
+}
+
+.login-page__form h1 {
+	margin: 0 0 1rem;
+}
+
+.login-page__form input,
+.login-page__form button {
+	box-sizing: border-box;
+	min-height: 2.75rem;
+	padding: 0.65rem 0.75rem;
+	font: inherit;
+}
+
+.login-page__form button {
+	margin-top: 0.75rem;
+	cursor: pointer;
+}
+
+.login-page__form button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+.login-page__form small,
+.login-page__error {
+	color: #d65a5a;
+}

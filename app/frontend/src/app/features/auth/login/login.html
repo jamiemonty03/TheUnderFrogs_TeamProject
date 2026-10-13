@@ -1,1 +1,19 @@
-<p>login works!</p>
+<main class="login-page">
+	<form class="login-page__form" [formGroup]="form" (ngSubmit)="submit()">
+		<h1>Sign in</h1>
+
+		<label for="username">Username</label>
+		<input id="username" type="text" formControlName="username" autocomplete="username">
+		<small *ngIf="form.controls.username.touched && form.controls.username.invalid">Username is required.</small>
+
+		<label for="password">Password</label>
+		<input id="password" type="password" formControlName="password" autocomplete="current-password">
+		<small *ngIf="form.controls.password.touched && form.controls.password.invalid">Password is required.</small>
+
+		<p *ngIf="errorMessage()" class="login-page__error">{{ errorMessage() }}</p>
+
+		<button type="submit" [disabled]="isSubmitting()">
+			{{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
+		</button>
+	</form>
+</main>
