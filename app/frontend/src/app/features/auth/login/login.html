@@ -1,1 +1,23 @@
-<p>login works!</p>
+<section class="login">
+  <form class="login__card" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <h1 class="login__title">Sign in</h1>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Username</mat-label>
+      <input matInput formControlName="username" autocomplete="username" />
+      @if (form.controls.username.hasError('required')) {
+        <mat-error>Username is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" formControlName="password" autocomplete="current-password" />
+      @if (form.controls.password.hasError('required')) {
+        <mat-error>Password is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <button mat-flat-button type="submit" class="login__submit">Sign in</button>
+  </form>
+</section>
