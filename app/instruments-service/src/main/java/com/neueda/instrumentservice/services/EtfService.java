@@ -33,6 +33,7 @@ public class EtfService {
                 etf.getSymbol(),
                 etf.getName(),
                 etf.getPrice(),
+                etf.getPreviousClose(),
                 etf.getTradeDate(),
                 etf.getCreatedAt(),
                 etf.getLastUpdated(),

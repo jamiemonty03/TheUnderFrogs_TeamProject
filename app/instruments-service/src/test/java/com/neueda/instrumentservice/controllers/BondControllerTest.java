@@ -34,7 +34,7 @@ public class BondControllerTest {
     private BondService bondService;
 
     private BondResponse newBondResponse() {
-        return new BondResponse("BND01", "US Treasury 10Y", new BigDecimal("98.50"), LocalDateTime.now(),
+        return new BondResponse("BND01", "US Treasury 10Y", new BigDecimal("98.50"), new BigDecimal("98.40"), LocalDateTime.now(),
                 LocalDateTime.now(), LocalDateTime.now(), "Government", "Vanguard", "Open-End Fund",
                 new BigDecimal("0.05"), new BigDecimal("98.50"), new BigDecimal("50000000000"),
                 new BigDecimal("49500000000"), new BigDecimal("4.25"), new BigDecimal("3.75"),
@@ -59,7 +59,8 @@ public class BondControllerTest {
         mockMvc.perform(get("/bonds/BND01"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.symbol").value("BND01"))
-                .andExpect(jsonPath("$.category").value("Government"));
+                .andExpect(jsonPath("$.category").value("Government"))
+                .andExpect(jsonPath("$.previousClose").value(98.40));
     }
 
     @Test
