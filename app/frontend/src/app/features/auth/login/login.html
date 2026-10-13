@@ -1,83 +1,48 @@
-<div class="login">
-  <section class="login__hero">
-    <a class="login__brand" routerLink="/login">
-      <img class="login__brand-mark" src="/brand/leapfrog-mark.svg" alt="" />
-      <span class="login__brand-name">Toadstock</span>
-      <span class="login__brand-badge">NYSE: TOAD</span>
-    </a>
-
-    <div class="login__pitch">
-      <p class="login__headline">
-        Leap ahead<br />of the <span class="login__headline-accent">market.</span>
-      </p>
-      <p class="login__tagline">
-        Trade stocks, ETFs and bonds from one lily pad. Real-time prices, instant fills, zero
-        croaking.
-      </p>
-    </div>
-
-    <ul class="login__ticker" aria-hidden="true">
-      @for (quote of tickerQuotes; track quote.symbol) {
-        <li class="login__quote">
-          <span class="login__quote-symbol">{{ quote.symbol }}</span>
-          <span class="login__quote-change" [class.login__quote-change--down]="!quote.up">
-            {{ quote.up ? '▲' : '▼' }} {{ quote.percent }}%
-          </span>
-        </li>
+<app-auth-layout
+  heading="Welcome back"
+  subheading="Log in to your Toadstock account."
+  activeTab="login"
+>
+  <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label class="auth-form__label" for="login-username">Username</label>
+    <mat-form-field appearance="outline" class="auth-form__field">
+      <input
+        matInput
+        id="login-username"
+        formControlName="username"
+        autocomplete="username"
+        placeholder="kermit"
+      />
+      @if (form.controls.username.hasError('required')) {
+        <mat-error>Username is required.</mat-error>
       }
-    </ul>
-  </section>
+    </mat-form-field>
 
-  <section class="login__panel">
-    <form class="login__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <h1 class="login__title">Welcome back</h1>
-      <p class="login__subtitle">Log in to your Toadstock account.</p>
-
-      <nav class="login__tabs" aria-label="Account">
-        <a class="login__tab login__tab--active" routerLink="/login" aria-current="page">Log in</a>
-        <a class="login__tab" routerLink="/register">Create account</a>
-      </nav>
-
-      <label class="login__label" for="login-username">Username</label>
-      <mat-form-field appearance="outline" class="login__field">
-        <input
-          matInput
-          id="login-username"
-          formControlName="username"
-          autocomplete="username"
-          placeholder="kermit"
-        />
-        @if (form.controls.username.hasError('required')) {
-          <mat-error>Username is required.</mat-error>
-        }
-      </mat-form-field>
-
-      <label class="login__label" for="login-password">Password</label>
-      <mat-form-field appearance="outline" class="login__field">
-        <input
-          matInput
-          id="login-password"
-          type="password"
-          formControlName="password"
-          autocomplete="current-password"
-          placeholder="••••••••"
-        />
-        @if (form.controls.password.hasError('required')) {
-          <mat-error>Password is required.</mat-error>
-        }
-      </mat-form-field>
-
-      @if (errorMessage(); as message) {
-        <p class="login__error" role="alert">{{ message }}</p>
+    <label class="auth-form__label" for="login-password">Password</label>
+    <mat-form-field appearance="outline" class="auth-form__field">
+      <input
+        matInput
+        id="login-password"
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+        placeholder="••••••••"
+      />
+      @if (form.controls.password.hasError('required')) {
+        <mat-error>Password is required.</mat-error>
       }
+    </mat-form-field>
 
-      <button mat-flat-button type="submit" class="login__submit" [disabled]="submitting()">
-        @if (submitting()) {
-          Logging in…
-        } @else {
-          Log in and hop in <span aria-hidden="true">🐸</span>
-        }
-      </button>
-    </form>
-  </section>
-</div>
+    @if (errorMessage(); as message) {
+      <p class="auth-form__error" role="alert">{{ message }}</p>
+    }
+
+    <button mat-flat-button type="submit" class="auth-form__submit" [disabled]="submitting()">
+      @if (submitting()) {
+        Logging in…
+      } @else {
+        Log in and hop in <span aria-hidden="true">🐸</span>
+      }
+    </button>
+  </form>
+</app-auth-layout>
