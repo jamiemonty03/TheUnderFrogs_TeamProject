@@ -66,12 +66,15 @@ public class BondServiceTest {
     @Test
     @DisplayName("getBondBySymbol: Returns matching bond as BondResponse")
     public void testGetBondBySymbolFound() throws InstrumentNotFoundException {
-        when(bondMapper.findBySymbol("BND01")).thenReturn(Optional.of(newBond()));
+        Bond bond = newBond();
+        bond.setPreviousClose(new BigDecimal("98.40"));
+        when(bondMapper.findBySymbol("BND01")).thenReturn(Optional.of(bond));
 
         BondResponse result = bondService.getBondBySymbol("BND01");
 
         assertEquals("BND01", result.symbol());
         assertEquals(new BigDecimal("3.75"), result.couponRate());
+        assertEquals(new BigDecimal("98.40"), result.previousClose());
     }
 
     @Test
