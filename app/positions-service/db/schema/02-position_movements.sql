@@ -5,6 +5,7 @@ CREATE TABLE position_movements (
     order_id       VARCHAR(64) NOT NULL,
     movement_type  VARCHAR(20) NOT NULL CHECK (movement_type IN ('BUY', 'SELL', 'REVERSAL')),
     account_id     VARCHAR(32) NOT NULL,
+    portfolio_id   VARCHAR(32) NOT NULL,
     symbol         VARCHAR(10) NOT NULL,
     quantity       DECIMAL(18, 4) NOT NULL CHECK (quantity > 0),
     price          DECIMAL(18, 4) NOT NULL CHECK (price >= 0),
@@ -13,3 +14,4 @@ CREATE TABLE position_movements (
 );
 
 CREATE INDEX idx_position_movements_account_symbol ON position_movements(account_id, symbol);
+CREATE INDEX idx_position_movements_portfolio_symbol ON position_movements(portfolio_id, symbol);

@@ -2,6 +2,7 @@ CREATE TABLE orders (
     order_id CHAR(36) PRIMARY KEY,
     idempotency_key VARCHAR(100) NOT NULL UNIQUE,
     account_id VARCHAR(32) NOT NULL,
+    portfolio_id VARCHAR(32),
     symbol VARCHAR(20) NOT NULL,
     side VARCHAR(4) NOT NULL CHECK (side IN ('BUY', 'SELL')),
     quantity INTEGER NOT NULL CHECK (quantity > 0),

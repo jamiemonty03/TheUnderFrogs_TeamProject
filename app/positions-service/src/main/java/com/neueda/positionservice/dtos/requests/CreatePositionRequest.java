@@ -18,5 +18,11 @@ public record CreatePositionRequest(
 
     @NotNull(message = "Average cost cannot be null")
     @PositiveOrZero(message = "Average cost cannot be negative")
-    BigDecimal averageCost
-) {}
+    BigDecimal averageCost,
+
+    String portfolioId
+) {
+    public CreatePositionRequest(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
+        this(accountId, symbol, quantity, averageCost, null);
+    }
+}

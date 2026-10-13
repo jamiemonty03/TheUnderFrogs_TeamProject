@@ -130,7 +130,7 @@ class DuplicateOrderPlacedIntegrationTest {
         verify(ordersClient, timeout(WAIT.toMillis()).times(2)).getOrder(orderId);
 
         verify(accountsClient, times(1)).debit(ACCOUNT_ID, orderId, DEBIT);
-        verify(positionsClient, times(1)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET);
+        verify(positionsClient, times(1)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET, null);
         verify(ordersClient, times(1)).updateStatus(anyString(), any(), any(), any());
         assertThat(tradeEventsFor(orderId)).singleElement()
                 .satisfies(event -> assertThat(event.get("eventType").asText()).isEqualTo(EventTypes.ORDER_FILLED));
@@ -153,7 +153,7 @@ class DuplicateOrderPlacedIntegrationTest {
         verify(ordersClient, timeout(WAIT.toMillis()).times(2)).updateStatus(eq(orderId), eq(OrderStatus.FILLED), any(), any());
 
         verify(accountsClient, times(2)).debit(ACCOUNT_ID, orderId, DEBIT);
-        verify(positionsClient, times(2)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET);
+        verify(positionsClient, times(2)).addPosition(ACCOUNT_ID, SYMBOL, orderId, 10, MARKET, null);
         verify(accountsClient, never()).reverse(anyString(), anyString());
         assertThat(tradeEventsFor(orderId)).hasSize(1);
     }

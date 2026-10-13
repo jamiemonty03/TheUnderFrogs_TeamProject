@@ -41,6 +41,9 @@ public class Order {
     @Column(name = "account_id")
     private String accountId;
 
+    @Column(name = "portfolio_id", updatable = false)
+    private String portfolioId;
+
     @NotBlank(message = "Symbol is mandatory")
     private String symbol;
 
@@ -134,6 +137,14 @@ public class Order {
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
+    }
+
+    public String getPortfolioId() {
+        return portfolioId;
+    }
+
+    public void setPortfolioId(String portfolioId) {
+        this.portfolioId = portfolioId;
     }
 
     public String getSymbol() {

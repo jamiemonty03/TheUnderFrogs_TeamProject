@@ -16,11 +16,15 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Table(name = "positions")
 public class Position {
 
-    @Id
     @Column(name = "account_id")
     @NotBlank(message = "Account ID cannot be null or blank")
     private String accountId;
-    
+
+    @Id
+    @Column(name = "portfolio_id")
+    @NotBlank(message = "Portfolio ID cannot be null or blank")
+    private String portfolioId;
+
     @Id
     @Column(name = "symbol")
     @NotBlank(message = "Symbol cannot be null or blank")
@@ -65,9 +69,12 @@ public class Position {
         this.lastUpdated = LocalDateTime.now();
     }
 
-    public Position(String accountId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
+    public Position(String accountId, String portfolioId, String symbol, BigDecimal quantity, BigDecimal averageCost) {
         if (accountId == null || accountId.trim().isEmpty()) {
-        throw new IllegalArgumentException("Account ID cannot be null or blank");
+            throw new IllegalArgumentException("Account ID cannot be null or blank");
+        }
+        if (portfolioId == null || portfolioId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Portfolio ID cannot be null or blank");
         }
         if (symbol == null || symbol.trim().isEmpty()) {
             throw new IllegalArgumentException("Symbol cannot be null or blank");
@@ -80,6 +87,7 @@ public class Position {
         }
         
         this.accountId = accountId;
+        this.portfolioId = portfolioId;
         this.symbol = symbol;
         this.quantity = quantity;
         this.averageCost = averageCost;
@@ -91,6 +99,14 @@ public class Position {
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
+    }
+
+    public String getPortfolioId() {
+        return portfolioId;
+    }
+
+    public void setPortfolioId(String portfolioId) {
+        this.portfolioId = portfolioId;
     }
 
     public String getSymbol() {
@@ -159,18 +175,20 @@ public class Position {
         if (obj == null || getClass() != obj.getClass()) return false;
         Position position = (Position) obj;
         return  Objects.equals(accountId, position.accountId) &&
+                Objects.equals(portfolioId, position.portfolioId) &&
                 Objects.equals(symbol, position.symbol);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(accountId, symbol);
+        return Objects.hash(accountId, portfolioId, symbol);
     }
 
     @Override
     public String toString() {
         return "Position{" +
                 "accountId='" + accountId + '\'' +
+                ", portfolioId='" + portfolioId + '\'' +
                 ", symbol='" + symbol + '\'' +
                 ", quantity=" + quantity +
                 ", averageCost=" + averageCost +
