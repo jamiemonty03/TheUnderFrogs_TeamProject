@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, InjectionToken, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { DevLogin } from '../../environments/environment.model';
-import { API_BASE_URL } from './api-config';
+import { environment } from '../../../environments/environment';
+import { DevLogin } from '../../../environments/environment.model';
+import { API_BASE_URL } from '../api-config';
 
 export const DEV_LOGIN = new InjectionToken<DevLogin | null>('DEV_LOGIN', {
   providedIn: 'root',

@@ -5,9 +5,9 @@ import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { Auth, CurrentUser, DEV_LOGIN, SESSION_KEY } from './auth';
 import { authInterceptor } from './auth.interceptor';
-import { API_BASE_URL } from './api-config';
-import { DevLogin } from '../../environments/environment.model';
-import { environment as developmentEnvironment } from '../../environments/environment.development';
+import { API_BASE_URL } from '../api-config';
+import { DevLogin } from '../../../environments/environment.model';
+import { environment as developmentEnvironment } from '../../../environments/environment.development';
 
 function jwt(expiresInSeconds: number): string {
   const encode = (value: object) => btoa(JSON.stringify(value)).replace(/=+$/, '');

@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { Auth } from './auth';
-import { API_BASE_URL } from './api-config';
+import { API_BASE_URL } from '../api-config';
 
 const TOKEN_PATHS = ['/auth/me', '/auth/logout'];
 

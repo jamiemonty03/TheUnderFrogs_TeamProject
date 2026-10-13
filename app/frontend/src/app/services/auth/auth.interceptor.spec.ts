@@ -7,7 +7,7 @@ import { vi } from 'vitest';
 import { Component } from '@angular/core';
 import { authInterceptor } from './auth.interceptor';
 import { Auth } from './auth';
-import { API_BASE_URL } from './api-config';
+import { API_BASE_URL } from '../api-config';
 
 @Component({ template: '' })
 class Blank {}

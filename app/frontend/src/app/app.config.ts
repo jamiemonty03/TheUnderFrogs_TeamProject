@@ -8,8 +8,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { routes } from './app.routes';
-import { Auth } from './services/auth';
-import { authInterceptor } from './services/auth.interceptor';
+import { Auth, authInterceptor } from './services/auth';
 
 export const appConfig: ApplicationConfig = {
   providers: [
