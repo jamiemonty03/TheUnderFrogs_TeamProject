@@ -91,6 +91,24 @@ pipeline {
             }
         }
 
+        stage('Auth Service Tests') {
+            steps {
+                sh '''
+                    docker-compose up -d auth-db
+                    timeout 120 sh -c 'until [ "$(docker inspect -f "{{.State.Health.Status}}" auth-db)" = "healthy" ]; do sleep 2; done'
+                    cd app/auth-service
+                    npm ci
+                    npm run test:cov
+                    npm run test:e2e
+                '''
+            }
+            post {
+                always {
+                    sh 'docker-compose down --volumes --remove-orphans || true'
+                }
+            }
+        }
+
         stage('Python Tests') {
             steps {
                 sh '''
