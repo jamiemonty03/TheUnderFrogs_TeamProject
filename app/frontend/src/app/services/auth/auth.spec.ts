@@ -3,10 +3,10 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { Auth, CurrentUser, DEV_LOGIN, SESSION_KEY } from './auth';
+import { Auth, CurrentUser, SESSION_KEY } from './auth';
 import { authInterceptor } from './auth.interceptor';
 import { API_BASE_URL } from '../api-config';
-import { DevLogin } from '../../../environments/environment.model';
+import { environment as productionEnvironment } from '../../../environments/environment';
 import { environment as developmentEnvironment } from '../../../environments/environment.development';
 
 function jwt(expiresInSeconds: number): string {
@@ -20,13 +20,12 @@ describe('Auth', () => {
   let auth: Auth;
   let http: HttpTestingController;
 
-  function setUp(devLogin: DevLogin | null = null, apiBaseUrl = '') {
+  function setUp(apiBaseUrl = '') {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: DEV_LOGIN, useValue: devLogin },
         { provide: API_BASE_URL, useValue: apiBaseUrl },
       ],
     });
@@ -75,7 +74,7 @@ describe('Auth', () => {
   });
 
   it('calls auth-service on the configured API origin, sending the token there for /auth/me', async () => {
-    setUp(null, 'https://api.example.com');
+    setUp('https://api.example.com');
     const accessToken = jwt(900);
 
     const result = firstValueFrom(auth.login('demo', 'Demo123!'));
@@ -169,52 +168,13 @@ describe('Auth', () => {
     expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
   });
 
-  describe('development-only demo login', () => {
-    it('the development environment holds the seeded demo user', () => {
-      expect(developmentEnvironment.production).toBe(false);
-      expect(developmentEnvironment.devLogin).toEqual({ username: 'demo', password: 'Demo123!' });
-    });
+  it('has no demo login: no credentials in any environment and no automatic login', () => {
+    setUp();
 
-    it('loginAsDevUser() logs in with the configured demo credentials', async () => {
-      setUp({ username: 'demo', password: 'Demo123!' });
-
-      const result = firstValueFrom(auth.loginAsDevUser());
-      const login = http.expectOne('/auth/login');
-      expect(login.request.body).toEqual({ username: 'demo', password: 'Demo123!' });
-      login.flush({
-        accessToken: jwt(900),
-        refreshToken: 'refresh-1',
-        expiresIn: 900,
-        mfaRequired: false,
-      });
-      http.expectOne('/auth/me').flush(demo);
-
-      expect(await result).toEqual(demo);
-      expect(auth.isAuthenticated()).toBe(true);
-    });
-
-    it('loginAsDevUser() does nothing when no demo credentials are configured, as in production', async () => {
-      setUp(null);
-
-      expect(await firstValueFrom(auth.loginAsDevUser())).toBeNull();
-      http.expectNone('/auth/login');
-    });
-
-    it('loginAsDevUser() does not log in again when a session already exists', async () => {
-      setUp({ username: 'demo', password: 'Demo123!' });
-      await logInAsDemo();
-
-      expect(await firstValueFrom(auth.loginAsDevUser())).toEqual(demo);
-      http.expectNone('/auth/login');
-    });
-
-    it('loginAsDevUser() lets the app start even if the auth service is down', async () => {
-      setUp({ username: 'demo', password: 'Demo123!' });
-
-      const result = firstValueFrom(auth.loginAsDevUser());
-      http.expectOne('/auth/login').error(new ProgressEvent('error'));
-
-      expect(await result).toBeNull();
-    });
+    expect(Object.keys(productionEnvironment).sort()).toEqual(['apiBaseUrl', 'production']);
+    expect(Object.keys(developmentEnvironment).sort()).toEqual(['apiBaseUrl', 'production']);
+    expect('loginAsDevUser' in auth).toBe(false);
+    expect(auth.isAuthenticated()).toBe(false);
+    http.expectNone('/auth/login');
   });
 });
