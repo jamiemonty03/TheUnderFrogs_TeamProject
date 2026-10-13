@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto, toUserResponse } from '../dtos';
 import { ErrorResponseDto } from '../../../common/dtos/error-response.dto';

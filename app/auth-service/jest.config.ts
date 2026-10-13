@@ -27,6 +27,7 @@ const config: Config = {
       },
     ],
   },
+  setupFiles: ['<rootDir>/test/e2e.setup.ts'],
   moduleNameMapper: {
     ...pathsToModuleNameMapper(paths, { prefix: '<rootDir>/' }),
   },

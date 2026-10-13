@@ -53,6 +53,9 @@ describe('Refresh and logout end to end (real AuthService, TokenService, Refresh
   const usersService = {
     verifyCredentials: jest.fn(async () => demo),
     getUserById: jest.fn(async () => demo),
+    getUserByUsername: jest.fn(async () => demo),
+    recordFailedLogin: jest.fn(async () => undefined),
+    recordSuccessfulLogin: jest.fn(async () => undefined),
   };
   const authService = new AuthService(
     usersService as unknown as UsersService,

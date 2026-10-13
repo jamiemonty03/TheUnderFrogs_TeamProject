@@ -7,6 +7,8 @@ build.log
 
 **/dist/
 **/node_modules/
+**/coverage/
+**/.scannerwork/
 .vscode/
 app/auth-service/build
 *.tsbuildinfo
