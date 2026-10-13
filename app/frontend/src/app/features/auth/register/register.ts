@@ -9,6 +9,7 @@ import { finalize } from 'rxjs';
 import { Auth } from '../../../services/auth';
 import { AuthLayout } from '../auth-layout/auth-layout';
 import { SubmittedErrorStateMatcher } from '../login/submitted-error-state';
+import { registerErrorMessage } from './register-error';
 import { USERNAME_PATTERN, notBlank, strictEmail } from './register-validators';
 
 @Component({
@@ -24,6 +25,7 @@ export class Register {
   private readonly router = inject(Router);
 
   readonly submitting = signal(false);
+  readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.fb.group({
     fullName: ['', [Validators.required, Validators.maxLength(255), notBlank]],
@@ -48,6 +50,7 @@ export class Register {
       return;
     }
     this.submitting.set(true);
+    this.errorMessage.set(null);
     const { fullName, username, email, password } = this.form.getRawValue();
 
     this.auth
@@ -55,7 +58,7 @@ export class Register {
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
         next: () => void this.router.navigateByUrl('/dashboard'),
-        error: () => undefined,
+        error: (error: unknown) => this.errorMessage.set(registerErrorMessage(error)),
       });
   }
 }

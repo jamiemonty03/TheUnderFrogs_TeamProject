@@ -1,8 +1,10 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Register } from './register';
+import { REGISTER_ERRORS } from './register-error';
 import { Auth, CurrentUser, RegisterDetails } from '../../../services/auth';
 
 const kermit: CurrentUser = {
@@ -227,6 +229,70 @@ describe('Register', () => {
 
       expect(button().disabled).toBe(false);
       expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('error messages', () => {
+    const alert = () => page.querySelector<HTMLElement>('[role="alert"]');
+    const httpError = (status: number, errorCode?: string) =>
+      new HttpErrorResponse({
+        status,
+        error: errorCode ? { errorCode, message: 'from server' } : null,
+      });
+
+    it('shows no alert before anything goes wrong', async () => {
+      fillValid();
+
+      await submit();
+
+      expect(alert()).toBeNull();
+    });
+
+    it.each([
+      [
+        'the username or email is taken (AUTH-409)',
+        httpError(409, 'AUTH-409'),
+        REGISTER_ERRORS.taken,
+      ],
+      ['too many attempts (AUTH-429)', httpError(429, 'AUTH-429'), REGISTER_ERRORS.tooManyAttempts],
+      [
+        'the trading account could not be opened (AUTH-503)',
+        httpError(503, 'AUTH-503'),
+        REGISTER_ERRORS.accountNotOpened,
+      ],
+      ['the service cannot be reached', httpError(0), REGISTER_ERRORS.unreachable],
+    ])('shows the message for %s in an alert', async (_label, error, message) => {
+      register.mockReturnValue(throwError(() => error));
+      fillValid();
+
+      await submit();
+
+      expect(alert()?.textContent?.trim()).toBe(message);
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('keeps what the user typed so they can fix it and try again', async () => {
+      register.mockReturnValue(throwError(() => httpError(409, 'AUTH-409')));
+      fillValid();
+
+      await submit();
+
+      expect(input('username').value).toBe('kermit');
+      expect(input('email').value).toBe('kermit@pond.io');
+      expect(input('password').value).toBe('LilyPad-2026!');
+    });
+
+    it('clears the alert when trying again, and goes to /dashboard if it works', async () => {
+      register.mockReturnValueOnce(throwError(() => httpError(409, 'AUTH-409')));
+      fillValid();
+      await submit();
+      expect(alert()).not.toBeNull();
+
+      type('username', 'kermit2');
+      await submit();
+
+      expect(alert()).toBeNull();
+      expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
     });
   });
 });

@@ -86,6 +86,10 @@
       }
     </mat-form-field>
 
+    @if (errorMessage(); as message) {
+      <p class="auth-form__error" role="alert">{{ message }}</p>
+    }
+
     <button mat-flat-button type="submit" class="auth-form__submit" [disabled]="submitting()">
       @if (submitting()) {
         Creating account…
