@@ -6,9 +6,11 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
+import { Instruments } from '../../../services/instruments';
 import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog } from '../order-dialog/order-dialog';
+import { forkJoin } from 'rxjs';
 
 type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
 type OrderSide = 'BUY' | 'SELL';
@@ -20,7 +22,7 @@ interface OrderRow {
   symbol: string;
   side: OrderSide;
   quantity: number;
-  priceLimit: string;
+  price: string;
   status: OrderStatus;
   canCancel: boolean;
 }
@@ -34,6 +36,7 @@ interface OrderRow {
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly auth = inject(Auth);
+  private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
 
   readonly currentUser = this.auth.currentUser;
@@ -49,7 +52,7 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['id', 'placed', 'symbol', 'side', 'quantity', 'priceLimit', 'status', 'action'];
+  readonly displayedColumns: string[] = ['id', 'placed', 'symbol', 'side', 'quantity', 'price', 'status', 'action'];
 
   readonly visibleOrders = computed(() => {
     const filter = this.activeFilter();
@@ -108,9 +111,13 @@ export class OrdersList implements OnInit {
     this.isLoading.set(true);
     this.loadError.set(null);
 
-    this.ordersApi.getOrdersByAccount(accountId).subscribe({
-      next: (rows) => {
-        this.orders.set(rows.map((row) => this.toOrderRow(row)));
+    forkJoin({
+      orders: this.ordersApi.getOrdersByAccount(accountId),
+      instruments: this.instrumentsApi.getAllTradableInstruments(),
+    }).subscribe({
+      next: ({ orders, instruments }) => {
+        const marketPrices = new Map(instruments.map((instrument) => [instrument.symbol, instrument.marketPrice]));
+        this.orders.set(orders.map((row) => this.toOrderRow(row, marketPrices)));
         this.pageIndex.set(0);
         this.isLoading.set(false);
       },
@@ -122,17 +129,21 @@ export class OrdersList implements OnInit {
     });
   }
 
-  private toOrderRow(order: OrderResponse): OrderRow {
+  private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
       id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,
       quantity: order.quantity,
-      priceLimit: `$${Number(order.priceLimit).toFixed(2)}`,
+      price: this.formatPrice(marketPrices.get(order.symbol)),
       status: order.orderStatus,
       canCancel: order.orderStatus === 'NEW',
     };
+  }
+
+  private formatPrice(value: number | undefined): string {
+    return value == null ? 'N/A' : `$${Number(value).toFixed(2)}`;
   }
 
   private formatDate(value: string): string {

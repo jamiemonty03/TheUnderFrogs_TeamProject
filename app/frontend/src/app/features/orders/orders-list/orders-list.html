@@ -57,9 +57,9 @@
 					<td mat-cell *matCellDef="let order" class="orders-table__qty">{{ order.quantity }}</td>
 				</ng-container>
 
-				<ng-container matColumnDef="priceLimit">
-					<th mat-header-cell *matHeaderCellDef>PRICE LIMIT</th>
-					<td mat-cell *matCellDef="let order" class="orders-table__price">{{ order.priceLimit }}</td>
+				<ng-container matColumnDef="price">
+					<th mat-header-cell *matHeaderCellDef>PRICE</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__price">{{ order.price }}</td>
 				</ng-container>
 
 				<ng-container matColumnDef="status">

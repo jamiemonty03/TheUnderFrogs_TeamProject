@@ -232,7 +232,7 @@ export class OrderDialog implements OnInit {
       symbol: instrument.symbol,
       side: 'SELL',
       quantity: Number(this.sellOrderStep.controls.quantity.value),
-      priceLimit: Number(instrument.marketPrice),
+      priceLimit: 0.01,
         idempotencyKey: this.createIdempotencyKey(),
     }).subscribe({
       next: (response) => {
