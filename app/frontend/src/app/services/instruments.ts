@@ -27,7 +27,7 @@ export interface DayChange {
   percent: number;
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class Instruments {
   private readonly http = inject(HttpClient);
 
