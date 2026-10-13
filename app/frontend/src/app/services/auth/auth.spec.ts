@@ -3,6 +3,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { vi } from 'vitest';
 import { Auth, CurrentUser, SESSION_KEY } from './auth';
 import { authInterceptor } from './auth.interceptor';
 import { API_BASE_URL } from '../api-config';
@@ -176,5 +177,102 @@ describe('Auth', () => {
     expect('loginAsDevUser' in auth).toBe(false);
     expect(auth.isAuthenticated()).toBe(false);
     http.expectNone('/auth/login');
+  });
+
+  describe('token storage and logging rules', () => {
+    const PASSWORD = 'Demo123!';
+    const consoleMethods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+    let consoleSpies: ReturnType<typeof vi.spyOn>[];
+    let localStorageWrites: string[];
+
+    beforeEach(() => {
+      localStorage.clear();
+      consoleSpies = consoleMethods.map((method) =>
+        vi.spyOn(console, method).mockImplementation(() => undefined),
+      );
+      localStorageWrites = [];
+      const setItem = Storage.prototype.setItem;
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string,
+      ) {
+        if (this === localStorage) {
+          localStorageWrites.push(key);
+        }
+        return setItem.call(this, key, value);
+      });
+    });
+
+    afterEach(() => vi.restoreAllMocks());
+
+    const consoleOutput = () => JSON.stringify(consoleSpies.flatMap((spy) => spy.mock.calls));
+
+    it('keeps the token in memory: it still works after sessionStorage is wiped', async () => {
+      setUp();
+      const accessToken = jwt(900);
+      await logInAsDemo(accessToken);
+
+      sessionStorage.clear();
+
+      expect(auth.getToken()).toBe(accessToken);
+      expect(auth.currentUser()).toEqual(demo);
+    });
+
+    it('backs the session up in sessionStorage only, never localStorage', async () => {
+      setUp();
+      const accessToken = jwt(900);
+      await logInAsDemo(accessToken);
+
+      const backup = JSON.parse(sessionStorage.getItem(SESSION_KEY)!);
+      expect(backup).toEqual({ accessToken, refreshToken: 'refresh-1', user: demo });
+      expect(localStorage.length).toBe(0);
+      expect(localStorageWrites).toEqual([]);
+    });
+
+    it('never stores the password anywhere', async () => {
+      setUp();
+      await logInAsDemo();
+
+      expect(sessionStorage.getItem(SESSION_KEY)).not.toContain(PASSWORD);
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('writes nothing to localStorage across a failed login, a login and a logout', async () => {
+      setUp();
+      const failed = firstValueFrom(auth.login('demo', 'wrong'));
+      http.expectOne('/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });
+      await expect(failed).rejects.toBeTruthy();
+      await logInAsDemo();
+      const loggedOut = firstValueFrom(auth.logout());
+      http.expectOne('/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await loggedOut;
+
+      expect(localStorageWrites).toEqual([]);
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('logs nothing at all, so never a token or password, across login, failures and logout', async () => {
+      setUp();
+      const accessToken = jwt(900);
+      const failed = firstValueFrom(auth.login('demo', 'wrong-password'));
+      http
+        .expectOne('/auth/login')
+        .flush(
+          { errorCode: 'AUTH-401', message: 'Invalid credentials' },
+          { status: 401, statusText: 'Unauthorized' },
+        );
+      await expect(failed).rejects.toBeTruthy();
+      await logInAsDemo(accessToken);
+      const loggedOut = firstValueFrom(auth.logout());
+      http.expectOne('/auth/logout').error(new ProgressEvent('error'));
+      await loggedOut;
+
+      expect(consoleOutput()).not.toContain(accessToken);
+      expect(consoleOutput()).not.toContain('refresh-1');
+      expect(consoleOutput()).not.toContain(PASSWORD);
+      expect(consoleOutput()).not.toContain('wrong-password');
+      consoleSpies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
+    });
   });
 });

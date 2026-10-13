@@ -205,4 +205,23 @@ describe('Login', () => {
       expect(alert()).toBeNull();
     });
   });
+
+  describe('logging', () => {
+    it('logs nothing, so never the password, when sign-in fails or succeeds', async () => {
+      const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) =>
+        vi.spyOn(console, method).mockImplementation(() => undefined),
+      );
+      await setUp();
+      login.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 401, error: { errorCode: 'AUTH-401' } })),
+      );
+
+      await fillAndSubmit();
+      await submit();
+
+      expect(JSON.stringify(spies.flatMap((spy) => spy.mock.calls))).not.toContain('Demo123!');
+      spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
+      vi.restoreAllMocks();
+    });
+  });
 });
