@@ -13,8 +13,13 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
-
-  app.use(helmet());
+  const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
+  app.use(
+    helmet({
+      contentSecurityPolicy: { directives: { upgradeInsecureRequests: httpsEnabled ? [] : null } },
+      hsts: httpsEnabled,
+    }),
+  );
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
