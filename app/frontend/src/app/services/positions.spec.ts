@@ -1,8 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { Auth } from './auth';
+import { Auth, CurrentUser } from './auth';
 import { Position, Positions } from './positions';
 
 const ACCOUNT = 'ACC0013';
@@ -11,16 +12,16 @@ const AAPL: Position = { accountId: ACCOUNT, symbol: 'AAPL', quantity: 50, avera
 describe('Positions', () => {
   let service: Positions;
   let http: HttpTestingController;
-  let auth: Auth;
+  // Stands in for Auth, whose currentUser is read-only and only set by logging in.
+  const currentUser = signal<CurrentUser | null>(null);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: Auth, useValue: { currentUser } }],
     });
     service = TestBed.inject(Positions);
     http = TestBed.inject(HttpTestingController);
-    auth = TestBed.inject(Auth);
-    auth.currentUser.set({ userId: 13, username: 'trader', roles: ['TRADER'], accountId: ACCOUNT });
+    currentUser.set({ userId: 13, username: 'trader', roles: ['TRADER'], accountId: ACCOUNT });
   });
 
   afterEach(() => http.verify());
@@ -78,7 +79,7 @@ describe('Positions', () => {
   });
 
   it('makes no request when the user has no trading account', async () => {
-    auth.currentUser.set({ userId: 1, username: 'admin', roles: ['ADMIN'], accountId: null });
+    currentUser.set({ userId: 1, username: 'admin', roles: ['ADMIN'], accountId: null });
 
     await expect(firstValueFrom(service.getPositions())).rejects.toBeTruthy();
 
