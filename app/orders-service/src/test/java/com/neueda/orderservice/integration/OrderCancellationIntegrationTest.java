@@ -195,6 +195,6 @@ class OrderCancellationIntegrationTest {
     }
 
     private String createToken() {
-        return TestJwtIssuer.token().subject("cancellation-test-user").build();
+        return TestJwtIssuer.token().subject("cancellation-test-user").accountId(ACCOUNT_ID).build();
     }
 }

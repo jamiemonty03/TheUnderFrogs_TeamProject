@@ -33,3 +33,11 @@
   --ts-neutral: #5E7468;
   --ts-neutral-bg: #1D2420;
 }
+
+body {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+
+  background-color: var(--ts-bg);
+}
