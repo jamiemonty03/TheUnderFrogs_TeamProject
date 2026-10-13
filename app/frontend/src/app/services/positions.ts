@@ -5,6 +5,7 @@ import { Auth } from './auth';
 
 export interface Position {
   accountId: string;
+  portfolioId: string | null;
   symbol: string;
   quantity: number;
   averageCost: number;
@@ -26,20 +27,24 @@ export class Positions {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
-  getPositions(): Observable<Position[]> {
+  getPositions(portfolioId?: string): Observable<Position[]> {
     return this.track((accountId) =>
-      this.http.get<Position[]>(`${BASE_URL}/${encodeURIComponent(accountId)}`),
+      this.http.get<Position[]>(`${BASE_URL}/${encodeURIComponent(accountId)}`, {
+        params: portfolioParams(portfolioId),
+      }),
     );
   }
 
-  getPosition(symbol: string): Observable<Position> {
+  getPosition(symbol: string, portfolioId?: string): Observable<Position> {
     return this.track((accountId) =>
       this.http
-        .get<Position>(`${BASE_URL}/${encodeURIComponent(accountId)}/${encodeURIComponent(symbol)}`)
+        .get<Position>(`${BASE_URL}/${encodeURIComponent(accountId)}/${encodeURIComponent(symbol)}`, {
+          params: portfolioParams(portfolioId),
+        })
         .pipe(
           catchError((err: unknown) =>
             err instanceof HttpErrorResponse && err.status === 404
-              ? of<Position>({ accountId, symbol, quantity: 0, averageCost: 0 })
+              ? of<Position>({ accountId, portfolioId: portfolioId ?? null, symbol, quantity: 0, averageCost: 0 })
               : throwError(() => err),
           ),
         ),
@@ -65,6 +70,10 @@ export class Positions {
       );
     });
   }
+}
+
+function portfolioParams(portfolioId?: string): Record<string, string> {
+  return portfolioId ? { portfolioId } : {};
 }
 
 function messageFor(err: unknown): string {

@@ -7,7 +7,7 @@ import { Auth, CurrentUser } from './auth';
 import { Position, Positions } from './positions';
 
 const ACCOUNT = 'ACC0013';
-const AAPL: Position = { accountId: ACCOUNT, symbol: 'AAPL', quantity: 50, averageCost: 182.4 };
+const AAPL: Position = { accountId: ACCOUNT, portfolioId: 'PF0013', symbol: 'AAPL', quantity: 50, averageCost: 182.4 };
 
 describe('Positions', () => {
   let service: Positions;
@@ -53,8 +53,28 @@ describe('Positions', () => {
       .expectOne(`/api/positions/${ACCOUNT}/TSLA`)
       .flush({ errorCode: 'POS-404', message: 'Position not found' }, { status: 404, statusText: 'Not Found' });
 
-    expect(await result).toEqual({ accountId: ACCOUNT, symbol: 'TSLA', quantity: 0, averageCost: 0 });
+    expect(await result).toEqual({ accountId: ACCOUNT, portfolioId: null, symbol: 'TSLA', quantity: 0, averageCost: 0 });
     expect(service.error()).toBeNull();
+  });
+
+  it("loads only one portfolio's positions when a portfolioId is given", async () => {
+    const result = firstValueFrom(service.getPositions('PF0042'));
+
+    const req = http.expectOne(`/api/positions/${ACCOUNT}?portfolioId=PF0042`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ ...AAPL, portfolioId: 'PF0042' }]);
+
+    expect((await result)[0].portfolioId).toBe('PF0042');
+  });
+
+  it('loads one position in a given portfolio, and reports quantity 0 there when not held', async () => {
+    const result = firstValueFrom(service.getPosition('TSLA', 'PF0042'));
+
+    http
+      .expectOne(`/api/positions/${ACCOUNT}/TSLA?portfolioId=PF0042`)
+      .flush({ errorCode: 'POS-404', message: 'Position not found' }, { status: 404, statusText: 'Not Found' });
+
+    expect(await result).toEqual({ accountId: ACCOUNT, portfolioId: 'PF0042', symbol: 'TSLA', quantity: 0, averageCost: 0 });
   });
 
   it("sets error to the server's message when a request fails", async () => {
