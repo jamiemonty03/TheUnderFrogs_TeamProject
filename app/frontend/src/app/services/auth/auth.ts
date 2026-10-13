@@ -1,14 +1,7 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, InjectionToken, inject, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
-import { environment } from '../../../environments/environment';
-import { DevLogin } from '../../../environments/environment.model';
 import { API_BASE_URL } from '../api-config';
-
-export const DEV_LOGIN = new InjectionToken<DevLogin | null>('DEV_LOGIN', {
-  providedIn: 'root',
-  factory: () => environment.devLogin,
-});
 
 export interface CurrentUser {
   userId: number;
@@ -35,7 +28,6 @@ export const SESSION_KEY = 'auth.session';
 @Injectable({ providedIn: 'root' })
 export class Auth {
   private readonly http = inject(HttpClient);
-  private readonly devLogin = inject(DEV_LOGIN);
   private readonly baseUrl = inject(API_BASE_URL);
   private session: StoredSession | null = readSession();
   private readonly user = signal<CurrentUser | null>(this.session?.user ?? null);
@@ -61,14 +53,6 @@ export class Auth {
         return throwError(() => error);
       }),
     );
-  }
-
-  loginAsDevUser(): Observable<CurrentUser | null> {
-    const devLogin = this.devLogin;
-    if (!devLogin || this.isAuthenticated()) {
-      return of(this.user());
-    }
-    return this.login(devLogin.username, devLogin.password).pipe(catchError(() => of(null)));
   }
 
   logout(): Observable<void> {
