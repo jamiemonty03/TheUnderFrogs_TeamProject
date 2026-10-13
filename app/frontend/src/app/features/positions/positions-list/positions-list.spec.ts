@@ -33,7 +33,7 @@ const position = (portfolioId: string, symbol: string, quantity: number, average
 const ALL = [position('PF0011', 'AAPL', 10, 100), position('PF0012', 'NVDA', 2, 500), position('PF0012', 'AAPL', 4, 150)];
 const IN_GROWTH = ALL.filter((p) => p.portfolioId === 'PF0012');
 
-describe('PositionsList (Wallet page)', () => {
+describe('PositionsList (Portfolios page)', () => {
   let fixture: ComponentFixture<PositionsList>;
   let portfolios: {
     loading: ReturnType<typeof signal<boolean>>;
@@ -92,7 +92,7 @@ describe('PositionsList (Wallet page)', () => {
 
   it('opens on all holdings, across every portfolio, with a portfolio column', () => {
     expect(positions.getPositions).toHaveBeenCalledWith(undefined);
-    expect(text('wallet-title')).toBe('All holdings');
+    expect(text('portfolios-title')).toBe('All holdings');
     expect(rowCount()).toBe(3);
     expect(headers()).toContain('Portfolio');
     expect(text('holding-count')).toBe('3');
@@ -113,7 +113,7 @@ describe('PositionsList (Wallet page)', () => {
     await click('portfolio-PF0012');
 
     expect(positions.getPositions).toHaveBeenLastCalledWith('PF0012');
-    expect(text('wallet-title')).toBe('Growth');
+    expect(text('portfolios-title')).toBe('Growth');
     expect(rowCount()).toBe(2);
     expect(headers()).not.toContain('Portfolio');
     expect(el('portfolio-PF0012')!.getAttribute('aria-pressed')).toBe('true');
@@ -185,7 +185,7 @@ describe('PositionsList (Wallet page)', () => {
     await click('confirm-delete');
 
     expect(portfolios.deletePortfolio).toHaveBeenCalledWith('PF0012');
-    expect(text('wallet-title')).toBe('All holdings');
+    expect(text('portfolios-title')).toBe('All holdings');
     expect(positions.getPositions).toHaveBeenLastCalledWith(undefined);
   });
 
@@ -193,6 +193,6 @@ describe('PositionsList (Wallet page)', () => {
     portfolios.error.set("There's already a portfolio called Growth");
     fixture.detectChanges();
 
-    expect(text('wallet-error')).toBe("There's already a portfolio called Growth");
+    expect(text('portfolios-error')).toBe("There's already a portfolio called Growth");
   });
 });

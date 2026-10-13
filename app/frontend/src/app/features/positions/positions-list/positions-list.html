@@ -1,11 +1,11 @@
-<section class="wallet">
-  <aside class="wallet-sidebar" aria-label="My portfolios">
-    <div class="wallet-sidebar__head">
-      <h2 class="wallet-sidebar__title">My portfolios</h2>
-      <span class="wallet-sidebar__count">{{ portfolios().length }}</span>
+<section class="portfolios">
+  <aside class="portfolios-sidebar" aria-label="My portfolios">
+    <div class="portfolios-sidebar__head">
+      <h2 class="portfolios-sidebar__title">My portfolios</h2>
+      <span class="portfolios-sidebar__count">{{ portfolios().length }}</span>
     </div>
 
-    <ul class="wallet-sidebar__list">
+    <ul class="portfolios-sidebar__list">
       <li>
         <button
           type="button"
@@ -41,30 +41,30 @@
       }
     </ul>
 
-    <button mat-stroked-button type="button" class="wallet-sidebar__new" data-testid="new-portfolio" (click)="openCreate()">
+    <button mat-stroked-button type="button" class="portfolios-sidebar__new" data-testid="new-portfolio" (click)="openCreate()">
       + New portfolio
     </button>
   </aside>
 
-  <div class="wallet-main">
-    <header class="wallet-header">
+  <div class="portfolios-main">
+    <header class="portfolios-header">
       <div>
-        <p class="wallet-header__eyebrow">Wallet</p>
-        <h1 class="wallet-header__title" data-testid="wallet-title">{{ title() }}</h1>
+        <p class="portfolios-header__eyebrow">Portfolios</p>
+        <h1 class="portfolios-header__title" data-testid="portfolios-title">{{ title() }}</h1>
         @if (selectedPortfolio(); as portfolio) {
-          <p class="wallet-header__sub">
+          <p class="portfolios-header__sub">
             <span [class]="'tag tag--' + portfolio.risk.toLowerCase()">{{ riskLabel(portfolio.risk) }}</span>
             @if (portfolio.benchmark) {
               <span>Benchmark {{ portfolio.benchmark }}</span>
             }
           </p>
         } @else {
-          <p class="wallet-header__sub">Holdings across all your portfolios. Cash is shared by every portfolio.</p>
+          <p class="portfolios-header__sub">Holdings across all your portfolios. Cash is shared by every portfolio.</p>
         }
       </div>
 
       @if (selectedPortfolio(); as portfolio) {
-        <div class="wallet-header__actions">
+        <div class="portfolios-header__actions">
           <button mat-stroked-button type="button" data-testid="edit-portfolio" (click)="openEdit()">Edit</button>
           @if (!portfolio.defaultPortfolio) {
             <button mat-stroked-button type="button" class="button--danger" data-testid="delete-portfolio" (click)="askToDelete()">
@@ -76,7 +76,7 @@
     </header>
 
     @if (error()) {
-      <p class="banner banner--error" role="alert" data-testid="wallet-error">{{ error() }}</p>
+      <p class="banner banner--error" role="alert" data-testid="portfolios-error">{{ error() }}</p>
     }
 
     @if (confirmingDelete() && selectedPortfolio(); as portfolio) {
