@@ -1,16 +1,30 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { Observable, Subject, of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { Register } from './register';
+import { Auth, CurrentUser, RegisterDetails } from '../../../services/auth';
+
+const kermit: CurrentUser = {
+  userId: 42,
+  username: 'kermit',
+  roles: ['TRADER'],
+  accountId: 'ACC0042',
+};
 
 describe('Register', () => {
   let fixture: ComponentFixture<Register>;
   let page: HTMLElement;
+  let register: ReturnType<typeof vi.fn<(details: RegisterDetails) => Observable<CurrentUser>>>;
+  let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
+    register = vi.fn(() => of(kermit));
     await TestBed.configureTestingModule({
       imports: [Register],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), { provide: Auth, useValue: { register } }],
     }).compileComponents();
+    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture = TestBed.createComponent(Register);
     page = fixture.nativeElement;
     fixture.detectChanges();
@@ -27,8 +41,9 @@ describe('Register', () => {
     field.dispatchEvent(new Event('blur'));
     fixture.detectChanges();
   };
+  const button = () => page.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   const submit = async () => {
-    page.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
+    button().click();
     fixture.detectChanges();
     await fixture.whenStable();
   };
@@ -92,8 +107,10 @@ describe('Register', () => {
     expect(errors()).toEqual([]);
   });
 
-  it('shows a required error for every field when submitted empty', async () => {
+  it('shows a required error for every field when submitted empty, and does not register', async () => {
     await submit();
+
+    expect(register).not.toHaveBeenCalled();
 
     expect(errors()).toEqual([
       'Full name is required.',
@@ -147,6 +164,69 @@ describe('Register', () => {
       await submit();
 
       expect(errors()).toEqual([]);
+    });
+  });
+
+  describe('submitting', () => {
+    it('does not register while any field is invalid', async () => {
+      fillValid();
+      type('email', 'kermit@pond');
+
+      await submit();
+
+      expect(register).not.toHaveBeenCalled();
+    });
+
+    it('registers with the entered details, trimming the full name and email', async () => {
+      fillValid();
+      type('fullName', '  Kermit T. Frog  ');
+      type('email', ' kermit@pond.io ');
+
+      await submit();
+
+      expect(register).toHaveBeenCalledWith({
+        fullName: 'Kermit T. Frog',
+        username: 'kermit',
+        email: 'kermit@pond.io',
+        password: 'LilyPad-2026!',
+      });
+    });
+
+    it('goes to /dashboard once the account is created', async () => {
+      fillValid();
+
+      await submit();
+
+      expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
+    });
+
+    it('disables the button and shows "Creating account…" while waiting, and ignores a second click', async () => {
+      const pending = new Subject<CurrentUser>();
+      register.mockReturnValue(pending);
+      fillValid();
+
+      await submit();
+      await submit();
+
+      expect(button().disabled).toBe(true);
+      expect(button().textContent?.trim()).toBe('Creating account…');
+      expect(register).toHaveBeenCalledTimes(1);
+
+      pending.next(kermit);
+      pending.complete();
+      fixture.detectChanges();
+      expect(button().disabled).toBe(false);
+      expect(button().textContent?.trim()).toBe('Create trading account');
+    });
+
+    it('re-enables the button when registering fails, and stays on the page', async () => {
+      register.mockReturnValue(throwError(() => new Error('failed')));
+      fillValid();
+
+      await submit();
+
+      expect(button().disabled).toBe(false);
+      expect(navigateByUrl).not.toHaveBeenCalled();
     });
   });
 });

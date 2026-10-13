@@ -86,7 +86,13 @@
       }
     </mat-form-field>
 
-    <button mat-flat-button type="submit" class="auth-form__submit">Create trading account</button>
+    <button mat-flat-button type="submit" class="auth-form__submit" [disabled]="submitting()">
+      @if (submitting()) {
+        Creating account…
+      } @else {
+        Create trading account
+      }
+    </button>
 
     <p class="register__note">We open a cash account for you automatically.</p>
   </form>

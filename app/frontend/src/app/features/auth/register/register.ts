@@ -1,9 +1,12 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { Auth } from '../../../services/auth';
 import { AuthLayout } from '../auth-layout/auth-layout';
 import { SubmittedErrorStateMatcher } from '../login/submitted-error-state';
 import { USERNAME_PATTERN, notBlank, strictEmail } from './register-validators';
@@ -17,6 +20,10 @@ import { USERNAME_PATTERN, notBlank, strictEmail } from './register-validators';
 })
 export class Register {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly auth = inject(Auth);
+  private readonly router = inject(Router);
+
+  readonly submitting = signal(false);
 
   readonly form = this.fb.group({
     fullName: ['', [Validators.required, Validators.maxLength(255), notBlank]],
@@ -37,8 +44,18 @@ export class Register {
   });
 
   submit(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.submitting()) {
       return;
     }
+    this.submitting.set(true);
+    const { fullName, username, email, password } = this.form.getRawValue();
+
+    this.auth
+      .register({ fullName: fullName.trim(), username, email: email.trim(), password })
+      .pipe(finalize(() => this.submitting.set(false)))
+      .subscribe({
+        next: () => void this.router.navigateByUrl('/dashboard'),
+        error: () => undefined,
+      });
   }
 }
