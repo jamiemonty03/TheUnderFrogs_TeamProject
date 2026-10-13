@@ -41,7 +41,7 @@ class PositionsClientTest {
                 .andExpect(content().json("{\"orderId\":\"ORD-1\",\"quantity\":10,\"price\":150.00}"))
                 .andRespond(withSuccess());
 
-        positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, new BigDecimal("150.00"));
+        positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, new BigDecimal("150.00"), null);
 
         positionsService.verify();
     }
@@ -53,7 +53,41 @@ class PositionsClientTest {
                 .andExpect(content().json("{\"orderId\":\"ORD-1\",\"quantity\":10}"))
                 .andRespond(withSuccess());
 
-        positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10);
+        positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10, null);
+
+        positionsService.verify();
+    }
+
+    @Test
+    void mainPortfolioOrdersSendNoPortfolioId() {
+        positionsService.expect(requestTo(POSITIONS_URL + "/ACC-1/AAPL/buy"))
+                .andExpect(content().json("{\"orderId\":\"ORD-1\",\"quantity\":10,\"price\":150.00}", true))
+                .andRespond(withSuccess());
+
+        positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, new BigDecimal("150.00"), null);
+
+        positionsService.verify();
+    }
+
+    @Test
+    void addPositionSendsThePortfolio() {
+        positionsService.expect(requestTo(POSITIONS_URL + "/ACC-1/AAPL/buy"))
+                .andExpect(content().json(
+                        "{\"orderId\":\"ORD-1\",\"quantity\":10,\"price\":150.00,\"portfolioId\":\"PF0012\"}", true))
+                .andRespond(withSuccess());
+
+        positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, new BigDecimal("150.00"), "PF0012");
+
+        positionsService.verify();
+    }
+
+    @Test
+    void reducePositionSendsThePortfolio() {
+        positionsService.expect(requestTo(POSITIONS_URL + "/ACC-1/AAPL/sell"))
+                .andExpect(content().json("{\"orderId\":\"ORD-1\",\"quantity\":10,\"portfolioId\":\"PF0012\"}", true))
+                .andRespond(withSuccess());
+
+        positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10, "PF0012");
 
         positionsService.verify();
     }
@@ -77,7 +111,7 @@ class PositionsClientTest {
                         .body("{\"code\":\"POS-409\",\"message\":\"Insufficient holdings\"}"));
 
         SettlementRejectedException e = assertThrows(SettlementRejectedException.class,
-                () -> positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10));
+                () -> positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10, null));
 
         assertEquals("Insufficient holdings", e.getMessage());
     }
@@ -88,7 +122,7 @@ class PositionsClientTest {
                 .andRespond(withStatus(HttpStatus.NOT_FOUND));
 
         assertThrows(SettlementRejectedException.class,
-                () -> positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10));
+                () -> positionsClient.reducePosition("ACC-1", "AAPL", "ORD-1", 10, null));
     }
 
     @Test
@@ -97,6 +131,6 @@ class PositionsClientTest {
                 .andRespond(withServerError());
 
         assertThrows(HttpServerErrorException.class,
-                () -> positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, BigDecimal.ONE));
+                () -> positionsClient.addPosition("ACC-1", "AAPL", "ORD-1", 10, BigDecimal.ONE, null));
     }
 }

@@ -226,8 +226,9 @@ db_psql orders-db -Atc "
 " > "$trades_file" || error_exit "Failed to calculate client_trades totals"
 
 db_psql positions-db -Atc "
-    SELECT account_id || '|' || symbol || '|' || quantity::NUMERIC(18,4)
+    SELECT account_id || '|' || symbol || '|' || SUM(quantity)::NUMERIC(18,4)
     FROM positions
+    GROUP BY account_id, symbol
     ORDER BY account_id, symbol;
 " > "$positions_file" || error_exit "Failed to read positions totals"
 

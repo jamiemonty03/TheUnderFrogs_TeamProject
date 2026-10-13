@@ -9,6 +9,7 @@ import {
 	StockResponse,
 	TradingInstrument,
 } from './interfaces/instruments.interfaces';
+import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {
@@ -53,4 +54,37 @@ export class Instruments {
 			lastUpdated: item.lastUpdated ?? 'N/A',
 		};
 	}
+
+	getLatestPrices(): Observable<Map<string, LatestPrice>> {
+    return forkJoin({
+      Equity: this.getStocks(),
+      ETF: this.getEtfs(),
+      Bond: this.getBonds(),
+    }).pipe(
+      map((byClass) => {
+        const prices = new Map<string, LatestPrice>();
+        for (const assetClass of Object.keys(byClass) as AssetClass[]) {
+          for (const asset of byClass[assetClass]) {
+            prices.set(asset.symbol, {
+              symbol: asset.symbol,
+              name: asset.name,
+              assetClass,
+              price: asset.price,
+              previousClose: asset.previousClose,
+              tradeDate: asset.tradeDate,
+            });
+          }
+        }
+        return prices;
+      }),
+    );
+  }
+}
+
+export function dayChange(price: Pick<LatestPrice, 'price' | 'previousClose'>): DayChange | null {
+  if (price.price == null || price.previousClose == null || price.previousClose === 0) {
+    return null;
+  }
+  const amount = price.price - price.previousClose;
+  return { amount, percent: (amount / price.previousClose) * 100 };
 }

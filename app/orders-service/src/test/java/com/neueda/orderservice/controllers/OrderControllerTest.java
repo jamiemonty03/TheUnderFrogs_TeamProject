@@ -256,7 +256,7 @@ public class OrderControllerTest {
         when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
         testOrder1.setOrderStatus(OrderStatus.FILLED);
         when(orderProcessor.processOrder(account, instrument, OrderSide.BUY, new BigDecimal("100"),
-                new BigDecimal("150.25"), "idempotent-key-1"))
+                new BigDecimal("150.25"), "idempotent-key-1", null))
             .thenReturn(new OrderResult(true, "filled", null, testOrder1));
 
         var response = orderController.placeOrder(new PlaceOrderRequest("ACC001", "AAPL", OrderSide.BUY,
@@ -277,7 +277,7 @@ public class OrderControllerTest {
         when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
         testOrder1.setOrderStatus(OrderStatus.REJECTED);
         when(orderProcessor.processOrder(account, instrument, OrderSide.BUY, new BigDecimal("100"),
-                new BigDecimal("150.25"), "idempotent-key-1"))
+                new BigDecimal("150.25"), "idempotent-key-1", null))
             .thenReturn(new OrderResult(false, "BUY order ORD001 execution FAILED", null, testOrder1));
 
         var response = orderController.placeOrder(new PlaceOrderRequest("ACC001", "AAPL", OrderSide.BUY,

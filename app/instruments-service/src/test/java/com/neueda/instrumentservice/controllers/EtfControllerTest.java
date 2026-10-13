@@ -34,7 +34,7 @@ public class EtfControllerTest {
     private EtfService etfService;
 
     private EtfResponse newEtfResponse() {
-        return new EtfResponse("SPY", "SPDR S&P 500 ETF", new BigDecimal("450.00"), LocalDateTime.now(),
+        return new EtfResponse("SPY", "SPDR S&P 500 ETF", new BigDecimal("450.00"), new BigDecimal("447.30"), LocalDateTime.now(),
                 LocalDateTime.now(), LocalDateTime.now(), "Large Blend", "State Street", "ETF",
                 new BigDecimal("0.09"), new BigDecimal("450.10"), new BigDecimal("400000000000"),
                 new BigDecimal("399000000000"), new BigDecimal("18.5"), new BigDecimal("10.2"),
@@ -58,7 +58,8 @@ public class EtfControllerTest {
         mockMvc.perform(get("/etfs/SPY"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.symbol").value("SPY"))
-                .andExpect(jsonPath("$.category").value("Large Blend"));
+                .andExpect(jsonPath("$.category").value("Large Blend"))
+                .andExpect(jsonPath("$.previousClose").value(447.30));
     }
 
     @Test

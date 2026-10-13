@@ -76,24 +76,13 @@ describe('Login', () => {
       expect(input('password').id).toBe('login-password');
     });
 
-    it('offers a Create account tab that goes to /register', () => {
-      const tab = Array.from(page.querySelectorAll<HTMLAnchorElement>('.login__tab')).find(
-        (link) => link.textContent?.trim() === 'Create account',
+    it('uses the shared auth layout with the "Welcome back" heading and the Log in tab active', () => {
+      expect(page.querySelector('app-auth-layout h1')?.textContent?.trim()).toBe('Welcome back');
+      expect(page.querySelector('.auth__subtitle')?.textContent?.trim()).toBe(
+        'Log in to your Toadstock account.',
       );
-      expect(tab?.getAttribute('href')).toBe('/register');
-    });
-
-    it('hides the decorative ticker from screen readers', () => {
-      expect(page.querySelector('.login__ticker')?.getAttribute('aria-hidden')).toBe('true');
-    });
-
-    it('shows ticker moves with two decimals and marks falls', () => {
-      const quotes = Array.from(page.querySelectorAll('.login__quote')).map((quote) =>
-        quote.textContent?.replace(/\s+/g, ' ').trim(),
-      );
-      expect(quotes).toContain('TSLA ▼ 2.10%');
-      expect(quotes).toContain('AAPL ▲ 1.24%');
-      expect(page.querySelectorAll('.login__quote-change--down')).toHaveLength(2);
+      expect(page.querySelector('.auth__tab--active')?.textContent?.trim()).toBe('Log in');
+      expect(page.querySelector('app-auth-layout form')).not.toBeNull();
     });
 
     it('has a username field and a masked password field', () => {

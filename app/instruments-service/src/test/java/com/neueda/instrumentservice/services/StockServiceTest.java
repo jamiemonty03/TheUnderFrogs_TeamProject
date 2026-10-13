@@ -66,12 +66,15 @@ public class StockServiceTest {
     @Test
     @DisplayName("getStockBySymbol: Returns matching stock as StockResponse")
     public void testGetStockBySymbolFound() throws InstrumentNotFoundException {
-        when(stockMapper.findBySymbol("AAPL")).thenReturn(Optional.of(newStock()));
+        Stock stock = newStock();
+        stock.setPreviousClose(new BigDecimal("148.10"));
+        when(stockMapper.findBySymbol("AAPL")).thenReturn(Optional.of(stock));
 
         StockResponse result = stockService.getStockBySymbol("AAPL");
 
         assertEquals("AAPL", result.symbol());
         assertEquals("https://apple.com", result.website());
+        assertEquals(new BigDecimal("148.10"), result.previousClose());
     }
 
     @Test

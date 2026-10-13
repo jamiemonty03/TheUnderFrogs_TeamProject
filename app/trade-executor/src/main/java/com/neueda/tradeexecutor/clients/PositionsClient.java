@@ -1,6 +1,7 @@
 package com.neueda.tradeexecutor.clients;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,14 +25,24 @@ public class PositionsClient {
         this.positionsServiceUrl = positionsServiceUrl;
     }
 
-    public void addPosition(String accountId, String symbol, String orderId, int quantity, BigDecimal price) {
-        post("/{accountId}/{symbol}/buy",
-                Map.of("orderId", orderId, "quantity", quantity, "price", price), accountId, symbol);
+    public void addPosition(String accountId, String symbol, String orderId, int quantity, BigDecimal price,
+                            String portfolioId) {
+        Map<String, Object> body = new HashMap<>(Map.of("orderId", orderId, "quantity", quantity, "price", price));
+        putPortfolio(body, portfolioId);
+        post("/{accountId}/{symbol}/buy", body, accountId, symbol);
     }
 
-    public void reducePosition(String accountId, String symbol, String orderId, int quantity) {
-        post("/{accountId}/{symbol}/sell",
-                Map.of("orderId", orderId, "quantity", quantity), accountId, symbol);
+    public void reducePosition(String accountId, String symbol, String orderId, int quantity, String portfolioId) {
+        Map<String, Object> body = new HashMap<>(Map.of("orderId", orderId, "quantity", quantity));
+        putPortfolio(body, portfolioId);
+        post("/{accountId}/{symbol}/sell", body, accountId, symbol);
+    }
+
+    // Left out for Main, so positions-service picks the account's default portfolio
+    private static void putPortfolio(Map<String, Object> body, String portfolioId) {
+        if (portfolioId != null && !portfolioId.isBlank()) {
+            body.put("portfolioId", portfolioId);
+        }
     }
 
     

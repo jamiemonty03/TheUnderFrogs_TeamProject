@@ -23,6 +23,8 @@ tags:
     description: Position management operations
   - name: Position Queries
     description: Position lookup and retrieval operations
+  - name: Portfolios
+    description: Named groups of holdings within an account. Cash is shared by the account.
 
 paths:
   /positions:
@@ -43,6 +45,7 @@ paths:
                 summary: Valid position creation
                 value:
                   accountId: "ACC001"
+                  portfolioId: "PF0001"
                   symbol: "AAPL"
                   quantity: 100
                   averageCost: 150.50
@@ -58,6 +61,7 @@ paths:
                   summary: Successfully created position
                   value:
                     accountId: "ACC001"
+                    portfolioId: "PF0001"
                     symbol: "AAPL"
                     quantity: 100
                     averageCost: 150.50
@@ -90,6 +94,7 @@ paths:
       description: Fetches all positions held by a specific account
       operationId: getPositionsByAccount
       parameters:
+        - $ref: "#/components/parameters/PortfolioIdQuery"
         - name: accountId
           in: path
           required: true
@@ -111,6 +116,7 @@ paths:
                   summary: Account has multiple positions
                   value:
                     - accountId: "ACC001"
+                      portfolioId: "PF0001"
                       symbol: "AAPL"
                       quantity: 100
                       averageCost: 150.50
@@ -118,6 +124,7 @@ paths:
                       createdAt: "2026-09-22T10:30:00Z"
                       lastUpdated: "2026-09-22T10:30:00Z"
                     - accountId: "ACC001"
+                      portfolioId: "PF0001"
                       symbol: "GOOGL"
                       quantity: 25
                       averageCost: 2800.00
@@ -142,6 +149,7 @@ paths:
       description: Fetches position details for a specific account and symbol combination
       operationId: getPosition
       parameters:
+        - $ref: "#/components/parameters/PortfolioIdQuery"
         - name: accountId
           in: path
           required: true
@@ -168,6 +176,7 @@ paths:
                   summary: Position found
                   value:
                     accountId: "ACC001"
+                    portfolioId: "PF0001"
                     symbol: "AAPL"
                     quantity: 100
                     averageCost: 150.50
@@ -194,6 +203,7 @@ paths:
       description: Fully updates an existing position with all required fields
       operationId: updatePosition
       parameters:
+        - $ref: "#/components/parameters/PortfolioIdQuery"
         - name: accountId
           in: path
           required: true
@@ -247,6 +257,7 @@ paths:
       description: Updates selected fields of an existing position
       operationId: partiallyUpdatePosition
       parameters:
+        - $ref: "#/components/parameters/PortfolioIdQuery"
         - name: accountId
           in: path
           required: true
@@ -297,6 +308,7 @@ paths:
       description: Removes a position from an account
       operationId: deletePosition
       parameters:
+        - $ref: "#/components/parameters/PortfolioIdQuery"
         - name: accountId
           in: path
           required: true
@@ -511,12 +523,176 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /portfolios/{accountId}:
+    parameters:
+      - $ref: "#/components/parameters/AccountIdPath"
+    get:
+      tags:
+        - Portfolios
+      summary: List the account's portfolios
+      description: Main first, then by name. Creates Main if the account has none yet.
+      operationId: getPortfolios
+      responses:
+        '200':
+          description: The account's portfolios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Portfolio'
+        '403':
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Portfolios
+      summary: Create a portfolio
+      operationId: createPortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePortfolioRequest'
+      responses:
+        '201':
+          description: Portfolio created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portfolio'
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '409':
+          description: The account already has a portfolio with this name (PFL-409)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Missing or invalid field (VAL-422)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /portfolios/{accountId}/{portfolioId}:
+    parameters:
+      - $ref: "#/components/parameters/AccountIdPath"
+      - name: portfolioId
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "PF0012"
+    get:
+      tags:
+        - Portfolios
+      summary: Get one portfolio
+      operationId: getPortfolio
+      responses:
+        '200':
+          description: The portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portfolio'
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          $ref: "#/components/responses/PortfolioNotFound"
+    patch:
+      tags:
+        - Portfolios
+      summary: Rename a portfolio or change its risk or benchmark
+      operationId: updatePortfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePortfolioRequest'
+      responses:
+        '200':
+          description: The updated portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portfolio'
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          $ref: "#/components/responses/PortfolioNotFound"
+        '409':
+          description: Another portfolio in the account already has this name (PFL-409)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Portfolios
+      summary: Delete a portfolio, moving its holdings into Main
+      description: >
+        Its holdings move into the account's Main portfolio. Where Main already holds the same symbol,
+        the two are combined: quantities add up and the average cost becomes the weighted average.
+        Main itself can't be deleted.
+      operationId: deletePortfolio
+      responses:
+        '204':
+          description: Portfolio deleted
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          $ref: "#/components/responses/PortfolioNotFound"
+        '409':
+          description: It's the Main portfolio (PFL-409)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
+  parameters:
+    AccountIdPath:
+      name: accountId
+      in: path
+      required: true
+      description: The signed-in user's account
+      schema:
+        type: string
+        example: "ACC0011"
+    PortfolioIdQuery:
+      name: portfolioId
+      in: query
+      required: false
+      description: >
+        Optional. On the positions list, shows only this portfolio's holdings (all holdings without it).
+        On a single position, the portfolio it is in (Main without it).
+      schema:
+        type: string
+        example: "PF0012"
+
+  responses:
+    Forbidden:
+      description: The account isn't the signed-in user's (AUTH-403)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PortfolioNotFound:
+      description: No such portfolio in this account (PFL-404)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
     Position:
       type: object
       required:
         - accountId
+        - portfolioId
         - symbol
         - quantity
         - averageCost
@@ -525,6 +701,10 @@ components:
           type: string
           description: The unique identifier of the account holding the position
           example: "ACC001"
+        portfolioId:
+          type: string
+          description: The portfolio this holding belongs to
+          example: "PF0001"
         symbol:
           type: string
           description: The trading symbol/ticker of the security
@@ -600,6 +780,10 @@ components:
           description: >
             Optional. The order this buy belongs to. When sent, the buy is applied at most once per order.
           example: "0adf7599-df9d-4176-93b6-3a555e54415d"
+        portfolioId:
+          type: string
+          description: Optional. The portfolio to add the shares to. Without it, the account's Main portfolio.
+          example: "PF0012"
 
     SellRequest:
       type: object
@@ -617,6 +801,12 @@ components:
           description: >
             Optional. The order this sell belongs to. When sent, the sell is applied at most once per order.
           example: "0adf7599-df9d-4176-93b6-3a555e54415d"
+        portfolioId:
+          type: string
+          description: >
+            Optional. The portfolio to sell from; only shares held in that portfolio can be sold.
+            Without it, the account's Main portfolio.
+          example: "PF0012"
 
     ReversalRequest:
       type: object
@@ -669,6 +859,91 @@ components:
           format: decimal
           minimum: 0
           example: 150.50
+        portfolioId:
+          type: string
+          description: Optional. Without it, the position goes in the account's Main portfolio.
+          example: "PF0012"
+
+    Portfolio:
+      type: object
+      description: >
+        A named group of holdings in one account. All portfolios of an account share its cash.
+        Every account has one default portfolio called Main, created the first time it is needed.
+      properties:
+        portfolioId:
+          type: string
+          example: "PF0012"
+        accountId:
+          type: string
+          example: "ACC0011"
+        name:
+          type: string
+          example: "Growth"
+        risk:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          example: "HIGH"
+        benchmark:
+          type: string
+          nullable: true
+          example: "Nasdaq-100"
+        defaultPortfolio:
+          type: boolean
+          description: True for the account's Main portfolio, which can't be deleted
+          example: false
+        version:
+          readOnly: true
+          type: integer
+          example: 0
+        createdAt:
+          readOnly: true
+          type: string
+          format: date-time
+        lastUpdated:
+          readOnly: true
+          type: string
+          format: date-time
+        updatedBy:
+          readOnly: true
+          type: string
+          example: "SYSTEM"
+
+    CreatePortfolioRequest:
+      type: object
+      required:
+        - name
+        - risk
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Unique within the account, ignoring case
+          example: "Growth"
+        risk:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          example: "HIGH"
+        benchmark:
+          type: string
+          maxLength: 100
+          example: "Nasdaq-100"
+
+    UpdatePortfolioRequest:
+      type: object
+      description: Every field is optional; only the ones sent are changed
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: "Long-term growth"
+        risk:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          example: "MEDIUM"
+        benchmark:
+          type: string
+          maxLength: 100
+          example: "S&P 500"
 
     ReplacePositionRequest:
       type: object

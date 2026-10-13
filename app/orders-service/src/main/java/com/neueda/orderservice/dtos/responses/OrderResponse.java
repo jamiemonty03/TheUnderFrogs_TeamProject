@@ -8,6 +8,7 @@ import com.neueda.orderservice.enums.OrderSide;
 public record OrderResponse(
     String orderId,
     String accountId,
+    String portfolioId,
     String symbol,
     OrderSide side,
     int quantity,

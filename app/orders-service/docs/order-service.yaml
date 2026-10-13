@@ -232,7 +232,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Account or instrument not found
+          description: Account, instrument or portfolio not found (ACC-404, INS-404, PFL-404)
           content:
             application/json:
               schema:
@@ -245,6 +245,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: positions-service could not be reached to check the portfolio (PFL-503)
           content:
             application/json:
               schema:
@@ -434,6 +440,11 @@ components:
         accountId:
           type: string
           description: Account that placed the order
+        portfolioId:
+          type: string
+          nullable: true
+          description: Portfolio the order is for (positions-service). null means the account's Main portfolio
+          example: "PF0012"
         symbol:
           type: string
           description: Security symbol (e.g., AAPL)
@@ -498,6 +509,13 @@ components:
         idempotencyKey:
           type: string
           description: Unique key for idempotent order placement
+        portfolioId:
+          type: string
+          maxLength: 32
+          description: >
+            Optional. The portfolio to buy into or sell from; it must belong to the account.
+            Without it, the account's Main portfolio.
+          example: "PF0012"
 
     UpdateOrderRequest:
       type: object

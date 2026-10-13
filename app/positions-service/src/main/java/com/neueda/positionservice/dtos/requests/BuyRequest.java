@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-
 public record BuyRequest(
     @NotNull(message = "Quantity must not be null")
     @Positive(message = "Quantity must be greater than zero")
@@ -14,9 +13,15 @@ public record BuyRequest(
     @DecimalMin("0.01")
     BigDecimal price,
 
-    String orderId
+    String orderId,
+
+    String portfolioId
 ) {
     public BuyRequest(Integer quantity, BigDecimal price) {
-        this(quantity, price, null);
+        this(quantity, price, null, null);
+    }
+
+    public BuyRequest(Integer quantity, BigDecimal price, String orderId) {
+        this(quantity, price, orderId, null);
     }
 }

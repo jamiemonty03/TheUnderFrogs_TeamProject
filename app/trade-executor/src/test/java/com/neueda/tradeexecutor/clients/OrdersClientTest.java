@@ -86,6 +86,23 @@ class OrdersClientTest {
     }
 
     @Test
+    void getOrderReadsThePortfolio() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1"))
+                .andRespond(withSuccess(orderJson("NEW").replace("\"accountId\": \"ACC-1\",",
+                        "\"accountId\": \"ACC-1\", \"portfolioId\": \"PF0012\","), MediaType.APPLICATION_JSON));
+
+        assertEquals("PF0012", ordersClient.getOrder("ORD-1").portfolioId());
+    }
+
+    @Test
+    void getOrderWithoutAPortfolioIsForMain() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1"))
+                .andRespond(withSuccess(orderJson("NEW"), MediaType.APPLICATION_JSON));
+
+        assertEquals(null, ordersClient.getOrder("ORD-1").portfolioId());
+    }
+
+    @Test
     void getOrderThrowsWhenOrderDoesNotExist() {
         ordersService.expect(requestTo(ORDERS_URL + "/MISSING"))
                 .andRespond(withResourceNotFound());

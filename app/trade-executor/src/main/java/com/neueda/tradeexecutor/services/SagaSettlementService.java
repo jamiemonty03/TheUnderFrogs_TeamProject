@@ -69,13 +69,15 @@ public class SagaSettlementService implements SettlementService {
         if (order.side() == OrderSide.BUY) {
             accountsClient.debit(order.accountId(), order.orderId(), amount);
             try {
-                positionsClient.addPosition(order.accountId(), order.symbol(), order.orderId(), order.quantity(), fillPrice);
+                positionsClient.addPosition(order.accountId(), order.symbol(), order.orderId(), order.quantity(), fillPrice,
+                        order.portfolioId());
             } catch (SettlementRejectedException e) {
                 accountsClient.reverse(order.accountId(), order.orderId());
                 throw e;
             }
         } else {
-            positionsClient.reducePosition(order.accountId(), order.symbol(), order.orderId(), order.quantity());
+            positionsClient.reducePosition(order.accountId(), order.symbol(), order.orderId(), order.quantity(),
+                    order.portfolioId());
             try {
                 accountsClient.credit(order.accountId(), order.orderId(), amount);
             } catch (SettlementRejectedException e) {

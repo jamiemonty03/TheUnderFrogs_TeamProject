@@ -21,6 +21,7 @@ public abstract class Asset {
     private String symbol;
     private String name;
     private BigDecimal price;
+    private BigDecimal previousClose;
     private LocalDateTime tradeDate;
     private int version;
     private LocalDateTime createdAt;
@@ -77,6 +78,14 @@ public abstract class Asset {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public BigDecimal getPreviousClose() {
+        return previousClose;
+    }
+
+    public void setPreviousClose(BigDecimal previousClose) {
+        this.previousClose = previousClose;
     }
 
     public LocalDateTime getTradeDate() {
