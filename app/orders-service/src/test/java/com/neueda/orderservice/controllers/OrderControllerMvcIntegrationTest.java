@@ -3,6 +3,7 @@ package com.neueda.orderservice.controllers;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -124,7 +125,8 @@ class OrderControllerMvcIntegrationTest {
                 eq(OrderSide.BUY),
                 eq(new BigDecimal("10")),
                 eq(new BigDecimal("150.00")),
-                eq("idempotency-key-2")))
+                eq("idempotency-key-2"),
+                isNull()))
                 .thenReturn(new OrderResult(true, "Order filled", null, order));
 
         mockMvc.perform(post("/orders")

@@ -52,6 +52,14 @@ public class OrderService {
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
                    InsufficientFundsException, InsufficientHoldingsException,
                    InvalidOrderException, DuplicateOrderException {
+        return placeOrder(account, instrument, side, quantity, priceLimit, idempotencyKey, null);
+    }
+
+    public Order placeOrder(Account account, Instrument instrument, OrderSide side,
+                           BigDecimal quantity, BigDecimal priceLimit, String idempotencyKey, String portfolioId)
+            throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
+                   InsufficientFundsException, InsufficientHoldingsException,
+                   InvalidOrderException, DuplicateOrderException {
         
         validationService.validateOrder(account, instrument, side, quantity, priceLimit);
         
@@ -66,7 +74,8 @@ public class OrderService {
             priceLimit,
             idempotencyKey
         );
-        
+        order.setPortfolioId(portfolioId == null || portfolioId.isBlank() ? null : portfolioId);
+
         return createOrder(order);
     }
 

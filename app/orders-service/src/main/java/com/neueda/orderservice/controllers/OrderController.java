@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,8 @@ import com.neueda.orderservice.exceptions.AccountAuthorizationException;
 import com.neueda.orderservice.exceptions.InstrumentNotFoundException;
 import com.neueda.orderservice.exceptions.OrderNotCancellableException;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
+import com.neueda.orderservice.exceptions.PortfolioNotFoundException;
+import com.neueda.orderservice.exceptions.PortfolioServiceUnavailableException;
 import com.neueda.orderservice.exceptions.TradingException;
 import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.dtos.requests.UpdateOrderStatusRequest;
@@ -55,6 +58,9 @@ public class OrderController {
     
     @Value("${service.instruments.url:http://instruments-service:8081/api/instruments}")
     private String instrumentsServiceUrl;
+
+    @Value("${service.portfolios.url:http://positions-service:8081/api/portfolios}")
+    private String portfoliosServiceUrl;
 
     public OrderController(OrderProcessor orderProcessor, OrderRepository orderRepository, RestTemplate restTemplate,
             OrderCancellationService orderCancellationService, OrderStatusService orderStatusService) {
@@ -113,6 +119,11 @@ public class OrderController {
                 .body(new ErrorResponse("ACC-404", "Account not found: " + request.accountId()));
         }
         Instrument instrument = fetchInstrument(request.symbol());
+        String portfolioId = request.portfolioId() == null || request.portfolioId().isBlank()
+            ? null : request.portfolioId();
+        if (portfolioId != null) {
+            requirePortfolio(request.accountId(), portfolioId);
+        }
 
         OrderResult result = orderProcessor.processOrder(
             account,
@@ -120,7 +131,8 @@ public class OrderController {
             request.side(),
             request.quantity(),
             request.priceLimit(),
-            request.idempotencyKey()
+            request.idempotencyKey(),
+            portfolioId
         );
         if (!result.isSuccess()) {
             log.warn("Order rejected {} {} {}", kv("status", 422), kv("errorCode", "ORD-422"),
@@ -143,6 +155,20 @@ public class OrderController {
             log.warn("Accounts service lookup failed {} {}", kv("accountId", accountId),
                 kv("error", e.getClass().getSimpleName()));
             return null;
+        }
+    }
+
+    private void requirePortfolio(String accountId, String portfolioId)
+            throws PortfolioNotFoundException, PortfolioServiceUnavailableException {
+        try {
+            restTemplate.getForEntity(portfoliosServiceUrl + "/{accountId}/{portfolioId}", Void.class,
+                accountId, portfolioId);
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new PortfolioNotFoundException(accountId, portfolioId);
+        } catch (RestClientException e) {
+            log.warn("Portfolio lookup failed {} {} {}", kv("accountId", accountId), kv("portfolioId", portfolioId),
+                kv("error", e.getClass().getSimpleName()));
+            throw new PortfolioServiceUnavailableException("Portfolio data is unavailable", e);
         }
     }
 
@@ -220,6 +246,7 @@ public class OrderController {
         return new OrderResponse(
             order.getOrderId(),
             order.getAccountId(),
+            order.getPortfolioId(),
             order.getSymbol(),
             order.getSide(),
             order.getQuantity(),

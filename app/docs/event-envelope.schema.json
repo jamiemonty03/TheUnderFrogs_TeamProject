@@ -43,7 +43,8 @@
         "symbol": "ACME",
         "side": "BUY",
         "quantity": 100,
-        "priceLimit": 25.50
+        "priceLimit": 25.50,
+        "portfolioId": "PF0012"
       }
     }
   ]

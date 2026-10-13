@@ -185,7 +185,7 @@ class OrderLoggingMvcTest {
         Order order = new Order("order-1", "ACC0001", "AAPL", OrderSide.BUY, 10, new BigDecimal("150.00"), "key-1");
         when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC0001"))).thenReturn(account);
         when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
-        when(orderProcessor.processOrder(any(), any(), any(), any(), any(), any()))
+        when(orderProcessor.processOrder(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new OrderResult(true, "Order accepted", null, order));
     }
 

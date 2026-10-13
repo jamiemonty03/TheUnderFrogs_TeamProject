@@ -27,7 +27,7 @@ class OrderProcessorTest {
         Instrument instrument = new Instrument("AAPL", "Apple", new BigDecimal("150.00"), true);
         Order order = new Order("ORDER-1", "ACC-1", "AAPL", OrderSide.BUY, 1, BigDecimal.TEN, "key-1");
         org.mockito.Mockito.when(orderService.placeOrder(
-                account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1"))
+                account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1", null))
                 .thenReturn(order);
 
         OrderResult result = processor.processOrder(
@@ -36,7 +36,7 @@ class OrderProcessorTest {
         assertThat(result.isSuccess()).isTrue();
         assertThat(result.getOrder()).isSameAs(order);
         assertThat(order.getOrderStatus().name()).isEqualTo("NEW");
-        verify(orderService).placeOrder(account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1");
+        verify(orderService).placeOrder(account, instrument, OrderSide.BUY, BigDecimal.ONE, BigDecimal.TEN, "key-1", null);
         verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(OrderPlacedApplicationEvent.class));
     }
 }
