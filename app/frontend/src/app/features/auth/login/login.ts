@@ -1,9 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { Auth } from '../../../services/auth';
+import { safeReturnUrl } from './return-url';
 import { SubmittedErrorStateMatcher } from './submitted-error-state';
 
 @Component({
@@ -15,6 +19,11 @@ import { SubmittedErrorStateMatcher } from './submitted-error-state';
 })
 export class Login {
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly auth = inject(Auth);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly submitting = signal(false);
 
   readonly form = this.fb.group({
     username: ['', Validators.required],
@@ -22,8 +31,21 @@ export class Login {
   });
 
   submit(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.submitting()) {
       return;
     }
+    this.submitting.set(true);
+    const { username, password } = this.form.getRawValue();
+
+    this.auth
+      .login(username, password)
+      .pipe(finalize(() => this.submitting.set(false)))
+      .subscribe({
+        next: () => {
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          void this.router.navigateByUrl(safeReturnUrl(returnUrl));
+        },
+        error: () => undefined,
+      });
   }
 }
