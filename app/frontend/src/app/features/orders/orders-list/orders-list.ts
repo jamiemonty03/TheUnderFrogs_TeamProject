@@ -1,9 +1,124 @@
-import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTableModule } from '@angular/material/table';
+import { Orders, OrderResponse } from '../../../services/orders';
+import { OrderDialog } from '../order-dialog/order-dialog';
+
+type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
+type OrderSide = 'BUY' | 'SELL';
+type OrderFilter = 'ALL' | OrderStatus;
+
+interface OrderRow {
+  id: string;
+  placed: string;
+  symbol: string;
+  side: OrderSide;
+  quantity: number;
+  priceLimit: string;
+  status: OrderStatus;
+  canCancel: boolean;
+}
 
 @Component({
-  imports: [],
+  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatTableModule],
   selector: 'app-orders-list',
   styleUrl: './orders-list.scss',
   templateUrl: './orders-list.html',
 })
-export class OrdersList {}
+export class OrdersList implements OnInit {
+  private readonly dialog = inject(MatDialog);
+  private readonly ordersApi = inject(Orders);
+
+  readonly accountId = 'ACC-10042';
+
+  readonly filters: OrderFilter[] = ['ALL', 'NEW', 'FILLED', 'REJECTED', 'CANCELLED'];
+
+  readonly activeFilter = signal<OrderFilter>('ALL');
+  readonly orders = signal<OrderRow[]>([]);
+  readonly isLoading = signal(false);
+  readonly loadError = signal<string | null>(null);
+
+  readonly displayedColumns: string[] = ['id', 'placed', 'symbol', 'side', 'quantity', 'priceLimit', 'status', 'action'];
+
+  readonly visibleOrders = computed(() => {
+    const filter = this.activeFilter();
+    const orders = this.orders();
+    if (filter === 'ALL') {
+      return orders;
+    }
+    return orders.filter((order) => order.status === filter);
+  });
+
+  ngOnInit(): void {
+    this.loadOrders();
+  }
+
+  setFilter(filter: OrderFilter): void {
+    this.activeFilter.set(filter);
+  }
+
+  getFilterCount(filter: OrderFilter): number {
+    const orders = this.orders();
+    if (filter === 'ALL') {
+      return orders.length;
+    }
+    return orders.filter((order) => order.status === filter).length;
+  }
+
+  openOrderDialog(): void {
+    this.dialog.open(OrderDialog, {
+      width: '920px',
+      maxWidth: '95vw',
+      panelClass: 'order-dialog-panel',
+    }).afterClosed().subscribe(() => {
+      this.loadOrders();
+    });
+  }
+
+  private loadOrders(): void {
+    this.isLoading.set(true);
+    this.loadError.set(null);
+
+    this.ordersApi.getOrdersByAccount(this.accountId).subscribe({
+      next: (rows) => {
+        this.orders.set(rows.map((row) => this.toOrderRow(row)));
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.orders.set([]);
+        this.loadError.set('Could not load orders from backend.');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  private toOrderRow(order: OrderResponse): OrderRow {
+    return {
+      id: order.orderId,
+      placed: this.formatDate(order.createdAt),
+      symbol: order.symbol,
+      side: order.side,
+      quantity: order.quantity,
+      priceLimit: `$${Number(order.priceLimit).toFixed(2)}`,
+      status: order.orderStatus,
+      canCancel: order.orderStatus === 'NEW',
+    };
+  }
+
+  private formatDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return new Intl.DateTimeFormat('en-GB', {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date).replace(',', '');
+  }
+}

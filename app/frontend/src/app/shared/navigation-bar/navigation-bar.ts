@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 @Component({
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, MatButtonModule],
   selector: 'app-navigation-bar',
   styleUrl: './navigation-bar.scss',
   templateUrl: './navigation-bar.html',

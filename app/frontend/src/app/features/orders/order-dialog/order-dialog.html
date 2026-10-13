@@ -1,0 +1,157 @@
+<section class="order-dialog">
+	<header class="order-dialog__header">
+		<h2 class="order-dialog__title">Place Order</h2>
+		<button mat-stroked-button type="button" (click)="close()">Close</button>
+	</header>
+
+	<mat-tab-group [selectedIndex]="selectedTab()" (selectedIndexChange)="setTab($event)">
+		<mat-tab label="Buy">
+			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<mat-step [stepControl]="buyInstrumentStep" label="Select instrument">
+					<div class="order-dialog__step-content">
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Instrument</mat-label>
+							<input
+								type="text"
+								matInput
+								[formControl]="buyInstrumentStep.controls.instrumentInput"
+								(input)="onBuyInput()"
+								(blur)="onBuyBlur()"
+								[matAutocomplete]="buyInstrumentAuto"
+								placeholder="Type AAPL, SPY, Bond..."
+							/>
+						</mat-form-field>
+
+						<mat-autocomplete #buyInstrumentAuto="matAutocomplete" (optionSelected)="selectBuyInstrument($event)">
+							<mat-option *ngFor="let instrument of buyMatches()" [value]="instrument.symbol">
+								{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+							</mat-option>
+						</mat-autocomplete>
+
+						<div class="order-dialog__instrument-meta" *ngIf="selectedBuyInstrument() as instrument">
+							<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+							<p>Market price: {{ instrument.marketPrice | currency }}</p>
+							<p>Last updated: {{ instrument.lastUpdated }}</p>
+						</div>
+
+						<div class="order-dialog__actions">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!buyInstrumentStep.valid">Next</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step [stepControl]="buyOrderStep" label="Set order details">
+					<div class="order-dialog__step-content">
+						<p class="order-dialog__slider-label">Quantity: {{ buyQuantityInput() }}</p>
+
+						<mat-slider min="1" max="100" step="1" discrete>
+							<input matSliderThumb [formControl]="buyOrderStep.controls.quantity" />
+						</mat-slider>
+
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Price limit</mat-label>
+							<input matInput type="number" min="0.01" step="0.01" [formControl]="buyOrderStep.controls.priceLimit" />
+						</mat-form-field>
+
+						<p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" matStepperNext [disabled]="!buyOrderStep.valid" (click)="placeBuyOrder()">
+								Continue
+							</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step label="Confirmation">
+					<div class="order-dialog__step-content">
+						<div class="order-dialog__result order-dialog__result--success" *ngIf="buyPlaced()">
+							Buy order queued successfully.
+						</div>
+						<div class="order-dialog__result order-dialog__result--error" *ngIf="buyPlaced() === false">
+							Order rejected by pre-trade checks (mock error).
+						</div>
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="close()">Done</button>
+						</div>
+					</div>
+				</mat-step>
+			</mat-stepper>
+		</mat-tab>
+
+		<mat-tab label="Sell">
+			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<mat-step [stepControl]="sellInstrumentStep" label="Select instrument">
+					<div class="order-dialog__step-content">
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Instrument</mat-label>
+							<input
+								type="text"
+								matInput
+								[formControl]="sellInstrumentStep.controls.instrumentInput"
+								(input)="onSellInput()"
+								(blur)="onSellBlur()"
+								[matAutocomplete]="sellInstrumentAuto"
+								placeholder="Type AAPL, SPY, Bond..."
+							/>
+						</mat-form-field>
+
+						<mat-autocomplete #sellInstrumentAuto="matAutocomplete" (optionSelected)="selectSellInstrument($event)">
+							<mat-option *ngFor="let instrument of sellMatches()" [value]="instrument.symbol">
+								{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+							</mat-option>
+						</mat-autocomplete>
+
+						<div class="order-dialog__instrument-meta" *ngIf="selectedSellInstrument() as instrument">
+							<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+							<p>Market price: {{ instrument.marketPrice | currency }}</p>
+							<p>Last updated: {{ instrument.lastUpdated }}</p>
+						</div>
+
+						<div class="order-dialog__actions">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!sellInstrumentStep.valid">Next</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step [stepControl]="sellOrderStep" label="Set sell quantity">
+					<div class="order-dialog__step-content">
+						<p class="order-dialog__slider-label">Quantity: {{ sellQuantityInput() }}</p>
+
+						<mat-slider min="1" max="100" step="1" discrete>
+							<input matSliderThumb [formControl]="sellOrderStep.controls.quantity" />
+						</mat-slider>
+
+						<p class="order-dialog__estimate">Market value estimate: {{ sellEstimate() | currency }}</p>
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" matStepperNext [disabled]="!sellOrderStep.valid" (click)="placeSellOrder()">
+								Continue
+							</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step label="Confirmation">
+					<div class="order-dialog__step-content">
+						<div class="order-dialog__result order-dialog__result--success" *ngIf="sellPlaced()">
+							Sell order queued successfully.
+						</div>
+						<div class="order-dialog__result order-dialog__result--error" *ngIf="sellPlaced() === false">
+							Order rejected by risk checks (mock error).
+						</div>
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="close()">Done</button>
+						</div>
+					</div>
+				</mat-step>
+			</mat-stepper>
+		</mat-tab>
+	</mat-tab-group>
+</section>
