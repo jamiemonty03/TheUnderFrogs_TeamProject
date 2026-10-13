@@ -32,6 +32,9 @@ public class PositionMovement {
     @Column(name = "account_id", nullable = false)
     private String accountId;
 
+    @Column(name = "portfolio_id", nullable = false)
+    private String portfolioId;
+
     @Column(name = "symbol", nullable = false)
     private String symbol;
 
@@ -61,6 +64,10 @@ public class PositionMovement {
 
     public String getAccountId() {
         return accountId;
+    }
+
+    public String getPortfolioId() {
+        return portfolioId;
     }
 
     public String getSymbol() {
