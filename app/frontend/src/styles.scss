@@ -79,3 +79,28 @@ html {
     )
   );
 }
+
+.tag {
+	display: inline-block;
+	padding: 0.1rem 0.55rem;
+	border-radius: 999px;
+	font-size: 0.78rem;
+	font-weight: 600;
+	background: var(--ts-neutral-bg);
+	color: var(--ts-text-secondary);
+
+	&--main {
+		background: var(--ts-success-bg);
+		color: var(--ts-frog-light);
+	}
+
+	&--low {
+		background: var(--ts-info-bg);
+		color: var(--ts-info);
+	}
+
+	&--high {
+		background: var(--ts-danger-bg);
+		color: var(--ts-sell);
+	}
+}

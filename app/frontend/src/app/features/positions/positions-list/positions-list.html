@@ -1,12 +1,201 @@
-<h2>Wallet</h2>
-@if (service.loading()) {
-  <p>Loading…</p>
-}
-@if (service.error()) {
-  <p>{{ service.error() }}</p>
-}
-@for (p of positions(); track p.symbol) {
-  <p>{{ p.symbol }}: {{ p.quantity }} at {{ p.averageCost }}</p>
-} @empty {
-  <p>No positions.</p>
-}
+<section class="wallet">
+  <aside class="wallet-sidebar" aria-label="My portfolios">
+    <div class="wallet-sidebar__head">
+      <h2 class="wallet-sidebar__title">My portfolios</h2>
+      <span class="wallet-sidebar__count">{{ portfolios().length }}</span>
+    </div>
+
+    <ul class="wallet-sidebar__list">
+      <li>
+        <button
+          type="button"
+          class="portfolio-card"
+          data-testid="portfolio-all"
+          [class.portfolio-card--active]="showingAll()"
+          [attr.aria-pressed]="showingAll()"
+          (click)="select('ALL')"
+        >
+          <span class="portfolio-card__name">All holdings</span>
+          <span class="portfolio-card__meta">Every portfolio</span>
+        </button>
+      </li>
+      @for (portfolio of portfolios(); track portfolio.portfolioId) {
+        <li>
+          <button
+            type="button"
+            class="portfolio-card"
+            [attr.data-testid]="'portfolio-' + portfolio.portfolioId"
+            [class.portfolio-card--active]="selectedId() === portfolio.portfolioId"
+            [attr.aria-pressed]="selectedId() === portfolio.portfolioId"
+            (click)="select(portfolio.portfolioId)"
+          >
+            <span class="portfolio-card__name">
+              {{ portfolio.name }}
+              @if (portfolio.defaultPortfolio) {
+                <span class="tag tag--main">Main</span>
+              }
+            </span>
+            <span [class]="'tag tag--' + portfolio.risk.toLowerCase()">{{ riskLabel(portfolio.risk) }}</span>
+          </button>
+        </li>
+      }
+    </ul>
+
+    <button mat-stroked-button type="button" class="wallet-sidebar__new" data-testid="new-portfolio" (click)="openCreate()">
+      + New portfolio
+    </button>
+  </aside>
+
+  <div class="wallet-main">
+    <header class="wallet-header">
+      <div>
+        <p class="wallet-header__eyebrow">Wallet</p>
+        <h1 class="wallet-header__title" data-testid="wallet-title">{{ title() }}</h1>
+        @if (selectedPortfolio(); as portfolio) {
+          <p class="wallet-header__sub">
+            <span [class]="'tag tag--' + portfolio.risk.toLowerCase()">{{ riskLabel(portfolio.risk) }}</span>
+            @if (portfolio.benchmark) {
+              <span>Benchmark {{ portfolio.benchmark }}</span>
+            }
+          </p>
+        } @else {
+          <p class="wallet-header__sub">Holdings across all your portfolios. Cash is shared by every portfolio.</p>
+        }
+      </div>
+
+      @if (selectedPortfolio(); as portfolio) {
+        <div class="wallet-header__actions">
+          <button mat-stroked-button type="button" data-testid="edit-portfolio" (click)="openEdit()">Edit</button>
+          @if (!portfolio.defaultPortfolio) {
+            <button mat-stroked-button type="button" class="button--danger" data-testid="delete-portfolio" (click)="askToDelete()">
+              Delete
+            </button>
+          }
+        </div>
+      }
+    </header>
+
+    @if (error()) {
+      <p class="banner banner--error" role="alert" data-testid="wallet-error">{{ error() }}</p>
+    }
+
+    @if (confirmingDelete() && selectedPortfolio(); as portfolio) {
+      <div class="banner banner--warning" role="alertdialog" aria-labelledby="delete-question">
+        <p id="delete-question">
+          Delete <strong>{{ portfolio.name }}</strong>?
+          @if (rows().length > 0) {
+            Its {{ rows().length }} {{ rows().length === 1 ? 'holding moves' : 'holdings move' }} into Main.
+          } @else {
+            It has no holdings.
+          }
+        </p>
+        <div class="banner__actions">
+          <button mat-flat-button type="button" class="button--danger-filled" data-testid="confirm-delete" (click)="deleteSelected()">
+            Delete portfolio
+          </button>
+          <button mat-button type="button" (click)="confirmingDelete.set(false)">Cancel</button>
+        </div>
+      </div>
+    }
+
+    @if (formMode() !== 'closed') {
+      <form class="portfolio-form" [formGroup]="form" (ngSubmit)="save()" data-testid="portfolio-form">
+        <h2 class="portfolio-form__title">{{ formMode() === 'create' ? 'New portfolio' : 'Edit portfolio' }}</h2>
+        <div class="portfolio-form__fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" maxlength="100" data-testid="portfolio-name" />
+            @if (form.controls.name.invalid) {
+              <mat-error>Give the portfolio a name.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Risk</mat-label>
+            <mat-select formControlName="risk" data-testid="portfolio-risk">
+              @for (risk of risks; track risk) {
+                <mat-option [value]="risk">{{ riskLabel(risk) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Benchmark (optional)</mat-label>
+            <input matInput formControlName="benchmark" maxlength="100" placeholder="e.g. S&P 500" />
+          </mat-form-field>
+        </div>
+        <div class="portfolio-form__actions">
+          <button mat-flat-button type="submit" data-testid="save-portfolio" [disabled]="portfoliosService.loading()">
+            {{ formMode() === 'create' ? 'Create portfolio' : 'Save changes' }}
+          </button>
+          <button mat-button type="button" (click)="closeForm()">Cancel</button>
+        </div>
+      </form>
+    }
+
+    <div class="tiles">
+      <div class="tile">
+        <span class="tile__label">Total cost</span>
+        <span class="tile__value" data-testid="total-cost">{{ totalCost() | currency: 'USD' }}</span>
+        <span class="tile__hint">What you paid for these holdings</span>
+      </div>
+      <div class="tile">
+        <span class="tile__label">Holdings</span>
+        <span class="tile__value" data-testid="holding-count">{{ rows().length }}</span>
+        <span class="tile__hint">{{ symbolCount() }} {{ symbolCount() === 1 ? 'instrument' : 'instruments' }}</span>
+      </div>
+    </div>
+
+    <div class="holdings-card">
+      <h2 class="holdings-card__title">Holdings</h2>
+
+      @if (positionsService.loading() && rows().length === 0) {
+        <p class="holdings-card__state">Loading holdings…</p>
+      } @else if (rows().length === 0) {
+        <div class="holdings-card__state" data-testid="holdings-empty">
+          <p>{{ showingAll() ? "You don't hold anything yet." : 'No holdings in ' + title() + ' yet.' }}</p>
+          <a mat-stroked-button routerLink="/orders">Place an order</a>
+        </div>
+      } @else {
+        <div class="holdings-table-wrap">
+          <table mat-table [dataSource]="rows()" class="holdings-table" data-testid="holdings-table">
+            <ng-container matColumnDef="symbol">
+              <th mat-header-cell *matHeaderCellDef>Symbol</th>
+              <td mat-cell *matCellDef="let row" class="holdings-table__symbol">{{ row.symbol }}</td>
+              <td mat-footer-cell *matFooterCellDef>Total</td>
+            </ng-container>
+
+            <ng-container matColumnDef="portfolio">
+              <th mat-header-cell *matHeaderCellDef>Portfolio</th>
+              <td mat-cell *matCellDef="let row">{{ row.portfolioName }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="quantity">
+              <th mat-header-cell *matHeaderCellDef class="num">Quantity</th>
+              <td mat-cell *matCellDef="let row" class="num">{{ row.quantity | number: '1.0-4' }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="averageCost">
+              <th mat-header-cell *matHeaderCellDef class="num">Avg cost</th>
+              <td mat-cell *matCellDef="let row" class="num">{{ row.averageCost | currency: 'USD' }}</td>
+              <td mat-footer-cell *matFooterCellDef></td>
+            </ng-container>
+
+            <ng-container matColumnDef="totalCost">
+              <th mat-header-cell *matHeaderCellDef class="num">Total cost</th>
+              <td mat-cell *matCellDef="let row" class="num">{{ row.totalCost | currency: 'USD' }}</td>
+              <td mat-footer-cell *matFooterCellDef class="num">{{ totalCost() | currency: 'USD' }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+            <tr mat-footer-row *matFooterRowDef="columns()"></tr>
+          </table>
+        </div>
+        <p class="holdings-card__note">Live prices and P&amp;L will appear here once the price feed is connected.</p>
+      }
+    </div>
+  </div>
+</section>
