@@ -57,24 +57,34 @@
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
-							<button mat-flat-button type="button" matStepperNext [disabled]="!buyOrderStep.valid" (click)="placeBuyOrder()">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!buyOrderStep.valid">
 								Continue
 							</button>
 						</div>
 					</div>
 				</mat-step>
 
-				<mat-step label="Confirmation">
+				<mat-step label="Review">
 					<div class="order-dialog__step-content">
+						<h3>Review buy order</h3>
+						<div class="order-dialog__summary">
+							<p><strong>Instrument:</strong> {{ selectedBuyInstrument()?.symbol }}</p>
+							<p><strong>Side:</strong> Buy</p>
+							<p><strong>Quantity:</strong> {{ buyOrderStep.controls.quantity.value }}</p>
+							<p><strong>Price limit:</strong> {{ buyOrderStep.controls.priceLimit.value | currency }}</p>
+						</div>
 						<div class="order-dialog__result order-dialog__result--success" *ngIf="buyPlaced()">
-							Buy order queued successfully.
+							{{ buyResultMessage() }}
 						</div>
 						<div class="order-dialog__result order-dialog__result--error" *ngIf="buyPlaced() === false">
-							Order rejected by pre-trade checks (mock error).
+							{{ buyResultMessage() }}
 						</div>
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="placeBuyOrder()" [disabled]="buySubmitting() || buyPlaced() === true">
+								{{ buySubmitting() ? 'Placing...' : 'Place order' }}
+							</button>
 							<button mat-flat-button type="button" (click)="close()">Done</button>
 						</div>
 					</div>
@@ -129,24 +139,34 @@
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
-							<button mat-flat-button type="button" matStepperNext [disabled]="!sellOrderStep.valid" (click)="placeSellOrder()">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!sellOrderStep.valid">
 								Continue
 							</button>
 						</div>
 					</div>
 				</mat-step>
 
-				<mat-step label="Confirmation">
+				<mat-step label="Review">
 					<div class="order-dialog__step-content">
+						<h3>Review sell order</h3>
+						<div class="order-dialog__summary">
+							<p><strong>Instrument:</strong> {{ selectedSellInstrument()?.symbol }}</p>
+							<p><strong>Side:</strong> Sell</p>
+							<p><strong>Quantity:</strong> {{ sellOrderStep.controls.quantity.value }}</p>
+							<p><strong>Price limit:</strong> {{ selectedSellInstrument()?.marketPrice | currency }}</p>
+						</div>
 						<div class="order-dialog__result order-dialog__result--success" *ngIf="sellPlaced()">
-							Sell order queued successfully.
+							{{ sellResultMessage() }}
 						</div>
 						<div class="order-dialog__result order-dialog__result--error" *ngIf="sellPlaced() === false">
-							Order rejected by risk checks (mock error).
+							{{ sellResultMessage() }}
 						</div>
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="placeSellOrder()" [disabled]="sellSubmitting() || sellPlaced() === true">
+								{{ sellSubmitting() ? 'Placing...' : 'Place order' }}
+							</button>
 							<button mat-flat-button type="button" (click)="close()">Done</button>
 						</div>
 					</div>

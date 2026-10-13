@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
 import { Orders } from '../../../services/orders';
@@ -25,7 +26,7 @@ interface OrderRow {
 }
 
 @Component({
-  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatTableModule],
+  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],
   selector: 'app-orders-list',
   styleUrl: './orders-list.scss',
   templateUrl: './orders-list.html',
@@ -41,6 +42,9 @@ export class OrdersList implements OnInit {
   readonly filters: OrderFilter[] = ['ALL', 'NEW', 'FILLED', 'REJECTED', 'CANCELLED'];
 
   readonly activeFilter = signal<OrderFilter>('ALL');
+  readonly pageIndex = signal(0);
+  readonly pageSize = signal(10);
+  readonly pageSizeOptions = [10, 25, 50];
   readonly orders = signal<OrderRow[]>([]);
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
@@ -56,12 +60,23 @@ export class OrdersList implements OnInit {
     return orders.filter((order) => order.status === filter);
   });
 
+  readonly pagedOrders = computed(() => {
+    const start = this.pageIndex() * this.pageSize();
+    return this.visibleOrders().slice(start, start + this.pageSize());
+  });
+
   ngOnInit(): void {
     this.loadOrders();
   }
 
   setFilter(filter: OrderFilter): void {
     this.activeFilter.set(filter);
+    this.pageIndex.set(0);
+  }
+
+  setPage(event: PageEvent): void {
+    this.pageIndex.set(event.pageIndex);
+    this.pageSize.set(event.pageSize);
   }
 
   getFilterCount(filter: OrderFilter): number {
@@ -96,6 +111,7 @@ export class OrdersList implements OnInit {
     this.ordersApi.getOrdersByAccount(accountId).subscribe({
       next: (rows) => {
         this.orders.set(rows.map((row) => this.toOrderRow(row)));
+        this.pageIndex.set(0);
         this.isLoading.set(false);
       },
       error: () => {

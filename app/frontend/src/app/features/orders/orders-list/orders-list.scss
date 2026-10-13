@@ -64,6 +64,16 @@
 	overflow-x: auto;
 }
 
+mat-paginator {
+	margin-top: 0.5rem;
+	background: transparent;
+	color: var(--ts-text-secondary);
+	--mat-paginator-container-text-color: var(--ts-text-secondary);
+	--mat-paginator-container-background-color: transparent;
+	--mat-paginator-enabled-icon-color: var(--ts-text-secondary);
+	--mat-paginator-disabled-icon-color: var(--ts-neutral);
+}
+
 .orders-table {
 	width: 100%;
 	min-width: 56rem;

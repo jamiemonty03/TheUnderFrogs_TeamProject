@@ -10,8 +10,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
+import { Auth } from '../../../services/auth/auth';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
+import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
+import { Orders } from '../../../services/orders';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
@@ -37,7 +41,9 @@ type Instrument = TradingInstrument;
 export class OrderDialog implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<OrderDialog>);
+  private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
+  private readonly ordersApi = inject(Orders);
 
   readonly selectedTab = signal(0);
 
@@ -64,6 +70,12 @@ export class OrderDialog implements OnInit {
 
   readonly buyPlaced = signal<boolean | null>(null);
   readonly sellPlaced = signal<boolean | null>(null);
+  readonly buySubmitting = signal(false);
+  readonly sellSubmitting = signal(false);
+  readonly buyResponse = signal<OrderResponse | null>(null);
+  readonly sellResponse = signal<OrderResponse | null>(null);
+  readonly buyResultMessage = signal<string | null>(null);
+  readonly sellResultMessage = signal<string | null>(null);
 
   readonly selectedBuyInstrument = signal<Instrument | null>(null);
   readonly selectedSellInstrument = signal<Instrument | null>(null);
@@ -170,11 +182,71 @@ export class OrderDialog implements OnInit {
   }
 
   placeBuyOrder(): void {
-    this.buyPlaced.set(Math.random() > 0.15);
+    const instrument = this.selectedBuyInstrument();
+    const accountId = this.auth.currentUser()?.accountId;
+    if (!instrument || !accountId) {
+      this.buyPlaced.set(false);
+      this.buyResultMessage.set('An account and instrument are required to place an order.');
+      return;
+    }
+
+    this.buyPlaced.set(null);
+    this.buySubmitting.set(true);
+    this.buyResultMessage.set(null);
+    this.ordersApi.placeOrder({
+      accountId,
+      symbol: instrument.symbol,
+      side: 'BUY',
+      quantity: Number(this.buyOrderStep.controls.quantity.value),
+      priceLimit: Number(this.buyOrderStep.controls.priceLimit.value),
+      idempotencyKey: this.createIdempotencyKey(),
+    }).subscribe({
+      next: (response) => {
+        this.buyResponse.set(response);
+        this.buyPlaced.set(true);
+        this.buySubmitting.set(false);
+        this.buyResultMessage.set(`Order ${response.orderId} was placed with status ${response.orderStatus}.`);
+      },
+      error: (error: unknown) => {
+        this.buyPlaced.set(false);
+        this.buySubmitting.set(false);
+        this.buyResultMessage.set(this.orderErrorMessage(error));
+      },
+    });
   }
 
   placeSellOrder(): void {
-    this.sellPlaced.set(Math.random() > 0.15);
+    const instrument = this.selectedSellInstrument();
+    const accountId = this.auth.currentUser()?.accountId;
+    if (!instrument || !accountId) {
+      this.sellPlaced.set(false);
+      this.sellResultMessage.set('An account and instrument are required to place an order.');
+      return;
+    }
+
+    this.sellPlaced.set(null);
+    this.sellSubmitting.set(true);
+    this.sellResultMessage.set(null);
+    this.ordersApi.placeOrder({
+      accountId,
+      symbol: instrument.symbol,
+      side: 'SELL',
+      quantity: Number(this.sellOrderStep.controls.quantity.value),
+      priceLimit: Number(instrument.marketPrice),
+        idempotencyKey: this.createIdempotencyKey(),
+    }).subscribe({
+      next: (response) => {
+        this.sellResponse.set(response);
+        this.sellPlaced.set(true);
+          this.sellSubmitting.set(false);
+        this.sellResultMessage.set(`Order ${response.orderId} was placed with status ${response.orderStatus}.`);
+      },
+      error: (error: unknown) => {
+        this.sellPlaced.set(false);
+          this.sellSubmitting.set(false);
+        this.sellResultMessage.set(this.orderErrorMessage(error));
+      },
+    });
   }
 
   close(): void {
@@ -211,5 +283,26 @@ export class OrderDialog implements OnInit {
         this.instrumentsLoading.set(false);
       },
     });
+  }
+
+  private orderErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      const message = (error.error as { message?: unknown } | null)?.message;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+      if (error.status === 0) {
+        return 'Could not reach the order service.';
+      }
+    }
+    return 'The order could not be placed. Please try again.';
+  }
+
+  private createIdempotencyKey(): string {
+    const browserCrypto = globalThis.crypto;
+    if (typeof browserCrypto?.randomUUID === 'function') {
+      return browserCrypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
