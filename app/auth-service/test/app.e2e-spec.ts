@@ -25,7 +25,6 @@ describe('auth-service (e2e)', () => {
     createAccount: async ({ userId }: { userId: number }) => ({ accountId: `E2E${userId}` }),
   };
 
-  // Filled in as the journey progresses.
   let accountId: string;
   let accessToken: string;
   let registerRefresh: string;
@@ -38,7 +37,6 @@ describe('auth-service (e2e)', () => {
       .useValue(accountsServiceClient)
       .compile();
 
-    // Same wiring as main.ts.
     app = moduleRef.createNestApplication(new JsonBodyAdapter());
     app.useGlobalPipes(createValidationPipe());
     app.useGlobalFilters(new HttpExceptionFilter());
@@ -48,7 +46,6 @@ describe('auth-service (e2e)', () => {
   });
 
   afterAll(async () => {
-    // auth and refresh_tokens rows go with the user (ON DELETE CASCADE).
     await db?.query('DELETE FROM users WHERE username = $1', [user.username]);
     await app?.close();
   });
@@ -171,6 +168,61 @@ describe('auth-service (e2e)', () => {
       await http().post('/auth/logout').send({ refresh_token: registerRefresh }).expect(204);
 
       await http().post('/auth/refresh').send({ refresh_token: registerRefresh }).expect(401);
+    });
+  });
+
+  describe('security edge cases', () => {
+    it('returns VAL-422 for malformed JSON bodies', async () => {
+      const res = await http()
+        .post('/auth/register')
+        .set('Content-Type', 'application/json')
+        .send('{"username":"broken"')
+        .expect(422);
+
+      expect(res.body).toEqual({ errorCode: 'VAL-422', message: 'Malformed request body' });
+    });
+
+    it('locks a user after repeated failed logins', async () => {
+      const lockUser = {
+        username: `lock_${Date.now()}`,
+        email: `lock_${Date.now()}@example.com`,
+        password: 'correct-horse-battery',
+        full_name: 'Lock Tester',
+      };
+
+      await http().post('/auth/register').send(lockUser).expect(201);
+
+      await db.query('UPDATE users SET failed_attempts = 4, locked_until = NULL WHERE username = $1', [lockUser.username]);
+
+      await http().post('/auth/login').send({ username: lockUser.username, password: 'wrong-password-123' }).expect(401);
+
+      const locked = await http().post('/auth/login').send({ username: lockUser.username, password: lockUser.password }).expect(401);
+      expect(locked.body).toEqual({
+        errorCode: 'AUTH-401',
+        message: 'Account is locked due to too many failed login attempts. Please try again later.',
+      });
+
+      await db.query('DELETE FROM users WHERE username = $1', [lockUser.username]);
+    });
+
+    it('rejects an expired refresh token', async () => {
+      const expUser = {
+        username: `exp_${Date.now()}`,
+        email: `exp_${Date.now()}@example.com`,
+        password: 'correct-horse-battery',
+        full_name: 'Expiry Tester',
+      };
+
+      const register = await http().post('/auth/register').send(expUser).expect(201);
+      const refreshToken = register.body.refreshToken as string;
+      const tokenHash = createHash('sha256').update(refreshToken).digest('hex');
+
+      await db.query("UPDATE refresh_tokens SET expires_at = NOW() - INTERVAL '1 second' WHERE token_hash = $1", [tokenHash]);
+
+      const expired = await http().post('/auth/refresh').send({ refresh_token: refreshToken }).expect(401);
+      expect(expired.body).toEqual({ errorCode: 'AUTH-401', message: 'Invalid refresh token' });
+
+      await db.query('DELETE FROM users WHERE username = $1', [expUser.username]);
     });
   });
 });
