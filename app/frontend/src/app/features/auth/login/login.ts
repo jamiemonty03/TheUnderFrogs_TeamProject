@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Auth } from '../../../services/auth';
+import { loginErrorMessage } from './login-error';
 import { safeReturnUrl } from './return-url';
 import { SubmittedErrorStateMatcher } from './submitted-error-state';
 
@@ -24,6 +25,7 @@ export class Login {
   private readonly route = inject(ActivatedRoute);
 
   readonly submitting = signal(false);
+  readonly errorMessage = signal<string | null>(null);
 
   readonly form = this.fb.group({
     username: ['', Validators.required],
@@ -35,6 +37,7 @@ export class Login {
       return;
     }
     this.submitting.set(true);
+    this.errorMessage.set(null);
     const { username, password } = this.form.getRawValue();
 
     this.auth
@@ -45,7 +48,7 @@ export class Login {
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
           void this.router.navigateByUrl(safeReturnUrl(returnUrl));
         },
-        error: () => undefined,
+        error: (error: unknown) => this.errorMessage.set(loginErrorMessage(error)),
       });
   }
 }

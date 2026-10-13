@@ -27,3 +27,12 @@
   margin-top: 0.5rem;
   height: 44px;
 }
+
+.login__error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ts-danger-border);
+  border-radius: 8px;
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+}

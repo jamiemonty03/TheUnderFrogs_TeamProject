@@ -18,6 +18,10 @@
       }
     </mat-form-field>
 
+    @if (errorMessage(); as message) {
+      <p class="login__error" role="alert">{{ message }}</p>
+    }
+
     <button mat-flat-button type="submit" class="login__submit" [disabled]="submitting()">
       {{ submitting() ? 'Signing in…' : 'Sign in' }}
     </button>

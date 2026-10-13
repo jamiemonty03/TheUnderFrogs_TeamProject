@@ -2,7 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Login } from './login';
+import { LOGIN_ERRORS } from './login-error';
 import { Auth, CurrentUser } from '../../../services/auth';
 
 const demo: CurrentUser = { userId: 11, username: 'demo', roles: ['TRADER'], accountId: 'ACC0011' };
@@ -39,6 +41,7 @@ describe('Login', () => {
   const input = (name: string) =>
     page.querySelector<HTMLInputElement>(`input[formcontrolname="${name}"]`)!;
   const button = () => page.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const alert = () => page.querySelector<HTMLElement>('[role="alert"]');
   const errors = () =>
     Array.from(page.querySelectorAll('mat-error')).map((e) => e.textContent?.trim());
   const type = (name: string, value: string) => {
@@ -155,6 +158,51 @@ describe('Login', () => {
       await fillAndSubmit();
 
       expect(navigateByUrl).toHaveBeenCalledWith('/dashboard');
+    });
+  });
+
+  describe('error messages', () => {
+    const httpError = (status: number, errorCode?: string) =>
+      new HttpErrorResponse({
+        status,
+        error: errorCode ? { errorCode, message: 'from server' } : null,
+      });
+
+    it.each([
+      [
+        'wrong username or password (AUTH-401)',
+        httpError(401, 'AUTH-401'),
+        LOGIN_ERRORS.invalidCredentials,
+      ],
+      ['too many attempts (AUTH-429)', httpError(429, 'AUTH-429'), LOGIN_ERRORS.tooManyAttempts],
+      ['the sign-in service cannot be reached', httpError(0), LOGIN_ERRORS.unreachable],
+    ])('shows the message for %s in an alert', async (_label, error, message) => {
+      await setUp();
+      login.mockReturnValue(throwError(() => error));
+
+      await fillAndSubmit();
+
+      expect(alert()?.textContent?.trim()).toBe(message);
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('shows no alert before anything has gone wrong', async () => {
+      await setUp();
+
+      expect(alert()).toBeNull();
+    });
+
+    it('clears the previous error when the user tries again', async () => {
+      await setUp();
+      login.mockReturnValue(throwError(() => httpError(401, 'AUTH-401')));
+      await fillAndSubmit();
+      expect(alert()).not.toBeNull();
+
+      const pending = new Subject<CurrentUser>();
+      login.mockReturnValue(pending);
+      await submit();
+
+      expect(alert()).toBeNull();
     });
   });
 });
