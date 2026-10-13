@@ -86,6 +86,7 @@ Environment variables:
 | `AUTH_JWKS_URI`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | accounts, instruments, orders, positions | Where to fetch auth-service's public keys, and the `iss` / `aud` every token must carry. Optional; the defaults match docker-compose |
 | `JWT_SECRET` | auth-service, trade-executor | Signing secret, until both move to RS256 (S8-4, S8-9) |
 | `SERVICE_TOKEN_TTL` | trade-executor | Lifetime of its service-to-service token |
+| `HTTPS_ENABLED` | auth-service | `true` adds the HTTPS-only security headers (HSTS and `upgrade-insecure-requests`). Leave it unset while auth-service is served over plain http, or browsers can't load Swagger |
 | `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
