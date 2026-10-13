@@ -1,1 +1,12 @@
-<p>positions-list works!</p>
+<h2>Wallet</h2>
+@if (service.loading()) {
+  <p>Loading…</p>
+}
+@if (service.error()) {
+  <p>{{ service.error() }}</p>
+}
+@for (p of positions(); track p.symbol) {
+  <p>{{ p.symbol }}: {{ p.quantity }} at {{ p.averageCost }}</p>
+} @empty {
+  <p>No positions.</p>
+}

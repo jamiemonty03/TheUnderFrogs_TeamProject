@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 :root {
   --ts-frog: #3DFA8C;
   --ts-frog-light: #8CFFB9;
@@ -32,4 +34,48 @@
   --ts-info-bg: #12283A;
   --ts-neutral: #5E7468;
   --ts-neutral-bg: #1D2420;
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+
+  background-color: var(--ts-bg);
+}
+
+html {
+  color-scheme: dark;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$spring-green-palette,
+      ),
+      typography: (
+        plain-family: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+        brand-family: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      ),
+      density: 0,
+    )
+  );
+  @include mat.form-field-overrides(
+    (
+      outlined-outline-color: var(--ts-border-strong),
+      outlined-focus-outline-color: var(--ts-frog),
+      outlined-focus-label-text-color: var(--ts-frog),
+      outlined-label-text-color: var(--ts-text-muted),
+      outlined-input-text-color: var(--ts-text),
+      outlined-error-outline-color: var(--ts-danger-text),
+      outlined-error-focus-outline-color: var(--ts-danger-text),
+      outlined-error-label-text-color: var(--ts-danger-text),
+      error-text-color: var(--ts-danger-text),
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--ts-frog),
+      filled-label-text-color: var(--ts-on-frog),
+    )
+  );
 }
