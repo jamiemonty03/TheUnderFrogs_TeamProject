@@ -1,5 +1,7 @@
-<app-navigation-bar></app-navigation-bar>
+@if (showShell()) {
+  <app-navigation-bar></app-navigation-bar>
+}
 
-<main class="page-shell">
+<main [class.page-shell]="showShell()">
   <router-outlet></router-outlet>
 </main>

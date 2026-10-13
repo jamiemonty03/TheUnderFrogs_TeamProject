@@ -1,48 +1,67 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Auth } from '../../../services/auth/auth';
+import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { Auth } from '../../../services/auth';
+import { loginErrorMessage } from './login-error';
+import { safeReturnUrl } from './return-url';
+import { SubmittedErrorStateMatcher } from './submitted-error-state';
 
 @Component({
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink, MatFormFieldModule, MatInputModule, MatButtonModule],
+  providers: [{ provide: ErrorStateMatcher, useClass: SubmittedErrorStateMatcher }],
   selector: 'app-login',
   styleUrl: './login.scss',
   templateUrl: './login.html',
 })
 export class Login {
-  private readonly fb = inject(FormBuilder);
+  private readonly fb = inject(NonNullableFormBuilder);
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly isSubmitting = signal(false);
+  readonly tickerQuotes = [
+    { symbol: 'AAPL', change: 1.24 },
+    { symbol: 'MSFT', change: 0.88 },
+    { symbol: 'TSLA', change: -2.1 },
+    { symbol: 'SPY', change: 0.41 },
+    { symbol: 'NVDA', change: 3.02 },
+    { symbol: 'BND', change: -0.12 },
+  ].map(({ symbol, change }) => ({
+    symbol,
+    up: change >= 0,
+    percent: Math.abs(change).toFixed(2),
+  }));
+
+  readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
-  readonly form = this.fb.nonNullable.group({
+  readonly form = this.fb.group({
     username: ['', Validators.required],
     password: ['', Validators.required],
   });
 
   submit(): void {
-    if (this.form.invalid || this.isSubmitting()) {
-      this.form.markAllAsTouched();
+    if (this.form.invalid || this.submitting()) {
       return;
     }
-
-    this.isSubmitting.set(true);
+    this.submitting.set(true);
     this.errorMessage.set(null);
-
     const { username, password } = this.form.getRawValue();
-    this.auth.login(username, password).subscribe({
-      next: () => {
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/dashboard';
-        void this.router.navigateByUrl(returnUrl);
-      },
-      error: () => {
-        this.errorMessage.set('Invalid username or password.');
-        this.isSubmitting.set(false);
-      },
-    });
+
+    this.auth
+      .login(username, password)
+      .pipe(finalize(() => this.submitting.set(false)))
+      .subscribe({
+        next: () => {
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+          void this.router.navigateByUrl(safeReturnUrl(returnUrl));
+        },
+        error: (error: unknown) => this.errorMessage.set(loginErrorMessage(error)),
+      });
   }
 }

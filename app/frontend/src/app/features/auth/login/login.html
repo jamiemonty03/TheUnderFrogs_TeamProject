@@ -1,19 +1,83 @@
-<main class="login-page">
-	<form class="login-page__form" [formGroup]="form" (ngSubmit)="submit()">
-		<h1>Sign in</h1>
+<div class="login">
+  <section class="login__hero">
+    <a class="login__brand" routerLink="/login">
+      <img class="login__brand-mark" src="/brand/leapfrog-mark.svg" alt="" />
+      <span class="login__brand-name">Toadstock</span>
+      <span class="login__brand-badge">NYSE: TOAD</span>
+    </a>
 
-		<label for="username">Username</label>
-		<input id="username" type="text" formControlName="username" autocomplete="username">
-		<small *ngIf="form.controls.username.touched && form.controls.username.invalid">Username is required.</small>
+    <div class="login__pitch">
+      <p class="login__headline">
+        Leap ahead<br />of the <span class="login__headline-accent">market.</span>
+      </p>
+      <p class="login__tagline">
+        Trade stocks, ETFs and bonds from one lily pad. Real-time prices, instant fills, zero
+        croaking.
+      </p>
+    </div>
 
-		<label for="password">Password</label>
-		<input id="password" type="password" formControlName="password" autocomplete="current-password">
-		<small *ngIf="form.controls.password.touched && form.controls.password.invalid">Password is required.</small>
+    <ul class="login__ticker" aria-hidden="true">
+      @for (quote of tickerQuotes; track quote.symbol) {
+        <li class="login__quote">
+          <span class="login__quote-symbol">{{ quote.symbol }}</span>
+          <span class="login__quote-change" [class.login__quote-change--down]="!quote.up">
+            {{ quote.up ? '▲' : '▼' }} {{ quote.percent }}%
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
 
-		<p *ngIf="errorMessage()" class="login-page__error">{{ errorMessage() }}</p>
+  <section class="login__panel">
+    <form class="login__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h1 class="login__title">Welcome back</h1>
+      <p class="login__subtitle">Log in to your Toadstock account.</p>
 
-		<button type="submit" [disabled]="isSubmitting()">
-			{{ isSubmitting() ? 'Signing in...' : 'Sign in' }}
-		</button>
-	</form>
-</main>
+      <nav class="login__tabs" aria-label="Account">
+        <a class="login__tab login__tab--active" routerLink="/login" aria-current="page">Log in</a>
+        <a class="login__tab" routerLink="/register">Create account</a>
+      </nav>
+
+      <label class="login__label" for="login-username">Username</label>
+      <mat-form-field appearance="outline" class="login__field">
+        <input
+          matInput
+          id="login-username"
+          formControlName="username"
+          autocomplete="username"
+          placeholder="kermit"
+        />
+        @if (form.controls.username.hasError('required')) {
+          <mat-error>Username is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <label class="login__label" for="login-password">Password</label>
+      <mat-form-field appearance="outline" class="login__field">
+        <input
+          matInput
+          id="login-password"
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="••••••••"
+        />
+        @if (form.controls.password.hasError('required')) {
+          <mat-error>Password is required.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (errorMessage(); as message) {
+        <p class="login__error" role="alert">{{ message }}</p>
+      }
+
+      <button mat-flat-button type="submit" class="login__submit" [disabled]="submitting()">
+        @if (submitting()) {
+          Logging in…
+        } @else {
+          Log in and hop in <span aria-hidden="true">🐸</span>
+        }
+      </button>
+    </form>
+  </section>
+</div>
