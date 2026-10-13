@@ -1,38 +1,222 @@
+@use '@angular/material' as mat;
+
 .login {
-  display: flex;
-  justify-content: center;
-  padding: 3rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--ts-bg);
+  color: var(--ts-text);
 }
 
-.login__card {
+.login__hero {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  max-width: 24rem;
-  padding: 2rem;
-  border: 1px solid var(--ts-border);
-  border-radius: 12px;
-  background: var(--ts-surface);
+  justify-content: space-between;
+  gap: 3rem;
+  padding: 2rem 3.5rem 2rem 2rem;
+  border-right: 1px solid var(--ts-divider);
+  background:
+    radial-gradient(120% 80% at 0% 100%, var(--ts-frog-glow) 0%, transparent 60%), var(--ts-bg);
 }
 
-.login__title {
-  margin: 0 0 1rem;
+.login__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   color: var(--ts-text);
-  font-size: 1.5rem;
-  font-weight: 600;
+  text-decoration: none;
 }
 
-.login__submit {
-  margin-top: 0.5rem;
+.login__brand-mark {
+  width: 44px;
   height: 44px;
 }
 
-.login__error {
+.login__brand-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.login__brand-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: var(--ts-frog);
+  color: var(--ts-on-frog);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.login__headline {
+  margin: 0 0 1.5rem;
+  font-size: clamp(2.75rem, 5vw, 4.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.login__headline-accent {
+  color: var(--ts-frog);
+}
+
+.login__tagline {
+  max-width: 36rem;
   margin: 0;
+  color: var(--ts-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.login__ticker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.75rem;
+  margin: 0;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid var(--ts-divider);
+  list-style: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.login__quote {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.login__quote-change {
+  color: var(--ts-frog);
+}
+
+.login__quote-change--down {
+  color: var(--ts-loss);
+}
+
+.login__panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 26rem;
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+      outlined-outline-color: var(--ts-border),
+      outlined-hover-outline-color: var(--ts-border-strong),
+    )
+  );
+}
+
+.login__title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.login__subtitle {
+  margin: 0.5rem 0 1.75rem;
+  color: var(--ts-text-secondary);
+}
+
+.login__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin-bottom: 1.75rem;
+  padding: 0.3rem;
+  border: 1px solid var(--ts-border);
+  border-radius: 12px;
+  background: var(--ts-bg-raised, var(--ts-input-bg));
+}
+
+.login__tab {
+  padding: 0.7rem 1rem;
+  border-radius: 9px;
+  color: var(--ts-text-secondary);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ts-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ts-frog);
+    outline-offset: 2px;
+  }
+}
+
+.login__tab--active {
+  background: var(--ts-frog);
+  color: var(--ts-on-frog);
+
+  &:hover {
+    color: var(--ts-on-frog);
+  }
+}
+
+.login__label {
+  margin-bottom: 0.4rem;
+  color: var(--ts-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.login__field {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.login__error {
+  margin: 0 0 1rem;
   padding: 0.75rem 1rem;
   border: 1px solid var(--ts-danger-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ts-danger-bg);
   color: var(--ts-danger-text);
+}
+
+.login__submit {
+  height: 52px;
+  margin-top: 0.5rem;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .login__hero {
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border-right: none;
+    border-bottom: 1px solid var(--ts-divider);
+  }
+
+  .login__headline {
+    font-size: 2.25rem;
+  }
+
+  .login__tagline,
+  .login__ticker {
+    display: none;
+  }
+
+  .login__panel {
+    padding: 2rem 1.5rem 3rem;
+  }
 }

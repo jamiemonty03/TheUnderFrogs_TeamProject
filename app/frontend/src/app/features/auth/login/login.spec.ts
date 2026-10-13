@@ -65,6 +65,37 @@ describe('Login', () => {
   describe('validation', () => {
     beforeEach(() => setUp());
 
+    it('labels each field above its box, linked to the input', () => {
+      expect(page.querySelector('label[for="login-username"]')?.textContent?.trim()).toBe(
+        'Username',
+      );
+      expect(page.querySelector('label[for="login-password"]')?.textContent?.trim()).toBe(
+        'Password',
+      );
+      expect(input('username').id).toBe('login-username');
+      expect(input('password').id).toBe('login-password');
+    });
+
+    it('offers a Create account tab that goes to /register', () => {
+      const tab = Array.from(page.querySelectorAll<HTMLAnchorElement>('.login__tab')).find(
+        (link) => link.textContent?.trim() === 'Create account',
+      );
+      expect(tab?.getAttribute('href')).toBe('/register');
+    });
+
+    it('hides the decorative ticker from screen readers', () => {
+      expect(page.querySelector('.login__ticker')?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('shows ticker moves with two decimals and marks falls', () => {
+      const quotes = Array.from(page.querySelectorAll('.login__quote')).map((quote) =>
+        quote.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+      expect(quotes).toContain('TSLA ▼ 2.10%');
+      expect(quotes).toContain('AAPL ▲ 1.24%');
+      expect(page.querySelectorAll('.login__quote-change--down')).toHaveLength(2);
+    });
+
     it('has a username field and a masked password field', () => {
       expect(input('username').type).toBe('text');
       expect(input('password').type).toBe('password');
@@ -105,7 +136,7 @@ describe('Login', () => {
       expect(login).toHaveBeenCalledWith('demo', 'Demo123!');
     });
 
-    it('disables the button and shows "Signing in…" while waiting, and ignores a second click', async () => {
+    it('disables the button and shows "Logging in…" while waiting, and ignores a second click', async () => {
       await setUp();
       const pending = new Subject<CurrentUser>();
       login.mockReturnValue(pending);
@@ -114,14 +145,14 @@ describe('Login', () => {
       await submit();
 
       expect(button().disabled).toBe(true);
-      expect(button().textContent?.trim()).toBe('Signing in…');
+      expect(button().textContent?.trim()).toBe('Logging in…');
       expect(login).toHaveBeenCalledTimes(1);
 
       pending.next(demo);
       pending.complete();
       fixture.detectChanges();
       expect(button().disabled).toBe(false);
-      expect(button().textContent?.trim()).toBe('Sign in');
+      expect(button().textContent).toContain('Log in and hop in');
     });
 
     it('re-enables the button when login fails, and stays on the page', async () => {
