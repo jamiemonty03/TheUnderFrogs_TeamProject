@@ -65,6 +65,7 @@ paths:
                     symbol: "AAPL"
                     name: "Apple Inc."
                     price: 337.855
+                    previousClose: 336.13
                     tradeDate: "2026-09-21T00:00:00"
                     createdAt: "2026-09-21T16:02:58.001367"
                     lastUpdated: "2026-09-21T16:02:58.001367"
@@ -114,6 +115,12 @@ components:
           nullable: true
           description: Latest close price, from clean_prices. Null if no price history exists yet.
           example: 337.855
+        previousClose:
+          type: number
+          format: decimal
+          nullable: true
+          description: Close from the trading day before tradeDate, for day-change P&L. Null if fewer than two days of price history exist.
+          example: 336.13
         tradeDate:
           type: string
           format: date-time

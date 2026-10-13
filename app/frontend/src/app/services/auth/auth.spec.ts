@@ -179,6 +179,112 @@ describe('Auth', () => {
     http.expectNone('/auth/login');
   });
 
+  describe('register()', () => {
+    const details = {
+      fullName: 'Kermit T. Frog',
+      username: 'kermit',
+      email: 'kermit@pond.io',
+      password: 'correct-horse-battery',
+    };
+    const kermit: CurrentUser = {
+      userId: 26,
+      username: 'kermit',
+      roles: ['TRADER'],
+      accountId: 'ACC0012',
+    };
+    const created = (accessToken: string) => ({
+      accessToken,
+      refreshToken: 'refresh-new',
+      expiresIn: 900,
+      mfaRequired: false,
+      accountId: 'ACC0012',
+    });
+
+    it('posts the details with full_name as the server expects, without a token', async () => {
+      setUp();
+
+      const result = firstValueFrom(auth.register(details));
+      const request = http.expectOne('/auth/register');
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({
+        username: 'kermit',
+        email: 'kermit@pond.io',
+        password: 'correct-horse-battery',
+        full_name: 'Kermit T. Frog',
+      });
+      expect(request.request.headers.has('Authorization')).toBe(false);
+      request.flush(created(jwt(900)), { status: 201, statusText: 'Created' });
+      http.expectOne('/auth/me').flush(kermit);
+
+      expect(await result).toEqual(kermit);
+    });
+
+    it('signs the new user in: stores the session and loads currentUser, including the new account ID', async () => {
+      setUp();
+      const accessToken = jwt(900);
+
+      const result = firstValueFrom(auth.register(details));
+      http
+        .expectOne('/auth/register')
+        .flush(created(accessToken), { status: 201, statusText: 'Created' });
+      const me = http.expectOne('/auth/me');
+      expect(me.request.headers.get('Authorization')).toBe(`Bearer ${accessToken}`);
+      me.flush(kermit);
+      await result;
+
+      expect(auth.isAuthenticated()).toBe(true);
+      expect(auth.getToken()).toBe(accessToken);
+      expect(auth.currentUser()?.accountId).toBe('ACC0012');
+      expect(JSON.parse(sessionStorage.getItem(SESSION_KEY)!)).toEqual({
+        accessToken,
+        refreshToken: 'refresh-new',
+        user: kermit,
+      });
+    });
+
+    it('leaves the user signed out when the username or email is taken', async () => {
+      setUp();
+
+      const result = firstValueFrom(auth.register(details));
+      http
+        .expectOne('/auth/register')
+        .flush(
+          { errorCode: 'AUTH-409', message: 'User with username kermit already exists' },
+          { status: 409, statusText: 'Conflict' },
+        );
+
+      await expect(result).rejects.toMatchObject({ status: 409 });
+      expect(auth.isAuthenticated()).toBe(false);
+      expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+    });
+
+    it('does not leave a half-signed-in session when loading the user fails', async () => {
+      setUp();
+
+      const result = firstValueFrom(auth.register(details));
+      http
+        .expectOne('/auth/register')
+        .flush(created(jwt(900)), { status: 201, statusText: 'Created' });
+      http.expectOne('/auth/me').flush(null, { status: 500, statusText: 'Server Error' });
+
+      await expect(result).rejects.toMatchObject({ status: 500 });
+      expect(auth.isAuthenticated()).toBe(false);
+      expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+    });
+
+    it('calls auth-service on the configured API origin', async () => {
+      setUp('https://api.example.com');
+
+      const result = firstValueFrom(auth.register(details));
+      http
+        .expectOne('https://api.example.com/auth/register')
+        .flush(created(jwt(900)), { status: 201, statusText: 'Created' });
+      http.expectOne('https://api.example.com/auth/me').flush(kermit);
+
+      expect(await result).toEqual(kermit);
+    });
+  });
+
   describe('token storage and logging rules', () => {
     const PASSWORD = 'Demo123!';
     const consoleMethods = ['log', 'info', 'warn', 'error', 'debug'] as const;
@@ -250,6 +356,42 @@ describe('Auth', () => {
 
       expect(localStorageWrites).toEqual([]);
       expect(localStorage.length).toBe(0);
+    });
+
+    it('registering writes nothing to localStorage, never stores the password and logs nothing', async () => {
+      setUp();
+      const accessToken = jwt(900);
+
+      const result = firstValueFrom(
+        auth.register({
+          fullName: 'Kermit',
+          username: 'kermit',
+          email: 'kermit@pond.io',
+          password: 'correct-horse-battery',
+        }),
+      );
+      http
+        .expectOne('/auth/register')
+        .flush(
+          {
+            accessToken,
+            refreshToken: 'refresh-new',
+            expiresIn: 900,
+            mfaRequired: false,
+            accountId: 'ACC0012',
+          },
+          { status: 201, statusText: 'Created' },
+        );
+      http
+        .expectOne('/auth/me')
+        .flush({ userId: 26, username: 'kermit', roles: ['TRADER'], accountId: 'ACC0012' });
+      await result;
+
+      expect(localStorageWrites).toEqual([]);
+      expect(sessionStorage.getItem(SESSION_KEY)).not.toContain('correct-horse-battery');
+      expect(consoleOutput()).not.toContain(accessToken);
+      expect(consoleOutput()).not.toContain('correct-horse-battery');
+      consoleSpies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
     });
 
     it('logs nothing at all, so never a token or password, across login, failures and logout', async () => {

@@ -65,12 +65,15 @@ public class EtfServiceTest {
     @Test
     @DisplayName("getEtfBySymbol: Returns matching ETF as EtfResponse")
     public void testGetEtfBySymbolFound() throws InstrumentNotFoundException {
-        when(etfMapper.findBySymbol("SPY")).thenReturn(Optional.of(newEtf()));
+        Etf etf = newEtf();
+        etf.setPreviousClose(new BigDecimal("447.30"));
+        when(etfMapper.findBySymbol("SPY")).thenReturn(Optional.of(etf));
 
         EtfResponse result = etfService.getEtfBySymbol("SPY");
 
         assertEquals("SPY", result.symbol());
         assertEquals(new BigDecimal("1.3"), result.distributionYield());
+        assertEquals(new BigDecimal("447.30"), result.previousClose());
     }
 
     @Test

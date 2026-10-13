@@ -11,6 +11,7 @@
         <id column="symbol" property="symbol" />
         <result column="name" property="name" />
         <result column="price" property="price" />
+        <result column="previous_close" property="previousClose" />
         <result column="trade_date" property="tradeDate" />
         <result column="category" property="category" />
         <result column="fund_family" property="fundFamily" />
@@ -31,7 +32,7 @@
     </resultMap>
 
     <sql id="selectBond">
-        SELECT i.symbol, i.name, lp.close AS price, lp.trade_date,
+        SELECT i.symbol, i.name, lp.close AS price, lp.previous_close, lp.trade_date,
                cb.category, cb.fund_family, cb.legal_type, cb.net_expense_ratio,
                cb.nav_price, cb.total_assets, cb.net_assets, cb.ytd_return,
                cb.three_year_avg_return, cb.five_year_avg_return, cb.beta_3_year,
@@ -39,7 +40,9 @@
         FROM clean_bonds cb
         JOIN instruments i ON i.symbol = cb.symbol
         LEFT JOIN LATERAL (
-            SELECT close, date::timestamp AS trade_date
+            <!-- LEAD runs before LIMIT, so the latest row carries the prior day's close -->
+            SELECT close, LEAD(close) OVER (ORDER BY cp.date DESC) AS previous_close,
+                   date::timestamp AS trade_date
             FROM clean_prices cp
             WHERE cp.symbol = cb.symbol
             ORDER BY cp.date DESC

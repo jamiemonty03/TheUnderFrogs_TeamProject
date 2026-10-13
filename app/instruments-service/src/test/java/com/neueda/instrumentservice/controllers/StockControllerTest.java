@@ -34,7 +34,7 @@ public class StockControllerTest {
     private StockService stockService;
 
     private StockResponse newStockResponse() {
-        return new StockResponse("AAPL", "Apple Inc.", new BigDecimal("150.25"), LocalDateTime.now(),
+        return new StockResponse("AAPL", "Apple Inc.", new BigDecimal("150.25"), new BigDecimal("148.10"), LocalDateTime.now(),
                 LocalDateTime.now(), LocalDateTime.now(), "Technology", "Consumer Electronics", "USA",
                 150000, new BigDecimal("1.25"), new BigDecimal("28.5"), new BigDecimal("25.0"),
                 new BigDecimal("5.5"), new BigDecimal("0.92"), new BigDecimal("0.15"),
@@ -59,7 +59,8 @@ public class StockControllerTest {
         mockMvc.perform(get("/stocks/AAPL"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.symbol").value("AAPL"))
-                .andExpect(jsonPath("$.sector").value("Technology"));
+                .andExpect(jsonPath("$.sector").value("Technology"))
+                .andExpect(jsonPath("$.previousClose").value(148.10));
     }
 
     @Test
