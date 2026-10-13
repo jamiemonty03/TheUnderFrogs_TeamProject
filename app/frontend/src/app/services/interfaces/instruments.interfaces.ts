@@ -7,6 +7,7 @@ export interface BaseInstrumentResponse {
 	tradeDate: string | null;
 	createdAt: string | null;
 	lastUpdated: string | null;
+	previousClose: number | null;
 }
 
 export interface StockResponse extends BaseInstrumentResponse {
@@ -67,4 +68,20 @@ export interface TradingInstrument {
 	type: InstrumentType;
 	marketPrice: number;
 	lastUpdated: string;
+}
+
+export type AssetClass = 'Equity' | 'ETF' | 'Bond';
+
+export interface DayChange {
+  amount: number;
+  percent: number;
+}
+
+export interface LatestPrice {
+  symbol: string;
+  name: string;
+  assetClass: AssetClass;
+  price: number | null;
+  previousClose: number | null;
+  tradeDate: string | null;
 }
