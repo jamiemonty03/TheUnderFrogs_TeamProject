@@ -12,7 +12,8 @@
           <button mat-button type="button" (click)="loadAccount()">Try again</button>
         </div>
       } @else if (account(); as acc) {
-        <h1 class="dashboard__title">Welcome, {{ firstName() }}</h1>
+        <p class="dashboard__greeting">Good morning, {{ firstName() }} 🐸</p>
+        <h1 class="dashboard__title">Your pond at a glance</h1>
         <p class="dashboard__account">
           Account <span class="dashboard__mono">{{ acc.accountId }}</span>
           <span [class]="'pill pill--' + acc.status.toLowerCase()">{{ acc.status }}</span>
@@ -21,7 +22,7 @@
     </div>
 
     <div class="dashboard__actions">
-      <a mat-flat-button routerLink="/orders/new">Place order</a>
+      <a mat-flat-button routerLink="/orders" [queryParams]="{ new: true }">Place order</a>
       <a mat-stroked-button routerLink="/orders">Order history</a>
     </div>
   </section>
@@ -46,6 +47,17 @@
         </div>
       } @else if (portfolioValue() !== null) {
         <p class="card__balance dashboard__mono">{{ portfolioValue() | currency: 'USD' }}</p>
+        @if (summary().dailyPnlPercent !== null) {
+          <p
+            class="card__hint dashboard__mono"
+            [class.gain]="summary().dailyPnl > 0"
+            [class.loss]="summary().dailyPnl < 0"
+          >
+            {{ summary().dailyPnl > 0 ? '▲' : summary().dailyPnl < 0 ? '▼' : '•' }}
+            {{ summary().dailyPnl | currency: 'USD' }}
+            ({{ summary().dailyPnlPercent | number: '1.2-2' }}%) today
+          </p>
+        }
         @if (summary().unpriced > 0) {
           <p class="card__hint">Excludes {{ summary().unpriced }} unpriced</p>
         }
@@ -136,7 +148,7 @@
     } @else if (holdings().length === 0) {
       <div class="dashboard__empty">
         <p>You don't hold anything yet.</p>
-        <a mat-flat-button routerLink="/orders/new">Place your first order</a>
+        <a mat-flat-button routerLink="/orders" [queryParams]="{ new: true }">Place your first order</a>
       </div>
     } @else {
       @if (pricesError(); as error) {
@@ -237,16 +249,16 @@
               <a
                 mat-stroked-button
                 class="buy"
-                routerLink="/orders/new"
-                [queryParams]="{ symbol: h.symbol, side: 'BUY' }"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: h.symbol, side: 'BUY' }"
                 [attr.aria-label]="'Buy ' + h.symbol"
                 >Buy</a
               >
               <a
                 mat-stroked-button
                 class="sell"
-                routerLink="/orders/new"
-                [queryParams]="{ symbol: h.symbol, side: 'SELL' }"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: h.symbol, side: 'SELL' }"
                 [attr.aria-label]="'Sell ' + h.symbol"
                 >Sell</a
               >

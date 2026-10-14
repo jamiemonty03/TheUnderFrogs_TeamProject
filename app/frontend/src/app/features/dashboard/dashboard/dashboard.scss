@@ -45,6 +45,12 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   letter-spacing: -0.02em;
 }
 
+.dashboard__greeting {
+  margin: 0 0 0.35rem;
+  color: var(--ts-text-muted);
+  font-size: 1rem;
+}
+
 .dashboard__account {
   display: flex;
   flex-wrap: wrap;

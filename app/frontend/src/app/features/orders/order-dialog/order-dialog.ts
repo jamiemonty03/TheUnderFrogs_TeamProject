@@ -4,7 +4,7 @@ import { Component, OnInit, ViewEncapsulation, computed, inject, signal } from '
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSliderModule } from '@angular/material/slider';
@@ -21,6 +21,11 @@ import { Position, Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
+
+export interface OrderDialogData {
+  symbol?: string;
+  side?: 'BUY' | 'SELL';
+}
 
 @Component({
   imports: [
@@ -43,6 +48,7 @@ type Instrument = TradingInstrument;
 export class OrderDialog implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<OrderDialog>);
+  private readonly data = inject<OrderDialogData | null>(MAT_DIALOG_DATA, { optional: true });
   private readonly auth = inject(Auth);
   private readonly accountsApi = inject(Accounts);
   private readonly instrumentsApi = inject(Instruments);
@@ -168,12 +174,22 @@ export class OrderDialog implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.data?.side === 'SELL') {
+      this.selectedTab.set(1);
+    }
     this.loadInstruments();
     this.loadAvailableCash();
   }
 
   selectBuyInstrument(event: MatAutocompleteSelectedEvent): void {
-    const symbol = String(event.option.value);
+    this.selectBuySymbol(String(event.option.value));
+  }
+
+  selectSellInstrument(event: MatAutocompleteSelectedEvent): void {
+    this.selectSellSymbol(String(event.option.value));
+  }
+
+  private selectBuySymbol(symbol: string): void {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedBuyInstrument.set(selected);
     this.buyInstrumentStep.controls.instrumentInput.setValue(symbol);
@@ -182,8 +198,7 @@ export class OrderDialog implements OnInit {
     }
   }
 
-  selectSellInstrument(event: MatAutocompleteSelectedEvent): void {
-    const symbol = String(event.option.value);
+  private selectSellSymbol(symbol: string): void {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedSellInstrument.set(selected);
     this.sellInstrumentStep.controls.instrumentInput.setValue(symbol);
@@ -312,6 +327,13 @@ export class OrderDialog implements OnInit {
     this.instrumentsApi.getAllTradableInstruments().subscribe({
       next: (items) => {
         this.instruments.set(items);
+        if (this.data?.symbol) {
+          if (this.data.side === 'SELL') {
+            this.selectSellSymbol(this.data.symbol);
+          } else {
+            this.selectBuySymbol(this.data.symbol);
+          }
+        }
         this.instrumentsLoading.set(false);
       },
       error: () => {

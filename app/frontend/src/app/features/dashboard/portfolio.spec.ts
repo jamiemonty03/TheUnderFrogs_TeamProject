@@ -133,6 +133,8 @@ describe('summarise', () => {
     expect(summary.invested).toBeCloseTo(10458.6);
     expect(summary.unrealisedPnl).toBeCloseTo(490.6);
     expect(summary.pnlPercent).toBeCloseTo((490.6 / 9968) * 100);
+    expect(summary.dailyPnl).toBe(0);
+    expect(summary.dailyPnlPercent).toBeNull();
     expect(summary.positions).toBe(2);
     expect(summary.unpriced).toBe(0);
   });
@@ -146,7 +148,15 @@ describe('summarise', () => {
   });
 
   it('is all zeros for an empty portfolio', () => {
-    expect(summarise([])).toEqual({ invested: 0, unrealisedPnl: 0, pnlPercent: null, positions: 0, unpriced: 0 });
+    expect(summarise([])).toEqual({
+      invested: 0,
+      unrealisedPnl: 0,
+      pnlPercent: null,
+      dailyPnl: 0,
+      dailyPnlPercent: null,
+      positions: 0,
+      unpriced: 0,
+    });
   });
 });
 

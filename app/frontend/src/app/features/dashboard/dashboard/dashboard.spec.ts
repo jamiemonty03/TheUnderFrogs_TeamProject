@@ -110,7 +110,8 @@ describe('Dashboard', () => {
   it('welcomes the holder by name with their account ID and status', async () => {
     await setUp();
 
-    expect(text('h1')).toBe('Welcome, Kermit');
+    expect(text('.dashboard__greeting')).toBe('Good morning, Kermit 🐸');
+    expect(text('h1')).toBe('Your pond at a glance');
     expect(text('.dashboard__account')).toContain('ACC0013');
     expect(text('.pill--active')).toBe('ACTIVE');
   });
@@ -161,8 +162,8 @@ describe('Dashboard', () => {
 
     const buy = rows()[0].querySelector<HTMLAnchorElement>('a[aria-label="Buy AAPL"]')!;
     const sell = rows()[0].querySelector<HTMLAnchorElement>('a[aria-label="Sell AAPL"]')!;
-    expect(buy.getAttribute('href')).toBe('/orders/new?symbol=AAPL&side=BUY');
-    expect(sell.getAttribute('href')).toBe('/orders/new?symbol=AAPL&side=SELL');
+    expect(buy.getAttribute('href')).toBe('/orders?new=true&symbol=AAPL&side=BUY');
+    expect(sell.getAttribute('href')).toBe('/orders?new=true&symbol=AAPL&side=SELL');
   });
 
   it('links Place order and Order history', async () => {
@@ -170,7 +171,7 @@ describe('Dashboard', () => {
 
     const actions = Array.from(page.querySelectorAll<HTMLAnchorElement>('.dashboard__actions a'));
     expect(actions.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
-      ['Place order', '/orders/new'],
+      ['Place order', '/orders?new=true'],
       ['Order history', '/orders'],
     ]);
   });
@@ -212,7 +213,8 @@ describe('Dashboard', () => {
 
     expect(text('[aria-labelledby="positions-title"] [role="alert"]')).toContain("Couldn't load your positions.");
     expect(card('invested-label').textContent).toContain('Unavailable');
-    expect(text('h1')).toBe('Welcome, Kermit');
+    expect(text('.dashboard__greeting')).toBe('Good morning, Kermit 🐸');
+    expect(text('h1')).toBe('Your pond at a glance');
     expect(card('portfolio-label').querySelector('[role="alert"]')).toBeTruthy();
     expect(card('cash-label').textContent).toContain('$12,480.00');
   });
