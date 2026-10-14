@@ -1,5 +1,6 @@
 import { Page, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 /** The seeded demo trader. Override with E2E_USERNAME / E2E_PASSWORD. */
 export const DEMO_USER = {
@@ -7,7 +8,6 @@ export const DEMO_USER = {
   password: process.env['E2E_PASSWORD'] ?? 'Demo123!',
 };
 
-/** Logs in through the login page, and waits until the app has moved off it. */
 export async function logIn(page: Page, user = DEMO_USER): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('login-username').fill(user.username);
@@ -16,19 +16,39 @@ export async function logIn(page: Page, user = DEMO_USER): Promise<void> {
   await expect(page).not.toHaveURL(/\/login/);
 }
 
-/** Where auth.setup.ts saves the logged-in session. */
 export const SAVED_SESSION = 'playwright/.auth/session.json';
 
-/**
- * Starts the test already logged in, using the session saved by auth.setup.ts, instead of
- * going through the login form again (auth-service only allows 5 logins a minute).
- */
+export async function saveSession(page: Page): Promise<void> {
+  const session = await page.evaluate(() => sessionStorage.getItem('auth.session'));
+  mkdirSync(dirname(SAVED_SESSION), { recursive: true });
+  writeFileSync(SAVED_SESSION, session ?? '');
+}
+
 export async function useSavedLogin(page: Page): Promise<void> {
-  const session = readFileSync(SAVED_SESSION, 'utf8');
-  // Put the session in sessionStorage before the app starts, just as the login page would
-  await page.addInitScript((saved) => sessionStorage.setItem('auth.session', saved), session);
+  const saved = existsSync(SAVED_SESSION) ? readFileSync(SAVED_SESSION, 'utf8') : '';
+  if (!stillValid(saved)) {
+    await logIn(page);
+    await saveSession(page);
+    return;
+  }
+  await page.addInitScript((session) => {
+    if (!sessionStorage.getItem('e2e.seeded')) {
+      sessionStorage.setItem('auth.session', session);
+      sessionStorage.setItem('e2e.seeded', 'yes');
+    }
+  }, saved);
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/dashboard$/);
+}
+
+function stillValid(saved: string): boolean {
+  try {
+    const token: string = JSON.parse(saved).accessToken;
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    return payload.exp * 1000 > Date.now() + 60_000;
+  } catch {
+    return false;
+  }
 }
 
 /** The account's cash, read straight from accounts-service rather than from the page. */
