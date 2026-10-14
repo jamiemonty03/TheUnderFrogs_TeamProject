@@ -2,20 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../api-config';
+import { CurrentUser, RegisterDetails } from '../interfaces/auth.interfaces';
 
-export interface CurrentUser {
-  userId: number;
-  username: string;
-  roles: string[];
-  accountId: string | null;
-}
-
-export interface RegisterDetails {
-  fullName: string;
-  username: string;
-  email: string;
-  password: string;
-}
+export type { CurrentUser, RegisterDetails };
 
 interface SessionTokens {
   accessToken: string;

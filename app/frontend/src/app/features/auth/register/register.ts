@@ -8,7 +8,7 @@ import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Auth } from '../../../services/auth';
 import { AuthLayout } from '../auth-layout/auth-layout';
-import { SubmittedErrorStateMatcher } from '../login/submitted-error-state';
+import { SubmittedErrorStateMatcher } from '../shared/submitted-error-state';
 import { registerErrorMessage } from './register-error';
 import { USERNAME_PATTERN, notBlank, strictEmail } from './register-validators';
 

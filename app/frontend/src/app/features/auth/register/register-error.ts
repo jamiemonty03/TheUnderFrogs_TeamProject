@@ -1,16 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { LOGIN_ERRORS } from '../login/login-error';
+import { AUTH_ERRORS, UNREACHABLE_STATUSES } from '../shared/auth-errors';
 
 export const REGISTER_ERRORS = {
   taken: 'That username or email is already taken. If it is yours, log in instead.',
   rejected: "Some details weren't accepted. Check the form and try again.",
-  tooManyAttempts: LOGIN_ERRORS.tooManyAttempts,
   accountNotOpened: "We couldn't open your trading account. Nothing was saved, so try again.",
-  unreachable: LOGIN_ERRORS.unreachable,
-  unexpected: LOGIN_ERRORS.unexpected,
+  ...AUTH_ERRORS,
 } as const;
-
-const UNREACHABLE_STATUSES = [0, 502, 503, 504];
 
 export function registerErrorMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) {

@@ -10,7 +10,7 @@ import { Auth } from '../../../services/auth';
 import { AuthLayout } from '../auth-layout/auth-layout';
 import { loginErrorMessage } from './login-error';
 import { safeReturnUrl } from './return-url';
-import { SubmittedErrorStateMatcher } from './submitted-error-state';
+import { SubmittedErrorStateMatcher } from '../shared/submitted-error-state';
 
 @Component({
   imports: [ReactiveFormsModule, AuthLayout, MatFormFieldModule, MatInputModule, MatButtonModule],
