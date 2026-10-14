@@ -117,7 +117,8 @@ export class OrdersList implements OnInit {
     }).subscribe({
       next: ({ orders, instruments }) => {
         const marketPrices = new Map(instruments.map((instrument) => [instrument.symbol, instrument.marketPrice]));
-        this.orders.set(orders.map((row) => this.toOrderRow(row, marketPrices)));
+        const newestFirst = [...orders].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        this.orders.set(newestFirst.map((row) => this.toOrderRow(row, marketPrices)));
         this.pageIndex.set(0);
         this.isLoading.set(false);
       },
