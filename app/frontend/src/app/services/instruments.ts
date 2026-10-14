@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { EMPTY, Observable, catchError, forkJoin, map, of, scan, switchMap, timer } from 'rxjs';
 
 import {
@@ -16,7 +15,7 @@ import type { LatestPrice, AssetClass, DayChange } from './interfaces/instrument
 export type { LatestPrice, DayChange } from './interfaces/instruments.interfaces';
 export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
 
-export const LIVE_POLL_MS = 5000;
+export const LIVE_POLL_MS = 30_000;
 
 export interface LivePrice {
   symbol: string;

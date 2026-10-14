@@ -12,7 +12,7 @@
           <button mat-button type="button" (click)="loadAccount()">Try again</button>
         </div>
       } @else if (account(); as acc) {
-        <p class="dashboard__greeting">Good morning, {{ firstName() }} 🐸</p>
+        <p class="dashboard__greeting">Welcome, {{ firstName() }} <em>ribbet</em></p>
         <h1 class="dashboard__title">Your pond at a glance</h1>
         <p class="dashboard__account">
           Account <span class="dashboard__mono">{{ acc.accountId }}</span>
@@ -23,7 +23,6 @@
 
     <div class="dashboard__actions">
       <a mat-flat-button routerLink="/orders" [queryParams]="{ new: true }">Place order</a>
-      <a mat-stroked-button routerLink="/orders">Order history</a>
     </div>
   </section>
 
@@ -47,17 +46,6 @@
         </div>
       } @else if (portfolioValue() !== null) {
         <p class="card__balance dashboard__mono">{{ portfolioValue() | currency: 'USD' }}</p>
-        @if (summary().dailyPnlPercent !== null) {
-          <p
-            class="card__hint dashboard__mono"
-            [class.gain]="summary().dailyPnl > 0"
-            [class.loss]="summary().dailyPnl < 0"
-          >
-            {{ summary().dailyPnl > 0 ? '▲' : summary().dailyPnl < 0 ? '▼' : '•' }}
-            {{ summary().dailyPnl | currency: 'USD' }}
-            ({{ summary().dailyPnlPercent | number: '1.2-2' }}%) today
-          </p>
-        }
         @if (summary().unpriced > 0) {
           <p class="card__hint">Excludes {{ summary().unpriced }} unpriced</p>
         }
@@ -94,7 +82,7 @@
       </section>
 
       <section class="card" aria-labelledby="pnl-label">
-        <h2 id="pnl-label" class="card__label">Unrealised P&amp;L</h2>
+        <h2 id="pnl-label" class="card__label">P&amp;L</h2>
         @if (valuationLoading()) {
           <output class="dashboard__status">Loading…</output>
         } @else if (valuationError()) {
@@ -178,7 +166,7 @@
           </ng-container>
 
           <ng-container matColumnDef="averageCost">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Avg cost</th>
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Avg paid</th>
             <td mat-cell *matCellDef="let h" class="num">{{ h.averageCost | currency: 'USD' }}</td>
           </ng-container>
 
@@ -205,7 +193,7 @@
 
           <ng-container matColumnDef="unrealisedPnl">
             <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">
-              Unrealised P&amp;L
+              P&amp;L
             </th>
             <td
               mat-cell
@@ -270,5 +258,9 @@
         </table>
       </div>
     }
+
+    <div class="dashboard__actions dashboard__orders-footer">
+      <a mat-stroked-button routerLink="/orders">Order history</a>
+    </div>
   </section>
 </div>

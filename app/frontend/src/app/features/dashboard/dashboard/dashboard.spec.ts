@@ -12,8 +12,8 @@ import { Dashboard } from './dashboard';
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
-  { accountId: 'ACC0013', symbol: 'AAPL', quantity: 40, averageCost: 171.2 },
-  { accountId: 'ACC0013', symbol: 'TSLA', quantity: 12, averageCost: 260 },
+  { accountId: 'ACC0013', portfolioId: null, symbol: 'AAPL', quantity: 40, averageCost: 171.2 },
+  { accountId: 'ACC0013', portfolioId: null, symbol: 'TSLA', quantity: 12, averageCost: 260 },
 ];
 const latest = (symbol: string, name: string, price: number): LatestPrice => ({
   symbol,
@@ -110,7 +110,7 @@ describe('Dashboard', () => {
   it('welcomes the holder by name with their account ID and status', async () => {
     await setUp();
 
-    expect(text('.dashboard__greeting')).toBe('Good morning, Kermit 🐸');
+    expect(text('.dashboard__greeting')).toBe('Welcome, Kermit ribbet');
     expect(text('h1')).toBe('Your pond at a glance');
     expect(text('.dashboard__account')).toContain('ACC0013');
     expect(text('.pill--active')).toBe('ACTIVE');
@@ -129,7 +129,7 @@ describe('Dashboard', () => {
     expect(card('portfolio-label').textContent).toContain('$12,480.00');
   });
 
-  it('shows invested, unrealised P&L and the number of positions', async () => {
+  it('shows invested, P&L and the number of positions', async () => {
     await setUp();
 
     expect(card('invested-label').textContent).toContain('$10,458.60');
@@ -169,11 +169,13 @@ describe('Dashboard', () => {
   it('links Place order and Order history', async () => {
     await setUp();
 
-    const actions = Array.from(page.querySelectorAll<HTMLAnchorElement>('.dashboard__actions a'));
-    expect(actions.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
+    const topActions = Array.from(page.querySelectorAll<HTMLAnchorElement>('.dashboard__welcome .dashboard__actions a'));
+    expect(topActions.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Place order', '/orders?new=true'],
-      ['Order history', '/orders'],
     ]);
+    const history = page.querySelector<HTMLAnchorElement>('.dashboard__orders-footer a');
+    expect(history?.textContent?.trim()).toBe('Order history');
+    expect(history?.getAttribute('href')).toBe('/orders');
   });
 
   it('sorts the table when a column header is clicked', async () => {
@@ -213,7 +215,7 @@ describe('Dashboard', () => {
 
     expect(text('[aria-labelledby="positions-title"] [role="alert"]')).toContain("Couldn't load your positions.");
     expect(card('invested-label').textContent).toContain('Unavailable');
-    expect(text('.dashboard__greeting')).toBe('Good morning, Kermit 🐸');
+    expect(text('.dashboard__greeting')).toBe('Welcome, Kermit ribbet');
     expect(text('h1')).toBe('Your pond at a glance');
     expect(card('portfolio-label').querySelector('[role="alert"]')).toBeTruthy();
     expect(card('cash-label').textContent).toContain('$12,480.00');

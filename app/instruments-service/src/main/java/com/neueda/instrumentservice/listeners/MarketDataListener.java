@@ -14,11 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.instrumentservice.dtos.responses.LivePriceResponse;
 import com.neueda.instrumentservice.services.LivePriceCache;
 
-/**
- * Keeps LivePriceCache up to date from the PRICE_UPDATED events trade-executor's MarketDataPoller publishes.
- * Reads the topic from the beginning on every start, because the poller only publishes when a quote changes.
- * Bad messages are logged and skipped: this is a cache, so there is nothing to retry or dead-letter.
- */
 @Component
 public class MarketDataListener extends AbstractConsumerSeekAware {
 
