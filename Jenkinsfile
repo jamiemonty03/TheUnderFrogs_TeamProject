@@ -93,10 +93,7 @@ pipeline {
 
         stage('Auth Database') {
             steps {
-                sh '''
-                    docker-compose up -d auth-db
-                    timeout 120 sh -c 'until [ "$(docker inspect -f "{{.State.Health.Status}}" auth-db)" = "healthy" ]; do sleep 2; done'
-                '''
+                sh 'docker-compose up -d --wait auth-db'
             }
         }
 
