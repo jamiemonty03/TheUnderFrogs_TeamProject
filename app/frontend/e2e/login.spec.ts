@@ -1,7 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { DEMO_USER, logIn } from './fixtures';
+import { DEMO_USER, logIn, useSavedLogin } from './fixtures';
 
 test.describe('Logging in', () => {
+  test('the login page loads', async ({ page }) => {
+    await page.goto('/login');
+
+    await expect(page.getByTestId('login-username')).toBeVisible();
+    await expect(page.getByTestId('login-password')).toBeVisible();
+    await expect(page.getByTestId('login-submit')).toBeEnabled();
+  });
+
   test('the demo trader logs in and lands on the dashboard', async ({ page }) => {
     await logIn(page);
 
@@ -10,18 +18,18 @@ test.describe('Logging in', () => {
 
   test('a wrong password shows an error and stays on the login page', async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('Username').fill(DEMO_USER.username);
-    await page.getByLabel('Password').fill('definitely-not-the-password');
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.getByTestId('login-username').fill(DEMO_USER.username);
+    await page.getByTestId('login-password').fill('definitely-not-the-password');
+    await page.getByTestId('login-submit').click();
 
-    await expect(page.getByRole('alert')).toBeVisible();
+    await expect(page.getByTestId('login-error')).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('after logging in, a page that needs the account loads its data', async ({ page }) => {
-    await logIn(page);
+    await useSavedLogin(page);
 
-    await page.getByRole('link', { name: 'Portfolios' }).click();
+    await page.getByTestId('nav-portfolios').click();
 
     await expect(page.getByTestId('portfolios-title')).toHaveText('All holdings');
     await expect(page.getByTestId('portfolio-all')).toBeVisible();
