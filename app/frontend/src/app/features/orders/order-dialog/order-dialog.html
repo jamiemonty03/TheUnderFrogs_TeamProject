@@ -7,6 +7,9 @@
 	<mat-tab-group [selectedIndex]="selectedTab()" (selectedIndexChange)="setTab($event)">
 		<mat-tab label="Buy">
 			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<ng-template matStepperIcon="number" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="edit" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="done" let-index="index">{{ index + 1 }}</ng-template>
 				<mat-step [stepControl]="buyInstrumentStep" label="Select instrument">
 					<div class="order-dialog__step-content">
 						<mat-form-field appearance="outline" class="order-dialog__field">
@@ -23,16 +26,20 @@
 						</mat-form-field>
 
 						<mat-autocomplete #buyInstrumentAuto="matAutocomplete" (optionSelected)="selectBuyInstrument($event)">
-							<mat-option *ngFor="let instrument of buyMatches()" [value]="instrument.symbol">
-								{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
-							</mat-option>
+							@for (instrument of buyMatches(); track instrument.symbol) {
+								<mat-option [value]="instrument.symbol">
+									{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+								</mat-option>
+							}
 						</mat-autocomplete>
 
-						<div class="order-dialog__instrument-meta" *ngIf="selectedBuyInstrument() as instrument">
-							<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
-							<p>Market price: {{ instrument.marketPrice | currency }}</p>
-							<p>Last updated: {{ instrument.lastUpdated }}</p>
-						</div>
+						@if (selectedBuyInstrument(); as instrument) {
+							<div class="order-dialog__instrument-meta">
+								<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+								<p>Market price: {{ instrument.marketPrice | currency }}</p>
+								<p>Last updated: {{ instrument.lastUpdated }}</p>
+							</div>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-flat-button type="button" matStepperNext [disabled]="!buyInstrumentStep.valid">Next</button>
@@ -54,10 +61,15 @@
 						</mat-form-field>
 
 						<p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
+						@if (availableCash() !== null) {
+							<p class="order-dialog__availability">Available cash: {{ availableCash() | currency }}</p>
+						} @else {
+							<p class="order-dialog__availability order-dialog__availability--error">{{ accountLoadError() || 'Loading available cash...' }}</p>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
-							<button mat-flat-button type="button" matStepperNext [disabled]="!buyOrderStep.valid">
+							<button mat-flat-button type="button" matStepperNext [disabled]="buyDetailsInvalid()">
 								Continue
 							</button>
 						</div>
@@ -73,19 +85,22 @@
 							<p><strong>Quantity:</strong> {{ buyOrderStep.controls.quantity.value }}</p>
 							<p><strong>Price limit:</strong> {{ buyOrderStep.controls.priceLimit.value | currency }}</p>
 						</div>
-						<div class="order-dialog__result order-dialog__result--success" *ngIf="buyPlaced()">
-							{{ buyResultMessage() }}
-						</div>
-						<div class="order-dialog__result order-dialog__result--error" *ngIf="buyPlaced() === false">
-							{{ buyResultMessage() }}
-						</div>
+						@if (buyPlaced()) {
+							<div class="order-dialog__result order-dialog__result--success">
+								{{ buyResultMessage() }}
+							</div>
+						}
+						@if (buyPlaced() === false) {
+							<div class="order-dialog__result order-dialog__result--error">
+								{{ buyResultMessage() }}
+							</div>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
 							<button mat-flat-button type="button" (click)="placeBuyOrder()" [disabled]="buySubmitting() || buyPlaced() === true">
 								{{ buySubmitting() ? 'Placing...' : 'Place order' }}
 							</button>
-							<button mat-flat-button type="button" (click)="close()">Done</button>
 						</div>
 					</div>
 				</mat-step>
@@ -94,6 +109,9 @@
 
 		<mat-tab label="Sell">
 			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<ng-template matStepperIcon="number" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="edit" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="done" let-index="index">{{ index + 1 }}</ng-template>
 				<mat-step [stepControl]="sellInstrumentStep" label="Select instrument">
 					<div class="order-dialog__step-content">
 						<mat-form-field appearance="outline" class="order-dialog__field">
@@ -110,16 +128,20 @@
 						</mat-form-field>
 
 						<mat-autocomplete #sellInstrumentAuto="matAutocomplete" (optionSelected)="selectSellInstrument($event)">
-							<mat-option *ngFor="let instrument of sellMatches()" [value]="instrument.symbol">
-								{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
-							</mat-option>
+							@for (instrument of sellMatches(); track instrument.symbol) {
+								<mat-option [value]="instrument.symbol">
+									{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+								</mat-option>
+							}
 						</mat-autocomplete>
 
-						<div class="order-dialog__instrument-meta" *ngIf="selectedSellInstrument() as instrument">
-							<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
-							<p>Market price: {{ instrument.marketPrice | currency }}</p>
-							<p>Last updated: {{ instrument.lastUpdated }}</p>
-						</div>
+						@if (selectedSellInstrument(); as instrument) {
+							<div class="order-dialog__instrument-meta">
+								<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+								<p>Market price: {{ instrument.marketPrice | currency }}</p>
+								<p>Last updated: {{ instrument.lastUpdated }}</p>
+							</div>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-flat-button type="button" matStepperNext [disabled]="!sellInstrumentStep.valid">Next</button>
@@ -136,10 +158,17 @@
 						</mat-slider>
 
 						<p class="order-dialog__estimate">Market value estimate: {{ sellEstimate() | currency }}</p>
+						@if (heldPosition(); as position) {
+							<p class="order-dialog__availability">Quantity held: {{ position.quantity }}</p>
+						} @else {
+							<p class="order-dialog__availability order-dialog__availability--error">
+								{{ positionLoadError() || (positionLoading() ? 'Loading quantity held...' : 'Select an instrument to view quantity held.') }}
+							</p>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
-							<button mat-flat-button type="button" matStepperNext [disabled]="!sellOrderStep.valid">
+							<button mat-flat-button type="button" matStepperNext [disabled]="sellDetailsInvalid()">
 								Continue
 							</button>
 						</div>
@@ -155,19 +184,22 @@
 							<p><strong>Quantity:</strong> {{ sellOrderStep.controls.quantity.value }}</p>
 							<p><strong>Price limit:</strong> {{ selectedSellInstrument()?.marketPrice | currency }}</p>
 						</div>
-						<div class="order-dialog__result order-dialog__result--success" *ngIf="sellPlaced()">
-							{{ sellResultMessage() }}
-						</div>
-						<div class="order-dialog__result order-dialog__result--error" *ngIf="sellPlaced() === false">
-							{{ sellResultMessage() }}
-						</div>
+						@if (sellPlaced()) {
+							<div class="order-dialog__result order-dialog__result--success">
+								{{ sellResultMessage() }}
+							</div>
+						}
+						@if (sellPlaced() === false) {
+							<div class="order-dialog__result order-dialog__result--error">
+								{{ sellResultMessage() }}
+							</div>
+						}
 
 						<div class="order-dialog__actions">
 							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
 							<button mat-flat-button type="button" (click)="placeSellOrder()" [disabled]="sellSubmitting() || sellPlaced() === true">
 								{{ sellSubmitting() ? 'Placing...' : 'Place order' }}
 							</button>
-							<button mat-flat-button type="button" (click)="close()">Done</button>
 						</div>
 					</div>
 				</mat-step>

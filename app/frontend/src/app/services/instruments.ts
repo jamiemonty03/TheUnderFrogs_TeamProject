@@ -11,6 +11,9 @@ import {
 } from './interfaces/instruments.interfaces';
 import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
+export type { LatestPrice } from './interfaces/instruments.interfaces';
+export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
+
 @Injectable({ providedIn: 'root' })
 export class Instruments {
 	constructor(private readonly http: HttpClient) {}

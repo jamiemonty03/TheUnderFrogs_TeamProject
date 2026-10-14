@@ -12,10 +12,12 @@ import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Auth } from '../../../services/auth/auth';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Accounts } from '../../../services/accounts';
 import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
+import { Position, Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
@@ -42,14 +44,21 @@ export class OrderDialog implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<OrderDialog>);
   private readonly auth = inject(Auth);
+  private readonly accountsApi = inject(Accounts);
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
+  private readonly positionsApi = inject(Positions);
 
   readonly selectedTab = signal(0);
 
   readonly instruments = signal<Instrument[]>([]);
   readonly instrumentsLoading = signal(false);
   readonly instrumentsLoadError = signal<string | null>(null);
+  readonly availableCash = signal<number | null>(null);
+  readonly accountLoadError = signal<string | null>(null);
+  readonly heldPosition = signal<Position | null>(null);
+  readonly positionLoading = signal(false);
+  readonly positionLoadError = signal<string | null>(null);
 
   readonly buyInstrumentStep = this.fb.group({
     instrumentInput: ['', Validators.required],
@@ -105,6 +114,16 @@ export class OrderDialog implements OnInit {
     { initialValue: this.sellOrderStep.controls.quantity.value || 0 },
   );
 
+  readonly buyOrderValid = toSignal(
+    this.buyOrderStep.statusChanges.pipe(startWith(this.buyOrderStep.valid)),
+    { initialValue: this.buyOrderStep.valid },
+  );
+
+  readonly sellOrderValid = toSignal(
+    this.sellOrderStep.statusChanges.pipe(startWith(this.sellOrderStep.valid)),
+    { initialValue: this.sellOrderStep.valid },
+  );
+
   readonly buyMatches = computed(() => this.filterInstruments(String(this.buyInstrumentInput() || '')));
   readonly sellMatches = computed(() => this.filterInstruments(String(this.sellInstrumentInput() || '')));
 
@@ -118,6 +137,20 @@ export class OrderDialog implements OnInit {
     const qty = Number(this.sellQuantityInput() || 0);
     const instrument = this.selectedSellInstrument();
     return qty * (instrument?.marketPrice || 0);
+  });
+
+  readonly buyDetailsInvalid = computed(() => {
+    const cash = this.availableCash();
+    return !this.buyOrderValid() || cash === null || this.buyEstimate() > cash;
+  });
+
+  readonly sellDetailsInvalid = computed(() => {
+    const position = this.heldPosition();
+    const quantity = Number(this.sellQuantityInput() || 0);
+    return !this.sellOrderValid()
+      || this.positionLoading()
+      || position === null
+      || quantity > (position?.quantity ?? 0);
   });
 
   displayInstrument = (instrument: Instrument | string | null): string => {
@@ -136,6 +169,7 @@ export class OrderDialog implements OnInit {
 
   ngOnInit(): void {
     this.loadInstruments();
+    this.loadAvailableCash();
   }
 
   selectBuyInstrument(event: MatAutocompleteSelectedEvent): void {
@@ -153,6 +187,7 @@ export class OrderDialog implements OnInit {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedSellInstrument.set(selected);
     this.sellInstrumentStep.controls.instrumentInput.setValue(symbol);
+    this.loadHeldPosition(symbol);
   }
 
   onBuyInput(): void {
@@ -161,6 +196,8 @@ export class OrderDialog implements OnInit {
 
   onSellInput(): void {
     this.selectedSellInstrument.set(null);
+    this.heldPosition.set(null);
+    this.positionLoadError.set(null);
   }
 
   onBuyBlur(): void {
@@ -281,6 +318,39 @@ export class OrderDialog implements OnInit {
         this.instruments.set([]);
         this.instrumentsLoadError.set('Could not load instruments from backend.');
         this.instrumentsLoading.set(false);
+      },
+    });
+  }
+
+  private loadAvailableCash(): void {
+    const accountId = this.auth.currentUser()?.accountId;
+    if (!accountId) {
+      this.accountLoadError.set('No trading account is linked to this user.');
+      return;
+    }
+
+    this.accountsApi.getAccount(accountId).subscribe({
+      next: (account) => {
+        this.availableCash.set(Number(account.cashBalance));
+      },
+      error: () => {
+        this.accountLoadError.set('Could not load available cash.');
+      },
+    });
+  }
+
+  private loadHeldPosition(symbol: string): void {
+    this.positionLoading.set(true);
+    this.positionLoadError.set(null);
+    this.heldPosition.set(null);
+    this.positionsApi.getPosition(symbol).subscribe({
+      next: (position) => {
+        this.heldPosition.set(position);
+        this.positionLoading.set(false);
+      },
+      error: () => {
+        this.positionLoadError.set('Could not load the held quantity.');
+        this.positionLoading.set(false);
       },
     });
   }

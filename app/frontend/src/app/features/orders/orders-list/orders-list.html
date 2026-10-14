@@ -5,21 +5,24 @@
 			<h1 class="orders-page__title">Orders</h1>
 		</div>
 
-		<button mat-flat-button type="button" class="orders-page__new-order" (click)="openOrderDialog()">+ New order <span aria-hidden="true">🐸</span></button>
+		<button mat-flat-button type="button" class="orders-page__new-order" (click)="openOrderDialog()">
+			+ New order
+		</button>
 	</header>
 
 	<div class="orders-card">
 		<mat-chip-listbox class="orders-card__filters" [multiple]="false" aria-label="Order filters">
-			<mat-chip-option
-				*ngFor="let filter of filters"
-				[selected]="activeFilter() === filter"
-				[disableRipple]="true"
-				(selectionChange)="setFilter(filter)"
-				class="orders-card__filter"
-				[class.orders-card__filter--active]="activeFilter() === filter"
-			>
-				{{ filter }} <span class="orders-card__dot">&middot;</span> {{ getFilterCount(filter) }}
-			</mat-chip-option>
+			@for (filter of filters; track filter) {
+				<mat-chip-option
+					[selected]="activeFilter() === filter"
+					[disableRipple]="true"
+					(selectionChange)="setFilter(filter)"
+					class="orders-card__filter"
+					[class.orders-card__filter--active]="activeFilter() === filter"
+				>
+					{{ filter }} <span class="orders-card__dot">&middot;</span> {{ getFilterCount(filter) }}
+				</mat-chip-option>
+			}
 		</mat-chip-listbox>
 
 		<div class="orders-table-wrap">
@@ -80,7 +83,9 @@
 				<ng-container matColumnDef="action">
 					<th mat-header-cell *matHeaderCellDef></th>
 					<td mat-cell *matCellDef="let order" class="orders-table__action">
-						<button mat-stroked-button class="orders-table__cancel" *ngIf="order.canCancel">Cancel</button>
+						@if (order.canCancel) {
+							<button mat-stroked-button class="orders-table__cancel">Cancel</button>
+						}
 					</td>
 				</ng-container>
 
@@ -89,15 +94,16 @@
 			</table>
 		</div>
 
-		<mat-paginator
-			*ngIf="visibleOrders().length > pageSize()"
-			[length]="visibleOrders().length"
-			[pageIndex]="pageIndex()"
-			[pageSize]="pageSize()"
-			[pageSizeOptions]="pageSizeOptions"
-			(page)="setPage($event)"
-			[showFirstLastButtons]="true"
-			aria-label="Orders table pagination"
-		></mat-paginator>
+		@if (visibleOrders().length > pageSize()) {
+			<mat-paginator
+				[length]="visibleOrders().length"
+				[pageIndex]="pageIndex()"
+				[pageSize]="pageSize()"
+				[pageSizeOptions]="pageSizeOptions"
+				(page)="setPage($event)"
+				[showFirstLastButtons]="true"
+				aria-label="Orders table pagination"
+			></mat-paginator>
+		}
 	</div>
 </section>
