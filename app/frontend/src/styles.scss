@@ -1,53 +1,55 @@
 @use '@angular/material' as mat;
 
 :root {
-  --ts-frog: #3DFA8C;
-  --ts-frog-light: #8CFFB9;
-  --ts-frog-tint: #1B3A27;
-  --ts-frog-glow: #0F3A22;
-  --ts-on-frog: #04140A;
-  --ts-on-frog-muted: #0B3B1E;
+  --ts-frog: #3dfa8c;
+  --ts-frog-light: #8cffb9;
+  --ts-frog-tint: #1b3a27;
+  --ts-frog-glow: #0f3a22;
+  --ts-on-frog: #04140a;
+  --ts-on-frog-muted: #0b3b1e;
 
-  --ts-bg: #07110B;
+  --ts-bg: #07110b;
   --ts-bg-raised: #091510;
-  --ts-input-bg: #0B1710;
-  --ts-surface: #0E1A13;
-  --ts-surface-hover: #13241A;
+  --ts-input-bg: #0b1710;
+  --ts-surface: #0e1a13;
+  --ts-surface-hover: #13241a;
 
-  --ts-divider: #1A2C21;
-  --ts-border: #1F3328;
-  --ts-border-strong: #2B5A3C;
+  --ts-divider: #1a2c21;
+  --ts-border: #1f3328;
+  --ts-border-strong: #2b5a3c;
 
-  --ts-text: #E8F5EC;
-  --ts-text-secondary: #C3D6CB;
-  --ts-text-muted: #9DB5A7;
+  --ts-text: #e8f5ec;
+  --ts-text-secondary: #c3d6cb;
+  --ts-text-muted: #9db5a7;
 
-  --ts-loss: #FF6B4A;
-  --ts-on-loss: #1A0703;
-  --ts-sell: #FF6B4A;
+  --ts-loss: #ff6b4a;
+  --ts-on-loss: #1a0703;
+  --ts-sell: #ff6b4a;
 
-  --ts-success-bg: #12321F;
-  --ts-danger-text: #FF8A6E;
-  --ts-danger-bg: #3A1A12;
-  --ts-danger-border: #5A2A1E;
-  --ts-info: #6CC4FF;
-  --ts-info-bg: #12283A;
-  --ts-neutral: #5E7468;
-  --ts-neutral-bg: #1D2420;
+  --ts-success-bg: #12321f;
+  --ts-danger-text: #ff8a6e;
+  --ts-danger-bg: #3a1a12;
+  --ts-danger-border: #5a2a1e;
+  --ts-info: #6cc4ff;
+  --ts-info-bg: #12283a;
+  --ts-neutral: #5e7468;
+  --ts-neutral-bg: #1d2420;
 }
 
 html {
   color-scheme: dark;
 
-  @include mat.theme((
-    color: (
-      theme-type: dark,
-      primary: mat.$green-palette,
-      tertiary: mat.$cyan-palette,
-      error: mat.$red-palette,
-    ),
-    density: 0,
-  ));
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$green-palette,
+        tertiary: mat.$cyan-palette,
+        error: mat.$red-palette,
+      ),
+      density: 0,
+    )
+  );
 
   --mat-sys-primary: var(--ts-frog);
   --mat-sys-on-primary: var(--ts-on-frog);
@@ -118,4 +120,62 @@ html {
       filled-label-text-color: var(--ts-on-frog),
     )
   );
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-text-secondary);
+
+  &--main {
+    background: var(--ts-success-bg);
+    color: var(--ts-frog-light);
+  }
+
+  &--low {
+    background: var(--ts-info-bg);
+    color: var(--ts-info);
+  }
+
+  &--high {
+    background: var(--ts-danger-bg);
+    color: var(--ts-sell);
+  }
+}
+
+.pos {
+  color: var(--ts-frog);
+}
+
+.neg {
+  color: var(--ts-loss);
+}
+
+.button--danger {
+  color: var(--ts-danger-text);
+}
+
+.button--danger-filled.mdc-button {
+  --mdc-filled-button-container-color: var(--ts-loss);
+  --mdc-filled-button-label-text-color: var(--ts-on-loss);
+  background: var(--ts-loss);
+  color: var(--ts-on-loss);
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.button--sell.mat-mdc-outlined-button {
+  --mat-button-outlined-label-text-color: var(--ts-loss);
+  --mat-button-outlined-outline-color: var(--ts-loss);
+  color: var(--ts-loss);
+  border-color: var(--ts-loss);
 }

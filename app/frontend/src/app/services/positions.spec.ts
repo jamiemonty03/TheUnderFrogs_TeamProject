@@ -4,10 +4,17 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { Auth, CurrentUser } from './auth';
-import { Position, Positions } from './positions';
+import { Position } from './interfaces/positions.interfaces';
+import { Positions } from './positions';
 
 const ACCOUNT = 'ACC0013';
-const AAPL: Position = { accountId: ACCOUNT, symbol: 'AAPL', quantity: 50, averageCost: 182.4 };
+const AAPL: Position = {
+  accountId: ACCOUNT,
+  portfolioId: 'PF0013',
+  symbol: 'AAPL',
+  quantity: 50,
+  averageCost: 182.4,
+};
 
 describe('Positions', () => {
   let service: Positions;
@@ -17,7 +24,11 @@ describe('Positions', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: Auth, useValue: { currentUser } }],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: Auth, useValue: { currentUser } },
+      ],
     });
     service = TestBed.inject(Positions);
     http = TestBed.inject(HttpTestingController);
@@ -51,10 +62,48 @@ describe('Positions', () => {
 
     http
       .expectOne(`/api/positions/${ACCOUNT}/TSLA`)
-      .flush({ errorCode: 'POS-404', message: 'Position not found' }, { status: 404, statusText: 'Not Found' });
+      .flush(
+        { errorCode: 'POS-404', message: 'Position not found' },
+        { status: 404, statusText: 'Not Found' },
+      );
 
-    expect(await result).toEqual({ accountId: ACCOUNT, symbol: 'TSLA', quantity: 0, averageCost: 0 });
+    expect(await result).toEqual({
+      accountId: ACCOUNT,
+      portfolioId: null,
+      symbol: 'TSLA',
+      quantity: 0,
+      averageCost: 0,
+    });
     expect(service.error()).toBeNull();
+  });
+
+  it("loads only one portfolio's positions when a portfolioId is given", async () => {
+    const result = firstValueFrom(service.getPositions('PF0042'));
+
+    const req = http.expectOne(`/api/positions/${ACCOUNT}?portfolioId=PF0042`);
+    expect(req.request.method).toBe('GET');
+    req.flush([{ ...AAPL, portfolioId: 'PF0042' }]);
+
+    expect((await result)[0].portfolioId).toBe('PF0042');
+  });
+
+  it('loads one position in a given portfolio, and reports quantity 0 there when not held', async () => {
+    const result = firstValueFrom(service.getPosition('TSLA', 'PF0042'));
+
+    http
+      .expectOne(`/api/positions/${ACCOUNT}/TSLA?portfolioId=PF0042`)
+      .flush(
+        { errorCode: 'POS-404', message: 'Position not found' },
+        { status: 404, statusText: 'Not Found' },
+      );
+
+    expect(await result).toEqual({
+      accountId: ACCOUNT,
+      portfolioId: 'PF0042',
+      symbol: 'TSLA',
+      quantity: 0,
+      averageCost: 0,
+    });
   });
 
   it("sets error to the server's message when a request fails", async () => {
@@ -62,7 +111,10 @@ describe('Positions', () => {
 
     http
       .expectOne(`/api/positions/${ACCOUNT}`)
-      .flush({ errorCode: 'ACC-403', message: 'Account not active' }, { status: 403, statusText: 'Forbidden' });
+      .flush(
+        { errorCode: 'ACC-403', message: 'Account not active' },
+        { status: 403, statusText: 'Forbidden' },
+      );
 
     await expect(result).rejects.toBeTruthy();
     expect(service.error()).toBe('Account not active');
@@ -72,7 +124,9 @@ describe('Positions', () => {
   it('falls back to a plain message when the server sends no error body', async () => {
     const result = firstValueFrom(service.getPositions());
 
-    http.expectOne(`/api/positions/${ACCOUNT}`).flush(null, { status: 500, statusText: 'Server Error' });
+    http
+      .expectOne(`/api/positions/${ACCOUNT}`)
+      .flush(null, { status: 500, statusText: 'Server Error' });
 
     await expect(result).rejects.toBeTruthy();
     expect(service.error()).toBe("Couldn't load your positions. Try again in a moment.");
