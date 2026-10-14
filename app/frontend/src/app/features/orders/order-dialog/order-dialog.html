@@ -75,7 +75,11 @@
                   data-testid="buy-portfolio"
                 >
                   @for (portfolio of portfolios(); track portfolio.portfolioId) {
-                    <mat-option [value]="portfolio.portfolioId">{{ portfolio.name }}</mat-option>
+                    <mat-option
+                      [value]="portfolio.portfolioId"
+                      [attr.data-testid]="'buy-portfolio-' + portfolio.portfolioId"
+                      >{{ portfolio.name }}</mat-option
+                    >
                   }
                 </mat-select>
               </mat-form-field>
@@ -218,6 +222,7 @@
                 type="button"
                 matStepperNext
                 [disabled]="!sellInstrumentStep.valid"
+                data-testid="sell-instrument-next"
               >
                 Next
               </button>
@@ -245,7 +250,11 @@
             <p class="order-dialog__slider-label">Quantity: {{ sellQuantityInput() }}</p>
 
             <mat-slider min="1" max="100" step="1" discrete>
-              <input matSliderThumb [formControl]="sellOrderStep.controls.quantity" />
+              <input
+                matSliderThumb
+                [formControl]="sellOrderStep.controls.quantity"
+                data-testid="sell-quantity"
+              />
             </mat-slider>
 
             <p class="order-dialog__estimate">
@@ -273,6 +282,7 @@
                 type="button"
                 matStepperNext
                 [disabled]="sellDetailsInvalid()"
+                data-testid="sell-details-next"
               >
                 Continue
               </button>
@@ -293,12 +303,18 @@
               </p>
             </div>
             @if (sellPlaced()) {
-              <div class="order-dialog__result order-dialog__result--success">
+              <div
+                class="order-dialog__result order-dialog__result--success"
+                data-testid="sell-result"
+              >
                 {{ sellResultMessage() }}
               </div>
             }
             @if (sellPlaced() === false) {
-              <div class="order-dialog__result order-dialog__result--error">
+              <div
+                class="order-dialog__result order-dialog__result--error"
+                data-testid="sell-error"
+              >
                 {{ sellResultMessage() }}
               </div>
             }
@@ -309,6 +325,7 @@
                 mat-flat-button
                 type="button"
                 (click)="placeSellOrder()"
+                data-testid="place-sell-order"
                 [disabled]="sellSubmitting() || sellPlaced() === true"
               >
                 {{ sellSubmitting() ? 'Placing...' : 'Place order' }}

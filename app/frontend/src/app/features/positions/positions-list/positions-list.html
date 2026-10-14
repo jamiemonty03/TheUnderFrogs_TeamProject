@@ -289,7 +289,7 @@
 
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef mat-sort-header class="num">Quantity</th>
-              <td mat-cell *matCellDef="let row" class="num">
+              <td mat-cell *matCellDef="let row" class="num" data-testid="holding-quantity">
                 {{ row.quantity | number: '1.0-4' }}
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
@@ -390,7 +390,11 @@
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="columns()"></tr>
-            <tr mat-row *matRowDef="let row; columns: columns()"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: columns()"
+              [attr.data-testid]="'holding-' + row.symbol"
+            ></tr>
             <tr mat-footer-row *matFooterRowDef="columns()"></tr>
           </table>
         </div>
