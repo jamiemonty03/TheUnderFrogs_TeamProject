@@ -17,14 +17,12 @@ type OrderSide = 'BUY' | 'SELL';
 type OrderFilter = 'ALL' | OrderStatus;
 
 interface OrderRow {
-  id: string;
   placed: string;
   symbol: string;
   side: OrderSide;
   quantity: number;
   price: string;
   status: OrderStatus;
-  canCancel: boolean;
 }
 
 @Component({
@@ -52,7 +50,7 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['id', 'placed', 'symbol', 'side', 'quantity', 'price', 'status', 'action'];
+  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'price', 'status'];
 
   readonly visibleOrders = computed(() => {
     const filter = this.activeFilter();
@@ -132,14 +130,12 @@ export class OrdersList implements OnInit {
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
-      id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,
       quantity: order.quantity,
       price: this.formatPrice(marketPrices.get(order.symbol)),
       status: order.orderStatus,
-      canCancel: order.orderStatus === 'NEW',
     };
   }
 

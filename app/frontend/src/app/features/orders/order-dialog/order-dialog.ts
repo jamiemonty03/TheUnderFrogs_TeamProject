@@ -250,7 +250,11 @@ export class OrderDialog implements OnInit {
   }
 
   onBuyInput(): void {
-    this.selectedBuyInstrument.set(null);
+    const symbol = String(this.buyInstrumentStep.controls.instrumentInput.value || '')
+      .trim()
+      .toUpperCase();
+    const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
+    this.selectedBuyInstrument.set(selected);
   }
 
   onSellInput(): void {
@@ -261,20 +265,52 @@ export class OrderDialog implements OnInit {
 
   onBuyBlur(): void {
     const selected = this.selectedBuyInstrument();
-    const current = String(this.buyInstrumentStep.controls.instrumentInput.value || '').trim();
-    if (!selected || current !== selected.symbol) {
-      this.selectedBuyInstrument.set(null);
-      this.buyInstrumentStep.controls.instrumentInput.setValue('');
+    const clearInvalidSelection = (): void => {
+      const currentSelection = this.selectedBuyInstrument();
+      const currentValue = String(
+        this.buyInstrumentStep.controls.instrumentInput.value || '',
+      ).trim();
+      const exactMatch = this.instruments().find(
+        (instrument) => instrument.symbol === currentValue.toUpperCase(),
+      );
+      if (exactMatch) {
+        this.selectedBuyInstrument.set(exactMatch);
+        return;
+      }
+      if (!currentSelection || currentValue !== currentSelection.symbol) {
+        this.selectedBuyInstrument.set(null);
+        this.buyInstrumentStep.controls.instrumentInput.setValue('');
+      }
+    };
+    if (!selected && this.buyMatches().length > 0) {
+      return;
     }
+    clearInvalidSelection();
   }
 
   onSellBlur(): void {
     const selected = this.selectedSellInstrument();
-    const current = String(this.sellInstrumentStep.controls.instrumentInput.value || '').trim();
-    if (!selected || current !== selected.symbol) {
-      this.selectedSellInstrument.set(null);
-      this.sellInstrumentStep.controls.instrumentInput.setValue('');
+    const clearInvalidSelection = (): void => {
+      const currentSelection = this.selectedSellInstrument();
+      const currentValue = String(
+        this.sellInstrumentStep.controls.instrumentInput.value || '',
+      ).trim();
+      const exactMatch = this.instruments().find(
+        (instrument) => instrument.symbol === currentValue.toUpperCase(),
+      );
+      if (exactMatch) {
+        this.selectedSellInstrument.set(exactMatch);
+        return;
+      }
+      if (!currentSelection || currentValue !== currentSelection.symbol) {
+        this.selectedSellInstrument.set(null);
+        this.sellInstrumentStep.controls.instrumentInput.setValue('');
+      }
+    };
+    if (!selected && this.sellMatches().length > 0) {
+      return;
     }
+    clearInvalidSelection();
   }
 
   placeBuyOrder(): void {
@@ -307,6 +343,7 @@ export class OrderDialog implements OnInit {
           this.buyResultMessage.set(
             `Order ${response.orderId} was placed with status ${response.orderStatus}.`,
           );
+          this.dialogRef.close(response);
         },
         error: (error: unknown) => {
           this.buyPlaced.set(false);
@@ -346,6 +383,7 @@ export class OrderDialog implements OnInit {
           this.sellResultMessage.set(
             `Order ${response.orderId} was placed with status ${response.orderStatus}.`,
           );
+          this.dialogRef.close(response);
         },
         error: (error: unknown) => {
           this.sellPlaced.set(false);
