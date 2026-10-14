@@ -1,20 +1,16 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, defer, finalize, of, throwError } from 'rxjs';
-import { Auth } from './auth';
+import { Injectable, inject } from '@angular/core';
+import { Observable, catchError, of, throwError } from 'rxjs';
 import { Position } from './interfaces/positions.interfaces';
+import { AccountApi } from './shared/account-api';
 
 const BASE_URL = '/api/positions';
-const NO_ACCOUNT = 'No trading account is linked to this user.';
 const LOAD_FAILED = "Couldn't load your positions. Try again in a moment.";
 
 @Injectable({ providedIn: 'root' })
-export class Positions {
+export class Positions extends AccountApi {
   private readonly http = inject(HttpClient);
-  private readonly auth = inject(Auth);
-
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
+  protected readonly failedMessage = LOAD_FAILED;
 
   getPositions(portfolioId?: string): Observable<Position[]> {
     return this.track((accountId) =>
@@ -48,35 +44,8 @@ export class Positions {
         ),
     );
   }
-
-  private track<T>(request: (accountId: string) => Observable<T>): Observable<T> {
-    return defer(() => {
-      const accountId = this.auth.currentUser()?.accountId;
-      if (!accountId) {
-        this.error.set(NO_ACCOUNT);
-        return throwError(() => new Error(NO_ACCOUNT));
-      }
-
-      this.loading.set(true);
-      this.error.set(null);
-      return request(accountId).pipe(
-        catchError((err: unknown) => {
-          this.error.set(messageFor(err));
-          return throwError(() => err);
-        }),
-        finalize(() => this.loading.set(false)),
-      );
-    });
-  }
 }
 
 function portfolioParams(portfolioId?: string): Record<string, string> {
   return portfolioId ? { portfolioId } : {};
-}
-
-function messageFor(err: unknown): string {
-  if (err instanceof HttpErrorResponse && typeof err.error?.message === 'string') {
-    return err.error.message;
-  }
-  return LOAD_FAILED;
 }

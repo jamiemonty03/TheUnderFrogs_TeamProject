@@ -16,7 +16,7 @@ import { Auth } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
-import { Position } from '../../../services/interfaces/positions.interfaces';
+import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
 import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
 
@@ -24,24 +24,6 @@ export const ALL_HOLDINGS = 'ALL';
 export const REFRESH_MS = 30_000;
 
 type FormMode = 'closed' | 'create' | 'edit';
-
-export interface HoldingRow {
-  symbol: string;
-  name: string;
-  assetClass: string;
-  portfolioId: string | null;
-  portfolioName: string;
-  quantity: number;
-  averageCost: number;
-  totalCost: number;
-  price: number | null;
-  marketValue: number | null;
-  pnl: number | null;
-  pnlPercent: number | null;
-  dayChange: number | null;
-  dayPercent: number | null;
-  weight: number | null;
-}
 
 type SortKey = keyof HoldingRow;
 

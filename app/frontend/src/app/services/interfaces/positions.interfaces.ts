@@ -9,3 +9,21 @@ export interface Position {
   lastUpdated?: string;
   updatedBy?: string;
 }
+
+export interface HoldingRow {
+  symbol: string;
+  name: string;
+  assetClass: string;
+  portfolioId: string | null;
+  portfolioName: string;
+  quantity: number;
+  averageCost: number;
+  totalCost: number;
+  price: number | null;
+  marketValue: number | null;
+  pnl: number | null;
+  pnlPercent: number | null;
+  dayChange: number | null;
+  dayPercent: number | null;
+  weight: number | null;
+}
