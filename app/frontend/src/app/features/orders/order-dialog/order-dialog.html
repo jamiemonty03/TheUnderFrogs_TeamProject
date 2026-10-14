@@ -1,0 +1,209 @@
+<section class="order-dialog">
+	<header class="order-dialog__header">
+		<h2 class="order-dialog__title">Place Order</h2>
+		<button mat-stroked-button type="button" (click)="close()">Close</button>
+	</header>
+
+	<mat-tab-group [selectedIndex]="selectedTab()" (selectedIndexChange)="setTab($event)">
+		<mat-tab label="Buy">
+			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<ng-template matStepperIcon="number" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="edit" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="done" let-index="index">{{ index + 1 }}</ng-template>
+				<mat-step [stepControl]="buyInstrumentStep" label="Select instrument">
+					<div class="order-dialog__step-content">
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Instrument</mat-label>
+							<input
+								type="text"
+								matInput
+								[formControl]="buyInstrumentStep.controls.instrumentInput"
+								(input)="onBuyInput()"
+								(blur)="onBuyBlur()"
+								[matAutocomplete]="buyInstrumentAuto"
+								placeholder="Type AAPL, SPY, Bond..."
+							/>
+						</mat-form-field>
+
+						<mat-autocomplete #buyInstrumentAuto="matAutocomplete" (optionSelected)="selectBuyInstrument($event)">
+							@for (instrument of buyMatches(); track instrument.symbol) {
+								<mat-option [value]="instrument.symbol">
+									{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+								</mat-option>
+							}
+						</mat-autocomplete>
+
+						@if (selectedBuyInstrument(); as instrument) {
+							<div class="order-dialog__instrument-meta">
+								<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+								<p>Market price: {{ instrument.marketPrice | currency }}</p>
+								<p>Last updated: {{ instrument.lastUpdated }}</p>
+							</div>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!buyInstrumentStep.valid">Next</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step [stepControl]="buyOrderStep" label="Set order details">
+					<div class="order-dialog__step-content">
+						<p class="order-dialog__slider-label">Quantity: {{ buyQuantityInput() }}</p>
+
+						<mat-slider min="1" max="100" step="1" discrete>
+							<input matSliderThumb [formControl]="buyOrderStep.controls.quantity" />
+						</mat-slider>
+
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Price limit</mat-label>
+							<input matInput type="number" min="0.01" step="0.01" [formControl]="buyOrderStep.controls.priceLimit" />
+						</mat-form-field>
+
+						<p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
+						@if (availableCash() !== null) {
+							<p class="order-dialog__availability">Available cash: {{ availableCash() | currency }}</p>
+						} @else {
+							<p class="order-dialog__availability order-dialog__availability--error">{{ accountLoadError() || 'Loading available cash...' }}</p>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" matStepperNext [disabled]="buyDetailsInvalid()">
+								Continue
+							</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step label="Review">
+					<div class="order-dialog__step-content">
+						<h3>Review buy order</h3>
+						<div class="order-dialog__summary">
+							<p><strong>Instrument:</strong> {{ selectedBuyInstrument()?.symbol }}</p>
+							<p><strong>Side:</strong> Buy</p>
+							<p><strong>Quantity:</strong> {{ buyOrderStep.controls.quantity.value }}</p>
+							<p><strong>Price limit:</strong> {{ buyOrderStep.controls.priceLimit.value | currency }}</p>
+						</div>
+						@if (buyPlaced()) {
+							<div class="order-dialog__result order-dialog__result--success">
+								{{ buyResultMessage() }}
+							</div>
+						}
+						@if (buyPlaced() === false) {
+							<div class="order-dialog__result order-dialog__result--error">
+								{{ buyResultMessage() }}
+							</div>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="placeBuyOrder()" [disabled]="buySubmitting() || buyPlaced() === true">
+								{{ buySubmitting() ? 'Placing...' : 'Place order' }}
+							</button>
+						</div>
+					</div>
+				</mat-step>
+			</mat-stepper>
+		</mat-tab>
+
+		<mat-tab label="Sell">
+			<mat-stepper [linear]="true" orientation="vertical" class="order-dialog__stepper">
+				<ng-template matStepperIcon="number" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="edit" let-index="index">{{ index + 1 }}</ng-template>
+				<ng-template matStepperIcon="done" let-index="index">{{ index + 1 }}</ng-template>
+				<mat-step [stepControl]="sellInstrumentStep" label="Select instrument">
+					<div class="order-dialog__step-content">
+						<mat-form-field appearance="outline" class="order-dialog__field">
+							<mat-label>Instrument</mat-label>
+							<input
+								type="text"
+								matInput
+								[formControl]="sellInstrumentStep.controls.instrumentInput"
+								(input)="onSellInput()"
+								(blur)="onSellBlur()"
+								[matAutocomplete]="sellInstrumentAuto"
+								placeholder="Type AAPL, SPY, Bond..."
+							/>
+						</mat-form-field>
+
+						<mat-autocomplete #sellInstrumentAuto="matAutocomplete" (optionSelected)="selectSellInstrument($event)">
+							@for (instrument of sellMatches(); track instrument.symbol) {
+								<mat-option [value]="instrument.symbol">
+									{{ instrument.symbol }} - {{ instrument.name }} ({{ instrument.type }})
+								</mat-option>
+							}
+						</mat-autocomplete>
+
+						@if (selectedSellInstrument(); as instrument) {
+							<div class="order-dialog__instrument-meta">
+								<p>{{ instrument.symbol }} - {{ instrument.name }}</p>
+								<p>Market price: {{ instrument.marketPrice | currency }}</p>
+								<p>Last updated: {{ instrument.lastUpdated }}</p>
+							</div>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-flat-button type="button" matStepperNext [disabled]="!sellInstrumentStep.valid">Next</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step [stepControl]="sellOrderStep" label="Set sell quantity">
+					<div class="order-dialog__step-content">
+						<p class="order-dialog__slider-label">Quantity: {{ sellQuantityInput() }}</p>
+
+						<mat-slider min="1" max="100" step="1" discrete>
+							<input matSliderThumb [formControl]="sellOrderStep.controls.quantity" />
+						</mat-slider>
+
+						<p class="order-dialog__estimate">Market value estimate: {{ sellEstimate() | currency }}</p>
+						@if (heldPosition(); as position) {
+							<p class="order-dialog__availability">Quantity held: {{ position.quantity }}</p>
+						} @else {
+							<p class="order-dialog__availability order-dialog__availability--error">
+								{{ positionLoadError() || (positionLoading() ? 'Loading quantity held...' : 'Select an instrument to view quantity held.') }}
+							</p>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" matStepperNext [disabled]="sellDetailsInvalid()">
+								Continue
+							</button>
+						</div>
+					</div>
+				</mat-step>
+
+				<mat-step label="Review">
+					<div class="order-dialog__step-content">
+						<h3>Review sell order</h3>
+						<div class="order-dialog__summary">
+							<p><strong>Instrument:</strong> {{ selectedSellInstrument()?.symbol }}</p>
+							<p><strong>Side:</strong> Sell</p>
+							<p><strong>Quantity:</strong> {{ sellOrderStep.controls.quantity.value }}</p>
+							<p><strong>Price limit:</strong> {{ selectedSellInstrument()?.marketPrice | currency }}</p>
+						</div>
+						@if (sellPlaced()) {
+							<div class="order-dialog__result order-dialog__result--success">
+								{{ sellResultMessage() }}
+							</div>
+						}
+						@if (sellPlaced() === false) {
+							<div class="order-dialog__result order-dialog__result--error">
+								{{ sellResultMessage() }}
+							</div>
+						}
+
+						<div class="order-dialog__actions">
+							<button mat-stroked-button type="button" matStepperPrevious>Back</button>
+							<button mat-flat-button type="button" (click)="placeSellOrder()" [disabled]="sellSubmitting() || sellPlaced() === true">
+								{{ sellSubmitting() ? 'Placing...' : 'Place order' }}
+							</button>
+						</div>
+					</div>
+				</mat-step>
+			</mat-stepper>
+		</mat-tab>
+	</mat-tab-group>
+</section>

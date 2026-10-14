@@ -1,49 +1,64 @@
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map } from 'rxjs';
+import {
+	BaseInstrumentResponse,
+	BondResponse,
+	EtfResponse,
+	InstrumentType,
+	StockResponse,
+	TradingInstrument,
+} from './interfaces/instruments.interfaces';
+import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
-export type AssetClass = 'Equity' | 'ETF' | 'Bond';
-
-
-export interface PricedAsset {
-  symbol: string;
-  name: string;
-  price: number | null;
-  previousClose: number | null;
-  tradeDate: string | null;
-}
-
-export interface LatestPrice {
-  symbol: string;
-  name: string;
-  assetClass: AssetClass;
-  price: number | null;
-  previousClose: number | null;
-  tradeDate: string | null;
-}
-
-export interface DayChange {
-  amount: number;
-  percent: number;
-}
+export type { LatestPrice } from './interfaces/instruments.interfaces';
+export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {
-  private readonly http = inject(HttpClient);
+	constructor(private readonly http: HttpClient) {}
 
-  getStocks(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/stocks');
-  }
+	getStocks(): Observable<StockResponse[]> {
+		return this.http.get<StockResponse[]>('/api/stocks');
+	}
 
-  getEtfs(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/etfs');
-  }
+	getEtfs(): Observable<EtfResponse[]> {
+		return this.http.get<EtfResponse[]>('/api/etfs');
+	}
 
-  getBonds(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/bonds');
-  }
+	getBonds(): Observable<BondResponse[]> {
+		return this.http.get<BondResponse[]>('/api/bonds');
+	}
 
-  getLatestPrices(): Observable<Map<string, LatestPrice>> {
+	getAllTradableInstruments(): Observable<TradingInstrument[]> {
+		return forkJoin({
+			stocks: this.getStocks(),
+			etfs: this.getEtfs(),
+			bonds: this.getBonds(),
+		}).pipe(
+			map(({ stocks, etfs, bonds }) => {
+				const fromStocks = stocks.map((item) => this.toTradingInstrument(item, 'Stock'));
+				const fromEtfs = etfs.map((item) => this.toTradingInstrument(item, 'ETF'));
+				const fromBonds = bonds.map((item) => this.toTradingInstrument(item, 'Bond'));
+
+				return [...fromStocks, ...fromEtfs, ...fromBonds]
+					.filter((item) => item.marketPrice > 0)
+					.sort((a, b) => a.symbol.localeCompare(b.symbol));
+			}),
+		);
+	}
+
+	private toTradingInstrument(item: BaseInstrumentResponse, type: InstrumentType): TradingInstrument {
+		return {
+			symbol: item.symbol,
+			name: item.name,
+			type,
+			marketPrice: Number(item.price ?? 0),
+			lastUpdated: item.lastUpdated ?? 'N/A',
+		};
+	}
+
+	getLatestPrices(): Observable<Map<string, LatestPrice>> {
     return forkJoin({
       Equity: this.getStocks(),
       ETF: this.getEtfs(),
