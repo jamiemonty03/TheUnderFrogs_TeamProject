@@ -30,7 +30,22 @@
 			<label class="nav-bar__search-wrap" aria-label="Search instruments">
 				<input class="nav-bar__search" type="search" placeholder="Search AAPL, SPY, BND..." />
 			</label>
-			<div class="nav-bar__avatar" aria-label="Profile initials">KF</div>
+			<button
+				type="button"
+				class="nav-bar__avatar"
+				[matMenuTriggerFor]="accountMenu"
+				[attr.aria-label]="'Account menu for ' + username()"
+			>
+				{{ initials() }}
+			</button>
+
+			<mat-menu #accountMenu="matMenu" xPosition="before" class="nav-bar__account-menu">
+				<div class="nav-bar__account" role="presentation">
+					<span class="nav-bar__account-name">{{ username() }}</span>
+					<span class="nav-bar__account-role">{{ role() }}</span>
+				</div>
+				<button mat-menu-item type="button" class="nav-bar__logout" (click)="logout()">Log out</button>
+			</mat-menu>
 		</div>
 	</div>
 </header>

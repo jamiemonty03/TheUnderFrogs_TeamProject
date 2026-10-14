@@ -25,7 +25,7 @@ function signIn() {
 const guardedGroup = routes.find((route) => route.canActivateChild?.includes(authGuard))!;
 
 const protectedUrls = guardedGroup
-  .children!.filter((route) => route.component)
+  .children!.filter((route) => route.loadComponent)
   .map((route) => '/' + route.path!.replace(/:[^/]+/g, '1'));
 
 describe('app routes', () => {
@@ -50,7 +50,7 @@ describe('app routes', () => {
   describe('config', () => {
     it('only lets /login and /register sit outside the guarded group', () => {
       const pagesOutside = routes
-        .filter((route) => route !== guardedGroup && route.component)
+        .filter((route) => route !== guardedGroup && route.loadComponent)
         .map((route) => route.path);
 
       expect(pagesOutside).toEqual(['login', 'register']);
@@ -60,6 +60,14 @@ describe('app routes', () => {
       for (const path of ['login', 'register']) {
         expect(routes.find((route) => route.path === path)?.canActivate).toContain(guestGuard);
       }
+    });
+
+    it('lazy-loads every page so the first download stays small', () => {
+      const pages = [...routes, ...guardedGroup.children!].filter(
+        (route) => !route.redirectTo && !route.children,
+      );
+
+      expect(pages.every((route) => route.loadComponent && !route.component)).toBe(true);
     });
 
     it('finds the pages to check', () => {
