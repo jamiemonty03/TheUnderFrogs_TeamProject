@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
@@ -11,7 +11,7 @@ import { TradingInstrument } from '../../../services/interfaces/instruments.inte
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
 import { Position, Positions } from '../../../services/positions';
-import { OrderDialog } from './order-dialog';
+import { OrderDialog, OrderDialogData } from './order-dialog';
 
 const ACCOUNT = 'ACC0042';
 const currentUser: CurrentUser = { userId: 42, username: 'trader', roles: ['TRADER'], accountId: ACCOUNT };
@@ -29,7 +29,7 @@ const TSLA: TradingInstrument = {
   marketPrice: 250,
   lastUpdated: '2026-10-14T10:00:00Z',
 };
-const AAPL_POSITION: Position = { accountId: ACCOUNT, symbol: 'AAPL', quantity: 25, averageCost: 90 };
+const AAPL_POSITION: Position = { accountId: ACCOUNT, portfolioId: null, symbol: 'AAPL', quantity: 25, averageCost: 90 };
 const ORDER: OrderResponse = {
   orderId: 'ORDER-1',
   accountId: ACCOUNT,
@@ -244,5 +244,73 @@ describe('OrderDialog', () => {
   it('closes the dialog', () => {
     component.close();
     expect(dialogRef.close).toHaveBeenCalledOnce();
+  });
+});
+
+describe('OrderDialog opened from a holding', () => {
+  let fixture: ComponentFixture<OrderDialog>;
+  let component: OrderDialog;
+  let orders: { placeOrder: ReturnType<typeof vi.fn> };
+  let positions: { getPosition: ReturnType<typeof vi.fn> };
+
+  const open = async (data: OrderDialogData) => {
+    orders = { placeOrder: vi.fn(() => of(ORDER)) };
+    positions = { getPosition: vi.fn(() => of({ ...AAPL_POSITION, portfolioId: 'PF0013', quantity: 3 })) };
+    await TestBed.configureTestingModule({
+      imports: [OrderDialog],
+      providers: [
+        { provide: Auth, useValue: { currentUser: signal<CurrentUser | null>(currentUser).asReadonly() } },
+        {
+          provide: Accounts,
+          useValue: { getAccount: vi.fn(() => of({ accountId: ACCOUNT, holderName: 'Trader', cashBalance: 1000, status: 'ACTIVE' })) },
+        },
+        { provide: Instruments, useValue: { getAllTradableInstruments: vi.fn(() => of([AAPL, TSLA])) } },
+        { provide: Orders, useValue: orders },
+        { provide: Positions, useValue: positions },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: MAT_DIALOG_DATA, useValue: data },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(OrderDialog);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  };
+
+  it('starts a buy on that instrument and places it in that portfolio', async () => {
+    await open({ side: 'BUY', symbol: 'AAPL', portfolioId: 'PF0013', portfolioName: 'Golden Apple' });
+
+    expect(component.selectedTab()).toBe(0);
+    expect(component.selectedBuyInstrument()).toEqual(AAPL);
+    expect(component.buyOrderStep.controls.priceLimit.value).toBe(100);
+    expect(fixture.nativeElement.querySelector('[data-testid="order-portfolio"]').textContent).toContain('Golden Apple');
+
+    component.placeBuyOrder();
+
+    expect(orders.placeOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: 'AAPL', side: 'BUY', portfolioId: 'PF0013' }),
+    );
+  });
+
+  it("starts a sell on the Sell tab, checking that portfolio's quantity", async () => {
+    await open({ side: 'SELL', symbol: 'AAPL', portfolioId: 'PF0013' });
+
+    expect(component.selectedTab()).toBe(1);
+    expect(component.selectedSellInstrument()).toEqual(AAPL);
+    expect(positions.getPosition).toHaveBeenCalledWith('AAPL', 'PF0013');
+    expect(component.heldPosition()?.quantity).toBe(3);
+
+    component.placeSellOrder();
+
+    expect(orders.placeOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: 'AAPL', side: 'SELL', portfolioId: 'PF0013' }),
+    );
+  });
+
+  it('sends no portfolio when opened without one, so the order goes to Main', async () => {
+    await open({ side: 'BUY', symbol: 'AAPL' });
+
+    component.placeBuyOrder();
+
+    expect(orders.placeOrder.mock.calls[0][0]).not.toHaveProperty('portfolioId');
   });
 });

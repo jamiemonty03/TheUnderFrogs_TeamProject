@@ -8,6 +8,7 @@ export interface PlaceOrderRequest {
 	quantity: number;
 	priceLimit: number;
 	idempotencyKey: string;
+	portfolioId?: string;
 }
 
 export interface OrderResponse {

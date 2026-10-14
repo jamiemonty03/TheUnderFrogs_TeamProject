@@ -1,6 +1,11 @@
 <section class="order-dialog">
 	<header class="order-dialog__header">
-		<h2 class="order-dialog__title">Place Order</h2>
+		<h2 class="order-dialog__title">
+			Place Order
+			@if (data?.portfolioName) {
+				<span data-testid="order-portfolio">in {{ data?.portfolioName }}</span>
+			}
+		</h2>
 		<button mat-stroked-button type="button" (click)="close()">Close</button>
 	</header>
 

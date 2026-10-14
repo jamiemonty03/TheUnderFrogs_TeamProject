@@ -4,7 +4,7 @@ import { Component, OnInit, ViewEncapsulation, computed, inject, signal } from '
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSliderModule } from '@angular/material/slider';
@@ -21,6 +21,13 @@ import { Position, Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
+
+export interface OrderDialogData {
+  side?: 'BUY' | 'SELL';
+  symbol?: string;
+  portfolioId?: string;
+  portfolioName?: string;
+}
 
 @Component({
   imports: [
@@ -48,6 +55,7 @@ export class OrderDialog implements OnInit {
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
   private readonly positionsApi = inject(Positions);
+  readonly data = inject<OrderDialogData | null>(MAT_DIALOG_DATA, { optional: true });
 
   readonly selectedTab = signal(0);
 
@@ -168,6 +176,9 @@ export class OrderDialog implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.data?.side === 'SELL') {
+      this.selectedTab.set(1);
+    }
     this.loadInstruments();
     this.loadAvailableCash();
   }
@@ -237,6 +248,7 @@ export class OrderDialog implements OnInit {
       quantity: Number(this.buyOrderStep.controls.quantity.value),
       priceLimit: Number(this.buyOrderStep.controls.priceLimit.value),
       idempotencyKey: this.createIdempotencyKey(),
+      ...this.portfolio(),
     }).subscribe({
       next: (response) => {
         this.buyResponse.set(response);
@@ -271,6 +283,7 @@ export class OrderDialog implements OnInit {
       quantity: Number(this.sellOrderStep.controls.quantity.value),
       priceLimit: 0.01,
         idempotencyKey: this.createIdempotencyKey(),
+      ...this.portfolio(),
     }).subscribe({
       next: (response) => {
         this.sellResponse.set(response);
@@ -313,6 +326,7 @@ export class OrderDialog implements OnInit {
       next: (items) => {
         this.instruments.set(items);
         this.instrumentsLoading.set(false);
+        this.preselectInstrument();
       },
       error: () => {
         this.instruments.set([]);
@@ -343,7 +357,9 @@ export class OrderDialog implements OnInit {
     this.positionLoading.set(true);
     this.positionLoadError.set(null);
     this.heldPosition.set(null);
-    this.positionsApi.getPosition(symbol).subscribe({
+    const portfolioId = this.data?.portfolioId;
+    const position$ = portfolioId ? this.positionsApi.getPosition(symbol, portfolioId) : this.positionsApi.getPosition(symbol);
+    position$.subscribe({
       next: (position) => {
         this.heldPosition.set(position);
         this.positionLoading.set(false);
@@ -353,6 +369,23 @@ export class OrderDialog implements OnInit {
         this.positionLoading.set(false);
       },
     });
+  }
+
+  private preselectInstrument(): void {
+    const symbol = this.data?.symbol;
+    if (!symbol || !this.instruments().some((instrument) => instrument.symbol === symbol)) {
+      return;
+    }
+    const event = { option: { value: symbol } } as MatAutocompleteSelectedEvent;
+    if (this.data?.side === 'SELL') {
+      this.selectSellInstrument(event);
+    } else {
+      this.selectBuyInstrument(event);
+    }
+  }
+
+  private portfolio(): { portfolioId?: string } {
+    return this.data?.portfolioId ? { portfolioId: this.data.portfolioId } : {};
   }
 
   private orderErrorMessage(error: unknown): string {
