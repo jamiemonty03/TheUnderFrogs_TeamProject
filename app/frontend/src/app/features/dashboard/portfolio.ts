@@ -47,25 +47,25 @@ export function toHoldings(
   live: ReadonlyMap<string, LivePrice> = new Map(),
 ): Holding[] {
   const held = positions
-    .filter((p) => p.quantity > 0)
-    .map((p) => {
-      const latest = prices.get(p.symbol);
-      const quote = live.get(p.symbol);
+    .filter((position) => position.quantity > 0)
+    .map((position) => {
+      const latest = prices.get(position.symbol);
+      const quote = live.get(position.symbol);
       const close = latest?.price ?? null;
       const price = quote ? quote.price : close;
       const priceSource: Holding['priceSource'] = quote ? 'live' : close === null ? null : 'close';
-      const costBasis = p.quantity * p.averageCost;
-      const value = price === null ? null : marketValue(p.quantity, price);
-      const pnl = price === null ? null : unrealisedPnl(p.quantity, p.averageCost, price);
+      const costBasis = position.quantity * position.averageCost;
+      const value = price === null ? null : marketValue(position.quantity, price);
+      const pnl = price === null ? null : unrealisedPnl(position.quantity, position.averageCost, price);
       const dailyPnl = price === null || latest?.previousClose == null
         ? null
-        : marketValue(p.quantity, price - latest.previousClose);
-      const dailyCost = latest?.previousClose == null ? null : marketValue(p.quantity, latest.previousClose);
+        : marketValue(position.quantity, price - latest.previousClose);
+      const dailyCost = latest?.previousClose == null ? null : marketValue(position.quantity, latest.previousClose);
       return {
-        symbol: p.symbol,
+        symbol: position.symbol,
         name: latest?.name ?? '',
-        quantity: p.quantity,
-        averageCost: p.averageCost,
+        quantity: position.quantity,
+        averageCost: position.averageCost,
         price,
         priceSource,
         costBasis,
@@ -79,10 +79,14 @@ export function toHoldings(
       };
     });
 
-  const total = held.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
-  return held.map((h) => ({
-    ...h,
-    weight: h.marketValue === null ? null : percentOf(h.marketValue, total),
+  const totalMarketValue = held.reduce(
+    (accumulatedValue, holding) => accumulatedValue + (holding.marketValue ?? 0),
+    0,
+  );
+  return held.map((holding) => ({
+    ...holding,
+    weight:
+      holding.marketValue === null ? null : percentOf(holding.marketValue, totalMarketValue),
   }));
 }
 
@@ -93,17 +97,17 @@ export function summarise(holdings: Holding[]): PortfolioSummary {
   let dailyPnl = 0;
   let dailyCost = 0;
   let unpriced = 0;
-  for (const h of holdings) {
-    if (h.marketValue === null || h.unrealisedPnl === null) {
+  for (const holding of holdings) {
+    if (holding.marketValue === null || holding.unrealisedPnl === null) {
       unpriced++;
       continue;
     }
-    invested += h.marketValue;
-    pnl += h.unrealisedPnl;
-    pricedCost += h.costBasis;
-    if (h.dailyPnl !== null) {
-      dailyPnl += h.dailyPnl;
-      dailyCost += h.dailyCostBasis ?? 0;
+    invested += holding.marketValue;
+    pnl += holding.unrealisedPnl;
+    pricedCost += holding.costBasis;
+    if (holding.dailyPnl !== null) {
+      dailyPnl += holding.dailyPnl;
+      dailyCost += holding.dailyCostBasis ?? 0;
     }
   }
   return {
@@ -122,13 +126,15 @@ export function sortHoldings(holdings: Holding[], sort: Sort): Holding[] {
   if (!sort.direction || !key) {
     return holdings;
   }
-  const dir = sort.direction === 'asc' ? 1 : -1;
-  return [...holdings].sort((a, b) => {
-    const x = a[key];
-    const y = b[key];
-    if (x === null || y === null) {
-      return x === y ? 0 : x === null ? 1 : -1;
+  const directionMultiplier = sort.direction === 'asc' ? 1 : -1;
+  return [...holdings].sort((firstHolding, secondHolding) => {
+    const firstValue = firstHolding[key];
+    const secondValue = secondHolding[key];
+    if (firstValue === null || secondValue === null) {
+      return firstValue === secondValue ? 0 : firstValue === null ? 1 : -1;
     }
-    return typeof x === 'string' ? x.localeCompare(y as string) * dir : ((x as number) - (y as number)) * dir;
+    return typeof firstValue === 'string'
+      ? firstValue.localeCompare(secondValue as string) * directionMultiplier
+      : ((firstValue as number) - (secondValue as number)) * directionMultiplier;
   });
 }

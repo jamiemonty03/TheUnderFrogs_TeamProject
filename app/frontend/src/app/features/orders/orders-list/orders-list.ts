@@ -12,19 +12,7 @@ import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { forkJoin } from 'rxjs';
-
-type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
-type OrderSide = 'BUY' | 'SELL';
-type OrderFilter = 'ALL' | OrderStatus;
-
-interface OrderRow {
-  placed: string;
-  symbol: string;
-  side: OrderSide;
-  quantity: number;
-  price: string;
-  status: OrderStatus;
-}
+import { OrderFilter, OrderRow, OrderStatus, OrderSide } from './orders-list.interfaces';
 
 @Component({
   imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],
