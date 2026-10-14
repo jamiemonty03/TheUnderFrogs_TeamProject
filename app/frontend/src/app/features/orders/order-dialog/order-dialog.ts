@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -17,6 +18,7 @@ import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
+import { Portfolio, Portfolios } from '../../../services/portfolios';
 import { Position, Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
@@ -38,6 +40,7 @@ export interface OrderDialogData {
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSliderModule,
     MatStepperModule,
     MatTabsModule,
@@ -55,9 +58,22 @@ export class OrderDialog implements OnInit {
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
   private readonly positionsApi = inject(Positions);
+  private readonly portfoliosApi = inject(Portfolios);
   readonly data = inject<OrderDialogData | null>(MAT_DIALOG_DATA, { optional: true });
 
   readonly selectedTab = signal(0);
+
+  readonly portfolios = signal<Portfolio[]>([]);
+  readonly selectedPortfolioId = signal<string | null>(this.data?.portfolioId ?? null);
+  readonly selectedPortfolio = computed(() => {
+    const portfolios = this.portfolios();
+    return (
+      portfolios.find((portfolio) => portfolio.portfolioId === this.selectedPortfolioId())
+      ?? portfolios.find((portfolio) => portfolio.defaultPortfolio)
+      ?? null
+    );
+  });
+  readonly portfolioName = computed(() => this.selectedPortfolio()?.name ?? this.data?.portfolioName ?? 'Main');
 
   readonly instruments = signal<Instrument[]>([]);
   readonly instrumentsLoading = signal(false);
@@ -181,6 +197,15 @@ export class OrderDialog implements OnInit {
     }
     this.loadInstruments();
     this.loadAvailableCash();
+    this.loadPortfolios();
+  }
+
+  selectPortfolio(portfolioId: string): void {
+    this.selectedPortfolioId.set(portfolioId);
+    const instrument = this.selectedSellInstrument();
+    if (instrument) {
+      this.loadHeldPosition(instrument.symbol);
+    }
   }
 
   selectBuyInstrument(event: MatAutocompleteSelectedEvent): void {
@@ -357,7 +382,7 @@ export class OrderDialog implements OnInit {
     this.positionLoading.set(true);
     this.positionLoadError.set(null);
     this.heldPosition.set(null);
-    const portfolioId = this.data?.portfolioId;
+    const portfolioId = this.portfolioIdToSend();
     const position$ = portfolioId ? this.positionsApi.getPosition(symbol, portfolioId) : this.positionsApi.getPosition(symbol);
     position$.subscribe({
       next: (position) => {
@@ -384,8 +409,24 @@ export class OrderDialog implements OnInit {
     }
   }
 
+  private loadPortfolios(): void {
+    this.portfoliosApi.getPortfolios().subscribe({
+      next: (portfolios) => this.portfolios.set(portfolios),
+      error: () => this.portfolios.set([]),
+    });
+  }
+
+  private portfolioIdToSend(): string | undefined {
+    const selected = this.selectedPortfolio();
+    if (selected) {
+      return selected.defaultPortfolio ? undefined : selected.portfolioId;
+    }
+    return this.data?.portfolioId;
+  }
+
   private portfolio(): { portfolioId?: string } {
-    return this.data?.portfolioId ? { portfolioId: this.data.portfolioId } : {};
+    const portfolioId = this.portfolioIdToSend();
+    return portfolioId ? { portfolioId } : {};
   }
 
   private orderErrorMessage(error: unknown): string {

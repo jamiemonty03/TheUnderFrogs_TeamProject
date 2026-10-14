@@ -10,6 +10,7 @@ import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
+import { Portfolio, Portfolios } from '../../../services/portfolios';
 import { Position, Positions } from '../../../services/positions';
 import { OrderDialog, OrderDialogData } from './order-dialog';
 
@@ -30,6 +31,16 @@ const TSLA: TradingInstrument = {
   lastUpdated: '2026-10-14T10:00:00Z',
 };
 const AAPL_POSITION: Position = { accountId: ACCOUNT, portfolioId: null, symbol: 'AAPL', quantity: 25, averageCost: 90 };
+const portfolio = (portfolioId: string, name: string, defaultPortfolio: boolean): Portfolio => ({
+  portfolioId,
+  accountId: ACCOUNT,
+  name,
+  risk: 'MEDIUM',
+  benchmark: null,
+  defaultPortfolio,
+});
+const MAIN = portfolio('PF0011', 'Main', true);
+const GOLDEN_APPLE = portfolio('PF0013', 'Golden Apple', false);
 const ORDER: OrderResponse = {
   orderId: 'ORDER-1',
   accountId: ACCOUNT,
@@ -74,6 +85,7 @@ describe('OrderDialog', () => {
         { provide: Instruments, useValue: instruments },
         { provide: Orders, useValue: orders },
         { provide: Positions, useValue: positions },
+        { provide: Portfolios, useValue: { getPortfolios: vi.fn(() => of([MAIN, GOLDEN_APPLE])) } },
         { provide: MatDialogRef, useValue: dialogRef },
       ],
     }).compileComponents();
@@ -247,15 +259,21 @@ describe('OrderDialog', () => {
   });
 });
 
-describe('OrderDialog opened from a holding', () => {
+describe('OrderDialog portfolio choice', () => {
   let fixture: ComponentFixture<OrderDialog>;
   let component: OrderDialog;
   let orders: { placeOrder: ReturnType<typeof vi.fn> };
   let positions: { getPosition: ReturnType<typeof vi.fn> };
+  let portfolios: { getPortfolios: ReturnType<typeof vi.fn> };
 
-  const open = async (data: OrderDialogData) => {
+  const open = async (data: OrderDialogData | null) => {
     orders = { placeOrder: vi.fn(() => of(ORDER)) };
-    positions = { getPosition: vi.fn(() => of({ ...AAPL_POSITION, portfolioId: 'PF0013', quantity: 3 })) };
+    positions = {
+      getPosition: vi.fn((symbol: string, portfolioId?: string) =>
+        of({ ...AAPL_POSITION, portfolioId: portfolioId ?? null, quantity: portfolioId === 'PF0013' ? 3 : 25 }),
+      ),
+    };
+    portfolios = { getPortfolios: vi.fn(() => of([MAIN, GOLDEN_APPLE])) };
     await TestBed.configureTestingModule({
       imports: [OrderDialog],
       providers: [
@@ -267,6 +285,7 @@ describe('OrderDialog opened from a holding', () => {
         { provide: Instruments, useValue: { getAllTradableInstruments: vi.fn(() => of([AAPL, TSLA])) } },
         { provide: Orders, useValue: orders },
         { provide: Positions, useValue: positions },
+        { provide: Portfolios, useValue: portfolios },
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
         { provide: MAT_DIALOG_DATA, useValue: data },
       ],
@@ -275,23 +294,56 @@ describe('OrderDialog opened from a holding', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
   };
+  const placedOrder = () => orders.placeOrder.mock.calls[0][0];
 
-  it('starts a buy on that instrument and places it in that portfolio', async () => {
+  it('defaults to Main when opened from the Orders page, and sends no portfolio for it', async () => {
+    await open(null);
+
+    expect(component.portfolios()).toEqual([MAIN, GOLDEN_APPLE]);
+    expect(component.portfolioName()).toBe('Main');
+
+    component.selectBuyInstrument(optionEvent('AAPL') as never);
+    component.placeBuyOrder();
+
+    expect(placedOrder()).not.toHaveProperty('portfolioId');
+  });
+
+  it('places the order in the portfolio the user picks', async () => {
+    await open(null);
+    component.selectBuyInstrument(optionEvent('AAPL') as never);
+
+    component.selectPortfolio('PF0013');
+    component.placeBuyOrder();
+
+    expect(component.portfolioName()).toBe('Golden Apple');
+    expect(placedOrder()).toEqual(expect.objectContaining({ side: 'BUY', portfolioId: 'PF0013' }));
+  });
+
+  it("re-checks the held quantity when the portfolio changes on a sell", async () => {
+    await open(null);
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+    expect(component.heldPosition()?.quantity).toBe(25);
+
+    component.selectPortfolio('PF0013');
+
+    expect(positions.getPosition).toHaveBeenLastCalledWith('AAPL', 'PF0013');
+    expect(component.heldPosition()?.quantity).toBe(3);
+  });
+
+  it('starts a buy from a holding on that instrument and its portfolio', async () => {
     await open({ side: 'BUY', symbol: 'AAPL', portfolioId: 'PF0013', portfolioName: 'Golden Apple' });
 
     expect(component.selectedTab()).toBe(0);
     expect(component.selectedBuyInstrument()).toEqual(AAPL);
     expect(component.buyOrderStep.controls.priceLimit.value).toBe(100);
-    expect(fixture.nativeElement.querySelector('[data-testid="order-portfolio"]').textContent).toContain('Golden Apple');
+    expect(component.portfolioName()).toBe('Golden Apple');
 
     component.placeBuyOrder();
 
-    expect(orders.placeOrder).toHaveBeenCalledWith(
-      expect.objectContaining({ symbol: 'AAPL', side: 'BUY', portfolioId: 'PF0013' }),
-    );
+    expect(placedOrder()).toEqual(expect.objectContaining({ symbol: 'AAPL', side: 'BUY', portfolioId: 'PF0013' }));
   });
 
-  it("starts a sell on the Sell tab, checking that portfolio's quantity", async () => {
+  it("starts a sell from a holding on the Sell tab, checking that portfolio's quantity", async () => {
     await open({ side: 'SELL', symbol: 'AAPL', portfolioId: 'PF0013' });
 
     expect(component.selectedTab()).toBe(1);
@@ -301,16 +353,27 @@ describe('OrderDialog opened from a holding', () => {
 
     component.placeSellOrder();
 
-    expect(orders.placeOrder).toHaveBeenCalledWith(
-      expect.objectContaining({ symbol: 'AAPL', side: 'SELL', portfolioId: 'PF0013' }),
-    );
+    expect(placedOrder()).toEqual(expect.objectContaining({ symbol: 'AAPL', side: 'SELL', portfolioId: 'PF0013' }));
   });
 
-  it('sends no portfolio when opened without one, so the order goes to Main', async () => {
-    await open({ side: 'BUY', symbol: 'AAPL' });
+  it('a holding in Main sends no portfolio', async () => {
+    await open({ side: 'BUY', symbol: 'AAPL', portfolioId: 'PF0011', portfolioName: 'Main' });
 
     component.placeBuyOrder();
 
-    expect(orders.placeOrder.mock.calls[0][0]).not.toHaveProperty('portfolioId');
+    expect(placedOrder()).not.toHaveProperty('portfolioId');
+  });
+
+  it('still places orders if the portfolios cannot be loaded', async () => {
+    await open(null);
+    portfolios.getPortfolios.mockReturnValue(throwError(() => new Error('down')));
+    component.ngOnInit();
+    component.selectBuyInstrument(optionEvent('AAPL') as never);
+
+    component.placeBuyOrder();
+
+    expect(component.portfolios()).toEqual([]);
+    expect(component.portfolioName()).toBe('Main');
+    expect(placedOrder()).not.toHaveProperty('portfolioId');
   });
 });
