@@ -1,6 +1,8 @@
+<<<<<<< HEAD
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { EMPTY, Observable, catchError, forkJoin, map, of, scan, switchMap, timer } from 'rxjs';
+
 import {
 	BaseInstrumentResponse,
 	BondResponse,
@@ -31,7 +33,7 @@ export interface LivePriceFeed {
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {
-	constructor(private readonly http: HttpClient) {}
+	private readonly http = inject(HttpClient);
 
 	getStocks(): Observable<StockResponse[]> {
 		return this.http.get<StockResponse[]>('/api/stocks');

@@ -7,13 +7,12 @@ import { Account, Accounts } from './accounts';
 import { Auth, CurrentUser } from './auth';
 
 const ACCOUNT = 'ACC0013';
-// Stands in for the accounts-service response; the real holder name comes from the API.
 const RESPONSE: Account = { accountId: ACCOUNT, holderName: 'Test Trader', cashBalance: 25000, status: 'ACTIVE' };
+
 
 describe('Accounts', () => {
   let service: Accounts;
   let http: HttpTestingController;
-  // Stands in for Auth, whose currentUser is read-only and only set by logging in.
   const currentUser = signal<CurrentUser | null>(null);
 
   beforeEach(() => {
