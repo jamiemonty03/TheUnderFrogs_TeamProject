@@ -85,3 +85,18 @@ export interface LatestPrice {
   previousClose: number | null;
   tradeDate: string | null;
 }
+
+export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
+
+export interface LivePrice {
+	symbol: string;
+	price: number;
+	bid: number | null;
+	ask: number | null;
+	quoteTime: string;
+}
+
+export interface LivePriceFeed {
+	prices: ReadonlyMap<string, LivePrice>;
+	stale: boolean;
+}

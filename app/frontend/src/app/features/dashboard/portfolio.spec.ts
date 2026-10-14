@@ -5,6 +5,7 @@ import { Holding, marketValue, percentOf, sortHoldings, summarise, toHoldings, u
 const ACCOUNT = 'ACC0013';
 const position = (symbol: string, quantity: number, averageCost: number): Position => ({
   accountId: ACCOUNT,
+  portfolioId: null,
   symbol,
   quantity,
   averageCost,

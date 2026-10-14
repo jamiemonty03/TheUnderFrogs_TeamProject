@@ -1,23 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, Signal, WritableSignal, inject, signal } from '@angular/core';
+import { Injectable, WritableSignal, inject, signal } from '@angular/core';
 import { Observable, catchError, defer, finalize, map, throwError } from 'rxjs';
 import { Auth } from './auth';
+import type { Account, RequestState } from './interfaces/accounts.interfaces';
 
-export interface Account {
-  accountId: string;
-  holderName: string;
-  cashBalance: number;
-  status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
-  version?: number;
-  createdAt?: string;
-  lastUpdated?: string;
-  updatedBy?: string | null;
-}
-
-export interface RequestState {
-  readonly loading: Signal<boolean>;
-  readonly error: Signal<string | null>;
-}
+export type { Account, RequestState } from './interfaces/accounts.interfaces';
 
 const BASE_URL = '/api/accounts';
 const NO_ACCOUNT = 'No trading account is linked to this user.';

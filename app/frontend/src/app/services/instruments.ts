@@ -7,28 +7,23 @@ import {
 	BondResponse,
 	EtfResponse,
 	InstrumentType,
+  LivePrice,
+  LivePriceFeed,
+  PricedAsset,
 	StockResponse,
 	TradingInstrument,
 } from './interfaces/instruments.interfaces';
 import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
-export type { LatestPrice, DayChange } from './interfaces/instruments.interfaces';
-export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
+export type {
+  DayChange,
+  LatestPrice,
+  LivePrice,
+  LivePriceFeed,
+  PricedAsset,
+} from './interfaces/instruments.interfaces';
 
 export const LIVE_POLL_MS = 30_000;
-
-export interface LivePrice {
-  symbol: string;
-  price: number;
-  bid: number | null;
-  ask: number | null;
-  quoteTime: string;
-}
-
-export interface LivePriceFeed {
-  prices: ReadonlyMap<string, LivePrice>;
-  stale: boolean;
-}
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {

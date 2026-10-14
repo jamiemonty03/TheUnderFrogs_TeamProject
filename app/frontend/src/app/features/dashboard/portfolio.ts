@@ -1,33 +1,9 @@
 import { Sort } from '@angular/material/sort';
 import { LatestPrice, LivePrice } from '../../services/instruments';
 import { Position } from '../../services/positions';
+import type { Holding, PortfolioSummary } from './portfolio.interfaces';
 
-export interface Holding {
-  symbol: string;
-  name: string;
-  quantity: number;
-  averageCost: number;
-  price: number | null;
-  priceSource: 'live' | 'close' | null;
-  costBasis: number;
-  marketValue: number | null;
-  unrealisedPnl: number | null;
-  pnlPercent: number | null;
-  dailyPnl: number | null;
-  dailyPnlPercent: number | null;
-  dailyCostBasis: number | null;
-  weight: number | null;
-}
-
-export interface PortfolioSummary {
-  invested: number;
-  unrealisedPnl: number;
-  pnlPercent: number | null;
-  dailyPnl: number;
-  dailyPnlPercent: number | null;
-  positions: number;
-  unpriced: number;
-}
+export type { Holding, PortfolioSummary } from './portfolio.interfaces';
 
 export function marketValue(quantity: number, price: number): number {
   return quantity * price;
