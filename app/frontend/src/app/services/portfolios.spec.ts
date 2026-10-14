@@ -4,7 +4,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 import { Auth, CurrentUser } from './auth';
-import { Portfolio, Portfolios } from './portfolios';
+import { Portfolio } from './interfaces/portfolios.interfaces';
+import { Portfolios } from './portfolios';
 
 const ACCOUNT = 'ACC0011';
 const MAIN: Portfolio = {
@@ -31,7 +32,11 @@ describe('Portfolios', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: Auth, useValue: { currentUser } }],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: Auth, useValue: { currentUser } },
+      ],
     });
     service = TestBed.inject(Portfolios);
     http = TestBed.inject(HttpTestingController);
@@ -59,7 +64,9 @@ describe('Portfolios', () => {
   });
 
   it('creates a portfolio with a POST', async () => {
-    const result = firstValueFrom(service.createPortfolio({ name: 'Growth', risk: 'HIGH', benchmark: 'Nasdaq-100' }));
+    const result = firstValueFrom(
+      service.createPortfolio({ name: 'Growth', risk: 'HIGH', benchmark: 'Nasdaq-100' }),
+    );
 
     const req = http.expectOne(`/api/portfolios/${ACCOUNT}`);
     expect(req.request.method).toBe('POST');
@@ -96,7 +103,10 @@ describe('Portfolios', () => {
 
     http
       .expectOne(`/api/portfolios/${ACCOUNT}/PF0011`)
-      .flush({ errorCode: 'PFL-409', message: "The Main portfolio can't be deleted" }, { status: 409, statusText: 'Conflict' });
+      .flush(
+        { errorCode: 'PFL-409', message: "The Main portfolio can't be deleted" },
+        { status: 409, statusText: 'Conflict' },
+      );
 
     await expect(result).rejects.toBeTruthy();
     expect(service.error()).toBe("The Main portfolio can't be deleted");
@@ -106,7 +116,9 @@ describe('Portfolios', () => {
   it('falls back to a plain message when the server sends no error body', async () => {
     const result = firstValueFrom(service.getPortfolios());
 
-    http.expectOne(`/api/portfolios/${ACCOUNT}`).flush(null, { status: 503, statusText: 'Unavailable' });
+    http
+      .expectOne(`/api/portfolios/${ACCOUNT}`)
+      .flush(null, { status: 503, statusText: 'Unavailable' });
 
     await expect(result).rejects.toBeTruthy();
     expect(service.error()).toBe("Couldn't update your portfolios. Try again in a moment.");

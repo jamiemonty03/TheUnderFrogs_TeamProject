@@ -18,8 +18,10 @@ import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
-import { Portfolio, Portfolios } from '../../../services/portfolios';
-import { Position, Positions } from '../../../services/positions';
+import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
+import { Portfolios } from '../../../services/portfolios';
+import { Position } from '../../../services/interfaces/positions.interfaces';
+import { Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;

@@ -7,8 +7,10 @@ import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
 import { Auth, CurrentUser } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
-import { Portfolio, Portfolios } from '../../../services/portfolios';
-import { Position, Positions } from '../../../services/positions';
+import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
+import { Portfolios } from '../../../services/portfolios';
+import { Position } from '../../../services/interfaces/positions.interfaces';
+import { Positions } from '../../../services/positions';
 import { OrderDialog } from '../../orders/order-dialog/order-dialog';
 import { PositionsList, REFRESH_MS } from './positions-list';
 

@@ -2,18 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, defer, finalize, of, throwError } from 'rxjs';
 import { Auth } from './auth';
-
-export interface Position {
-  accountId: string;
-  portfolioId: string | null;
-  symbol: string;
-  quantity: number;
-  averageCost: number;
-  version?: number;
-  createdAt?: string;
-  lastUpdated?: string;
-  updatedBy?: string;
-}
+import { Position } from './interfaces/positions.interfaces';
 
 const BASE_URL = '/api/positions';
 const NO_ACCOUNT = 'No trading account is linked to this user.';
@@ -38,13 +27,22 @@ export class Positions {
   getPosition(symbol: string, portfolioId?: string): Observable<Position> {
     return this.track((accountId) =>
       this.http
-        .get<Position>(`${BASE_URL}/${encodeURIComponent(accountId)}/${encodeURIComponent(symbol)}`, {
-          params: portfolioParams(portfolioId),
-        })
+        .get<Position>(
+          `${BASE_URL}/${encodeURIComponent(accountId)}/${encodeURIComponent(symbol)}`,
+          {
+            params: portfolioParams(portfolioId),
+          },
+        )
         .pipe(
           catchError((err: unknown) =>
             err instanceof HttpErrorResponse && err.status === 404
-              ? of<Position>({ accountId, portfolioId: portfolioId ?? null, symbol, quantity: 0, averageCost: 0 })
+              ? of<Position>({
+                  accountId,
+                  portfolioId: portfolioId ?? null,
+                  symbol,
+                  quantity: 0,
+                  averageCost: 0,
+                })
               : throwError(() => err),
           ),
         ),

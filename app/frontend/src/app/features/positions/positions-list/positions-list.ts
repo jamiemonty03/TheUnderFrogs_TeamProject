@@ -14,8 +14,10 @@ import { interval } from 'rxjs';
 import { Accounts } from '../../../services/accounts';
 import { Auth } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
-import { Portfolio, PortfolioRisk, Portfolios } from '../../../services/portfolios';
-import { Position, Positions } from '../../../services/positions';
+import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
+import { Portfolios } from '../../../services/portfolios';
+import { Position } from '../../../services/interfaces/positions.interfaces';
+import { Positions } from '../../../services/positions';
 import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
 
 export const ALL_HOLDINGS = 'ALL';

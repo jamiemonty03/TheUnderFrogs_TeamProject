@@ -2,29 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, defer, finalize, throwError } from 'rxjs';
 import { Auth } from './auth';
-
-export type PortfolioRisk = 'LOW' | 'MEDIUM' | 'HIGH';
-
-export interface Portfolio {
-  portfolioId: string;
-  accountId: string;
-  name: string;
-  risk: PortfolioRisk;
-  benchmark: string | null;
-  defaultPortfolio: boolean;
-  version?: number;
-  createdAt?: string;
-  lastUpdated?: string;
-  updatedBy?: string;
-}
-
-export interface NewPortfolio {
-  name: string;
-  risk: PortfolioRisk;
-  benchmark?: string;
-}
-
-export type PortfolioChanges = Partial<NewPortfolio>;
+import { NewPortfolio, Portfolio, PortfolioChanges } from './interfaces/portfolios.interfaces';
 
 const BASE_URL = '/api/portfolios';
 const NO_ACCOUNT = 'No trading account is linked to this user.';
@@ -43,7 +21,9 @@ export class Portfolios {
   }
 
   getPortfolio(portfolioId: string): Observable<Portfolio> {
-    return this.track((accountId) => this.http.get<Portfolio>(portfolioUrl(accountId, portfolioId)));
+    return this.track((accountId) =>
+      this.http.get<Portfolio>(portfolioUrl(accountId, portfolioId)),
+    );
   }
 
   createPortfolio(portfolio: NewPortfolio): Observable<Portfolio> {
@@ -51,7 +31,9 @@ export class Portfolios {
   }
 
   updatePortfolio(portfolioId: string, changes: PortfolioChanges): Observable<Portfolio> {
-    return this.track((accountId) => this.http.patch<Portfolio>(portfolioUrl(accountId, portfolioId), changes));
+    return this.track((accountId) =>
+      this.http.patch<Portfolio>(portfolioUrl(accountId, portfolioId), changes),
+    );
   }
 
   deletePortfolio(portfolioId: string): Observable<void> {
