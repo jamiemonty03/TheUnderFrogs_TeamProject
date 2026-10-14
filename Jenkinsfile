@@ -91,6 +91,30 @@ pipeline {
             }
         }
 
+        stage('Auth Database') {
+            steps {
+                sh 'docker-compose up -d --wait auth-db'
+            }
+        }
+
+        stage('Auth Service Tests') {
+            agent {
+                docker {
+                    image 'node:24'
+                    args '--network host'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('app/auth-service') {
+                    sh 'node -v'
+                    sh 'npm ci'
+                    sh 'npm run test:cov'
+                    sh 'npm run test:e2e'
+                }
+            }
+        }
+
         stage('Python Tests') {
             steps {
                 sh '''
@@ -229,5 +253,10 @@ pipeline {
             }
         }
 
+    }
+    post {
+        always {
+            sh 'docker-compose down --volumes --remove-orphans || true'
+        }
     }
 }

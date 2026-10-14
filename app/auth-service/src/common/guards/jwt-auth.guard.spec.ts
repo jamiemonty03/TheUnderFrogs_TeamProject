@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { generateKeyPairSync } from 'crypto';
@@ -47,6 +47,7 @@ describe('JwtAuthGuard', () => {
       const result = guard.canActivate(context);
 
       expect(result).toBe(true);
+      expect(reflector.getAllAndOverride).toHaveBeenCalledWith(IS_PUBLIC_KEY, expect.any(Array));
     });
 
     it('should throw AUTH-401 when token is missing', () => {

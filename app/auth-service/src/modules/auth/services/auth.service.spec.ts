@@ -36,16 +36,6 @@ describe('AuthService', () => {
     updated_by: 'SYSTEM',
   };
 
-  const mockAuth = {
-    id: 1,
-    user_id: 1,
-    last_login: new Date().toISOString(),
-    is_2fa_enabled: false,
-    failed_login_attempts: 0,
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,6 +45,9 @@ describe('AuthService', () => {
           useValue: {
             createUser: jest.fn(),
             verifyCredentials: jest.fn(),
+            getUserByUsername: jest.fn(),
+            recordFailedLogin: jest.fn(),
+            recordSuccessfulLogin: jest.fn(),
             linkAccount: jest.fn(),
             getUserById: jest.fn(),
             updateUser: jest.fn(),
@@ -206,6 +199,7 @@ describe('AuthService', () => {
     const loginDto = { username: 'testuser', password: 'password123' };
 
     it('returns an access token, a refresh token, the lifetime and mfaRequired false', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
       (usersService.verifyCredentials as jest.Mock).mockResolvedValue(mockUser as any);
 
       const result = await service.login(loginDto);
@@ -215,19 +209,58 @@ describe('AuthService', () => {
       expect(tokenService.issue).toHaveBeenCalledWith(mockUser);
       expect(refreshTokensService.issue).toHaveBeenCalledWith(1);
       expect(authRepository.recordLogin).toHaveBeenCalledWith(1);
+      expect(usersService.recordSuccessfulLogin).toHaveBeenCalledWith(1);
+      expect(usersService.recordFailedLogin).not.toHaveBeenCalled();
     });
 
     it.each([
-      ['an unknown username', null],
-      ['a wrong password', null],
-      ['an inactive account', { ...mockUser, is_active: false }],
-    ])('rejects %s with the same generic error and issues nothing', async (_label, verified) => {
+      ['an unknown username', null, null],
+      ['a wrong password', mockUser, null],
+      ['an inactive account', { ...mockUser, is_active: false }, { ...mockUser, is_active: false }],
+    ])('rejects %s with the same generic error and issues nothing', async (_label, found, verified) => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(found as any);
       (usersService.verifyCredentials as jest.Mock).mockResolvedValue(verified as any);
 
       await expect(service.login(loginDto)).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
       expect(tokenService.issue).not.toHaveBeenCalled();
       expect(refreshTokensService.issue).not.toHaveBeenCalled();
       expect(authRepository.recordLogin).not.toHaveBeenCalled();
+      expect(usersService.recordSuccessfulLogin).not.toHaveBeenCalled();
+    });
+
+    it('records a failed attempt against a known user', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(null as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(usersService.recordFailedLogin).toHaveBeenCalledWith(1);
+    });
+
+    it('records nothing for an unknown username', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(null as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(null as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(usersService.recordFailedLogin).not.toHaveBeenCalled();
+    });
+
+    it('rejects a locked account before checking the password, even if it is correct', async () => {
+      const locked = { ...mockUser, locked_until: new Date(Date.now() + 60_000) };
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(locked as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(locked as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(/Account is locked/);
+      expect(usersService.verifyCredentials).not.toHaveBeenCalled();
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it('lets a user sign in once the lock has expired', async () => {
+      const expired = { ...mockUser, locked_until: new Date(Date.now() - 60_000) };
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(expired as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(expired as any);
+
+      await expect(service.login(loginDto)).resolves.toMatchObject({ accessToken: 'rs256.token.here' });
+      expect(usersService.recordSuccessfulLogin).toHaveBeenCalledWith(1);
     });
   });
 
