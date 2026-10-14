@@ -22,9 +22,9 @@
   --ts-text-secondary: #c3d6cb;
   --ts-text-muted: #9db5a7;
 
-  --ts-loss: #FF6B4A;
-  --ts-on-loss: #1A0703;
-  --ts-sell: #FF6B4A;
+  --ts-loss: #ff6b4a;
+  --ts-on-loss: #1a0703;
+  --ts-sell: #ff6b4a;
 
   --ts-success-bg: #12321f;
   --ts-danger-text: #ff8a6e;
@@ -39,15 +39,17 @@
 html {
   color-scheme: dark;
 
-  @include mat.theme((
-    color: (
-      theme-type: dark,
-      primary: mat.$green-palette,
-      tertiary: mat.$cyan-palette,
-      error: mat.$red-palette,
-    ),
-    density: 0,
-  ));
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$green-palette,
+        tertiary: mat.$cyan-palette,
+        error: mat.$red-palette,
+      ),
+      density: 0,
+    )
+  );
 
   --mat-sys-primary: var(--ts-frog);
   --mat-sys-on-primary: var(--ts-on-frog);
@@ -165,15 +167,15 @@ html {
 }
 
 .row-actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: 0.4rem;
-	white-space: nowrap;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
 }
 
 .button--sell.mat-mdc-outlined-button {
-	--mat-button-outlined-label-text-color: var(--ts-loss);
-	--mat-button-outlined-outline-color: var(--ts-loss);
-	color: var(--ts-loss);
-	border-color: var(--ts-loss);
+  --mat-button-outlined-label-text-color: var(--ts-loss);
+  --mat-button-outlined-outline-color: var(--ts-loss);
+  color: var(--ts-loss);
+  border-color: var(--ts-loss);
 }

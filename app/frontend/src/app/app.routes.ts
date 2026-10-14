@@ -12,13 +12,15 @@ export const routes: Routes = [
   { path: 'dashboard', component: Dashboard },
   {
     path: 'orders',
-    loadComponent: () => import('./features/orders/orders-list/orders-list').then((m) => m.OrdersList),
+    loadComponent: () =>
+      import('./features/orders/orders-list/orders-list').then((m) => m.OrdersList),
   },
   { path: 'instruments', component: InstrumentsList },
   { path: 'instruments/:id', component: InstrumentsDetail },
   {
     path: 'positions',
-    loadComponent: () => import('./features/positions/positions-list/positions-list').then((m) => m.PositionsList),
+    loadComponent: () =>
+      import('./features/positions/positions-list/positions-list').then((m) => m.PositionsList),
   },
   { path: 'positions/:id', component: PositionsDetail },
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },

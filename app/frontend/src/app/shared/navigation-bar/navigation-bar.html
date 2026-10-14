@@ -1,36 +1,60 @@
 <header class="nav-bar">
-	<div class="nav-bar__top">
-		<a class="nav-bar__brand" routerLink="/dashboard" aria-label="UnderFrogs Trade home">
-			<img class="nav-bar__brand-mark" src="/brand/toadstock-logo-dark.svg" alt="UnderFrogs logo" />
-		</a>
+  <div class="nav-bar__top">
+    <a class="nav-bar__brand" routerLink="/dashboard" aria-label="UnderFrogs Trade home">
+      <img class="nav-bar__brand-mark" src="/brand/toadstock-logo-dark.svg" alt="UnderFrogs logo" />
+    </a>
 
-		<button
-			mat-icon-button
-			type="button"
-			class="nav-bar__menu-toggle"
-			aria-label="Toggle navigation menu"
-			[attr.aria-expanded]="isMenuOpen"
-			(click)="toggleMenu()"
-		>
-			<span class="nav-bar__menu-line"></span>
-			<span class="nav-bar__menu-line"></span>
-			<span class="nav-bar__menu-line"></span>
-		</button>
-	</div>
+    <button
+      mat-icon-button
+      type="button"
+      class="nav-bar__menu-toggle"
+      aria-label="Toggle navigation menu"
+      [attr.aria-expanded]="isMenuOpen"
+      (click)="toggleMenu()"
+    >
+      <span class="nav-bar__menu-line"></span>
+      <span class="nav-bar__menu-line"></span>
+      <span class="nav-bar__menu-line"></span>
+    </button>
+  </div>
 
-	<div class="nav-bar__content" [class.nav-bar__content--open]="isMenuOpen">
-		<nav class="nav-bar__links" aria-label="Primary">
-			<a class="nav-bar__link" routerLink="/dashboard" routerLinkActive="nav-bar__link--active" (click)="closeMenu()">Dashboard</a>
-			<a class="nav-bar__link" routerLink="/instruments" routerLinkActive="nav-bar__link--active" (click)="closeMenu()">Markets</a>
-			<a class="nav-bar__link" routerLink="/orders" routerLinkActive="nav-bar__link--active" (click)="closeMenu()">Orders</a>
-			<a class="nav-bar__link" routerLink="/positions" routerLinkActive="nav-bar__link--active" (click)="closeMenu()">Portfolios</a>
-		</nav>
+  <div class="nav-bar__content" [class.nav-bar__content--open]="isMenuOpen">
+    <nav class="nav-bar__links" aria-label="Primary">
+      <a
+        class="nav-bar__link"
+        routerLink="/dashboard"
+        routerLinkActive="nav-bar__link--active"
+        (click)="closeMenu()"
+        >Dashboard</a
+      >
+      <a
+        class="nav-bar__link"
+        routerLink="/instruments"
+        routerLinkActive="nav-bar__link--active"
+        (click)="closeMenu()"
+        >Markets</a
+      >
+      <a
+        class="nav-bar__link"
+        routerLink="/orders"
+        routerLinkActive="nav-bar__link--active"
+        (click)="closeMenu()"
+        >Orders</a
+      >
+      <a
+        class="nav-bar__link"
+        routerLink="/positions"
+        routerLinkActive="nav-bar__link--active"
+        (click)="closeMenu()"
+        >Portfolios</a
+      >
+    </nav>
 
-		<div class="nav-bar__right">
-			<label class="nav-bar__search-wrap" aria-label="Search instruments">
-				<input class="nav-bar__search" type="search" placeholder="Search AAPL, SPY, BND..." />
-			</label>
-			<div class="nav-bar__avatar" aria-label="Profile initials">KF</div>
-		</div>
-	</div>
+    <div class="nav-bar__right">
+      <label class="nav-bar__search-wrap" aria-label="Search instruments">
+        <input class="nav-bar__search" type="search" placeholder="Search AAPL, SPY, BND..." />
+      </label>
+      <div class="nav-bar__avatar" aria-label="Profile initials">KF</div>
+    </div>
+  </div>
 </header>
