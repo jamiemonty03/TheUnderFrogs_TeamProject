@@ -7,16 +7,23 @@ import { InstrumentsList } from './features/instruments/instruments-list/instrum
 import { InstrumentsDetail } from './features/instruments/instruments-detail/instruments-detail';
 import { PositionsList } from './features/positions/positions-list/positions-list';
 import { PositionsDetail } from './features/positions/positions-detail/positions-detail';
+import { authGuard, guestGuard } from './services/auth';
 
 export const routes: Routes = [
-  { path: 'login', component: Login },
-  { path: 'register', component: Register },
-  { path: 'dashboard', component: Dashboard },
-  { path: 'orders', component: OrdersList },
-  { path: 'instruments', component: InstrumentsList },
-  { path: 'instruments/:id', component: InstrumentsDetail },
-  { path: 'positions', component: PositionsList },
-  { path: 'positions/:id', component: PositionsDetail },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: '/dashboard' },
+  { path: 'login', component: Login, canActivate: [guestGuard] },
+  { path: 'register', component: Register, canActivate: [guestGuard] },
+  {
+    path: '',
+    canActivateChild: [authGuard],
+    children: [
+      { path: 'dashboard', component: Dashboard },
+      { path: 'orders', component: OrdersList },
+      { path: 'instruments', component: InstrumentsList },
+      { path: 'instruments/:id', component: InstrumentsDetail },
+      { path: 'positions', component: PositionsList },
+      { path: 'positions/:id', component: PositionsDetail },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+    ],
+  },
+  { path: '**', redirectTo: 'dashboard' },
 ];
