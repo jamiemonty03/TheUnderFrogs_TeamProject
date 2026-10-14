@@ -76,21 +76,28 @@ describe('NavigationBar', () => {
 
   describe('signed-in user details', () => {
     it.each([
-      ['demo', 'DE'],
-      ['kermit.frog', 'KF'],
-      ['miss_piggy', 'MP'],
-      ['gonzo-the-great', 'GT'],
+      ['demo', 'D'],
+      ['kermit.frog', 'K'],
+      ['miss_piggy', 'M'],
       ['k', 'K'],
-    ])('shows initials for %s as %s', async (username, initials) => {
+    ])('shows the first initial of %s as %s', async (username, initial) => {
       await setUp({ ...demo, username });
 
-      expect(avatar().textContent?.trim()).toBe(initials);
+      expect(avatar().textContent?.trim()).toBe(initial);
     });
 
     it('no longer shows the hard-coded KF placeholder', async () => {
       await setUp();
 
       expect(avatar().textContent?.trim()).not.toBe('KF');
+    });
+
+    it('repeats the initial in the larger avatar inside the menu', async () => {
+      await setUp();
+
+      await openMenu();
+
+      expect(menuText('.nav-bar__account-avatar')).toBe('D');
     });
 
     it('names the avatar button for screen readers', async () => {

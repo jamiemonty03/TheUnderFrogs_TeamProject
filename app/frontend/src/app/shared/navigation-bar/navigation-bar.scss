@@ -169,20 +169,77 @@
 
 	&__account {
 		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.85rem 1rem 1rem;
+		margin-bottom: 0.4rem;
+		border-bottom: 1px solid var(--ts-divider);
+	}
+
+	&__account-avatar {
+		flex-shrink: 0;
+		width: 2.6rem;
+		height: 2.6rem;
+		border-radius: 9999px;
+		display: grid;
+		place-items: center;
+		background: var(--ts-frog-glow);
+		border: 1px solid var(--ts-border-strong);
+		color: var(--ts-frog);
+		font-weight: 700;
+		font-size: 1.1rem;
+	}
+
+	&__account-details {
+		display: flex;
 		flex-direction: column;
-		gap: 0.15rem;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--ts-border);
+		align-items: flex-start;
+		gap: 0.3rem;
+		min-width: 0;
 	}
 
 	&__account-name {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		color: var(--ts-text);
 		font-weight: 600;
+		font-size: 0.95rem;
 	}
 
 	&__account-role {
-		color: var(--ts-text-muted);
-		font-size: 0.85rem;
+		padding: 0.1rem 0.55rem;
+		border-radius: 9999px;
+		background: var(--ts-frog-tint);
+		color: var(--ts-frog-light);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	&__logout {
+		--mat-menu-item-label-text-color: var(--ts-danger-text);
+		--mat-menu-item-icon-color: var(--ts-danger-text);
+		--mat-menu-item-label-text-weight: 600;
+		--mat-menu-item-hover-state-layer-color: rgb(255 138 110 / 0.12);
+		--mat-menu-item-focus-state-layer-color: rgb(255 138 110 / 0.16);
+		width: calc(100% - 0.8rem);
+		margin: 0 0.4rem 0.2rem;
+		border-radius: 8px;
+	}
+
+	&__logout-icon {
+		flex-shrink: 0;
+		width: 1.15rem;
+		height: 1.15rem;
+		margin-right: 0.85rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 }
 

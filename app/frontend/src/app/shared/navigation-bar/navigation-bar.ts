@@ -17,7 +17,7 @@ export class NavigationBar {
   isMenuOpen = false;
 
   readonly username = computed(() => this.auth.currentUser()?.username ?? '');
-  readonly initials = computed(() => initialsOf(this.username()));
+  readonly initial = computed(() => this.username().charAt(0).toUpperCase());
   readonly role = computed(() =>
     this.auth.currentUser()?.roles.includes('ADMIN') ? 'Admin' : 'Trader',
   );
@@ -36,10 +36,4 @@ export class NavigationBar {
       complete: () => void this.router.navigate(['/login'], { replaceUrl: true }),
     });
   }
-}
-
-function initialsOf(username: string): string {
-  const parts = username.split(/[._\s-]+/).filter(Boolean);
-  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : username.slice(0, 2);
-  return letters.toUpperCase();
 }
