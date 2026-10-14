@@ -1,14 +1,16 @@
-import { test as setup } from '@playwright/test';
+import { expect, test as setup } from '@playwright/test';
 import { SAVED_SESSION, logIn } from './fixtures';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-// Runs before the other tests: logs in through the real login page once, then saves the
-// session the app keeps in sessionStorage, so other tests can start already logged in.
-setup('log in once and save the session', async ({ page }) => {
-  await logIn(page);
+setup(
+  'the demo trader logs in, lands on the dashboard, and the session is saved',
+  async ({ page }) => {
+    await logIn(page);
+    await expect(page).toHaveURL(/\/dashboard$/);
 
-  const session = await page.evaluate(() => sessionStorage.getItem('auth.session'));
-  mkdirSync(dirname(SAVED_SESSION), { recursive: true });
-  writeFileSync(SAVED_SESSION, session ?? '');
-});
+    const session = await page.evaluate(() => sessionStorage.getItem('auth.session'));
+    mkdirSync(dirname(SAVED_SESSION), { recursive: true });
+    writeFileSync(SAVED_SESSION, session ?? '');
+  },
+);

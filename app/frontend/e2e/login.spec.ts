@@ -10,12 +10,6 @@ test.describe('Logging in', () => {
     await expect(page.getByTestId('login-submit')).toBeEnabled();
   });
 
-  test('the demo trader logs in and lands on the dashboard', async ({ page }) => {
-    await logIn(page);
-
-    await expect(page).toHaveURL(/\/dashboard$/);
-  });
-
   test('a wrong password shows an error and stays on the login page', async ({ page }) => {
     await page.goto('/login');
     await page.getByTestId('login-username').fill(DEMO_USER.username);
