@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -24,8 +25,10 @@ import org.springframework.context.annotation.Import;
 import com.neueda.instrumentservice.config.SecurityConfig;
 
 import com.neueda.instrumentservice.dtos.responses.InstrumentResponse;
+import com.neueda.instrumentservice.dtos.responses.LivePriceResponse;
 import com.neueda.instrumentservice.exceptions.InstrumentNotFoundException;
 import com.neueda.instrumentservice.services.InstrumentService;
+import com.neueda.instrumentservice.services.LivePriceCache;
 import com.neueda.instrumentservice.config.TestJwtIssuer;
 
 @WebMvcTest(InstrumentController.class)
@@ -44,6 +47,9 @@ public class InstrumentControllerTest {
 
     @MockBean
     private InstrumentService instrumentService;
+
+    @MockBean
+    private LivePriceCache livePriceCache;
 
 
     @Test
@@ -77,6 +83,35 @@ public class InstrumentControllerTest {
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"))
                 .andExpect(jsonPath("$[1].symbol").value("TSLA"));
+    }
+
+    @Test
+    void getLivePrices_returnsCachedQuotesForRequestedSymbols() throws Exception {
+        LivePriceResponse apple = new LivePriceResponse("AAPL", new BigDecimal("189.85"),
+                new BigDecimal("189.80"), new BigDecimal("189.90"), Instant.parse("2026-10-13T14:30:00Z"));
+        when(livePriceCache.get(List.of("AAPL", "TSLA"))).thenReturn(List.of(apple));
+
+        mockMvc.perform(get("/instruments/live-prices").param("symbols", "AAPL,TSLA"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].symbol").value("AAPL"))
+                .andExpect(jsonPath("$[0].price").value(189.85))
+                .andExpect(jsonPath("$[0].quoteTime").value("2026-10-13T14:30:00Z"));
+        verifyNoInteractions(instrumentService);
+    }
+
+    @Test
+    void getLivePrices_returnsEveryQuoteWhenNoSymbolsAreGiven() throws Exception {
+        LivePriceResponse apple = new LivePriceResponse("AAPL", new BigDecimal("189.85"),
+                new BigDecimal("189.80"), new BigDecimal("189.90"), Instant.parse("2026-10-13T14:30:00Z"));
+        LivePriceResponse spy = new LivePriceResponse("SPY", new BigDecimal("571.32"),
+                new BigDecimal("571.30"), new BigDecimal("571.34"), Instant.parse("2026-10-13T14:30:00Z"));
+        when(livePriceCache.getAll()).thenReturn(List.of(apple, spy));
+
+        mockMvc.perform(get("/instruments/live-prices"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[1].symbol").value("SPY"));
     }
 
     @Test
