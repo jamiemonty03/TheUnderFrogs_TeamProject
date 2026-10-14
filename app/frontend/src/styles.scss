@@ -170,3 +170,10 @@ html {
 	gap: 0.4rem;
 	white-space: nowrap;
 }
+
+.button--sell.mat-mdc-outlined-button {
+	--mat-button-outlined-label-text-color: var(--ts-loss);
+	--mat-button-outlined-outline-color: var(--ts-loss);
+	color: var(--ts-loss);
+	border-color: var(--ts-loss);
+}
