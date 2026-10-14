@@ -62,6 +62,7 @@
         type="button"
         class="nav-bar__avatar"
         [matMenuTriggerFor]="accountMenu"
+        data-testid="account-menu"
         [attr.aria-label]="'Account menu for ' + username()"
       >
         {{ initial() }}
@@ -75,7 +76,13 @@
             <span class="nav-bar__account-role">{{ role() }}</span>
           </div>
         </div>
-        <button mat-menu-item type="button" class="nav-bar__logout" (click)="logout()">
+        <button
+          mat-menu-item
+          type="button"
+          class="nav-bar__logout"
+          (click)="logout()"
+          data-testid="logout"
+        >
           <svg class="nav-bar__logout-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
           </svg>
