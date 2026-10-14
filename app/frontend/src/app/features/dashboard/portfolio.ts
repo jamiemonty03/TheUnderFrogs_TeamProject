@@ -1,5 +1,5 @@
 import { Sort } from '@angular/material/sort';
-import { LatestPrice } from '../../services/instruments';
+import { LatestPrice, LivePrice } from '../../services/instruments';
 import { Position } from '../../services/positions';
 
 export interface Holding {
@@ -8,6 +8,7 @@ export interface Holding {
   quantity: number;
   averageCost: number;
   price: number | null;
+  priceSource: 'live' | 'close' | null;
   costBasis: number;
   marketValue: number | null;
   unrealisedPnl: number | null;
@@ -36,13 +37,21 @@ export function percentOf(part: number, whole: number): number | null {
   return whole === 0 ? null : (part / whole) * 100;
 }
 
+// A live quote wins over the daily close; the close is the fallback outside market hours.
 // Weight is each holding's share of the total market value of priced holdings (cash excluded).
-export function toHoldings(positions: Position[], prices: ReadonlyMap<string, LatestPrice>): Holding[] {
+export function toHoldings(
+  positions: Position[],
+  prices: ReadonlyMap<string, LatestPrice>,
+  live: ReadonlyMap<string, LivePrice> = new Map(),
+): Holding[] {
   const held = positions
     .filter((p) => p.quantity > 0)
     .map((p) => {
       const latest = prices.get(p.symbol);
-      const price = latest?.price ?? null;
+      const quote = live.get(p.symbol);
+      const close = latest?.price ?? null;
+      const price = quote ? quote.price : close;
+      const priceSource: Holding['priceSource'] = quote ? 'live' : close === null ? null : 'close';
       const costBasis = p.quantity * p.averageCost;
       const value = price === null ? null : marketValue(p.quantity, price);
       const pnl = price === null ? null : unrealisedPnl(p.quantity, p.averageCost, price);
@@ -52,6 +61,7 @@ export function toHoldings(positions: Position[], prices: ReadonlyMap<string, La
         quantity: p.quantity,
         averageCost: p.averageCost,
         price,
+        priceSource,
         costBasis,
         marketValue: value,
         unrealisedPnl: pnl,

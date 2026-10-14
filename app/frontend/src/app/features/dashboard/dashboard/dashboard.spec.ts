@@ -1,9 +1,12 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
+import { MockInstance, vi } from 'vitest';
 import { Account, Accounts } from '../../../services/accounts';
-import { Instruments, LatestPrice } from '../../../services/instruments';
+import { Instruments, LIVE_POLL_MS, LatestPrice, LivePrice } from '../../../services/instruments';
 import { Position, Positions } from '../../../services/positions';
 import { Dashboard } from './dashboard';
 
@@ -30,11 +33,22 @@ interface Calls {
   balance?: Observable<number>;
   positions?: Observable<Position[]>;
   prices?: Observable<Map<string, LatestPrice>>;
+  live?: (symbols: string[]) => Observable<LivePrice[]>;
 }
+
+const live = (symbol: string, price: number): LivePrice => ({
+  symbol,
+  price,
+  bid: price - 0.05,
+  ask: price + 0.05,
+  quoteTime: '2026-10-13T14:30:00Z',
+});
 
 describe('Dashboard', () => {
   let fixture: ComponentFixture<Dashboard>;
   let page: HTMLElement;
+  // The real Instruments service runs the polling; only its HTTP calls are stubbed.
+  let getLivePrices: MockInstance<Instruments['getLivePrices']>;
 
   // The real services track loading/error themselves; these fakes do the same for errors.
   async function setUp(calls: Calls = {}) {
@@ -74,9 +88,15 @@ describe('Dashboard', () => {
             getPositions: () => failWith(positionsError, calls.positions ?? of(POSITIONS)),
           },
         },
-        { provide: Instruments, useValue: { getLatestPrices: () => calls.prices ?? of(PRICES) } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
       ],
     }).compileComponents();
+    const instruments = TestBed.inject(Instruments);
+    vi.spyOn(instruments, 'getLatestPrices').mockImplementation(() => calls.prices ?? of(PRICES));
+    getLivePrices = vi
+      .spyOn(instruments, 'getLivePrices')
+      .mockImplementation((symbols) => (calls.live ?? (() => of<LivePrice[]>([])))(symbols ?? []));
     fixture = TestBed.createComponent(Dashboard);
     page = fixture.nativeElement;
     fixture.detectChanges();
@@ -128,14 +148,8 @@ describe('Dashboard', () => {
 
     expect(rows().length).toBe(2);
     const [symbol, name, quantity, avgCost, price, value, pnl, pnlPercent, weight] = cells(rows()[0]);
-    expect([symbol, name, quantity, avgCost, price, value]).toEqual([
-      'AAPL',
-      'Apple Inc.',
-      '40',
-      '$171.20',
-      '$189.84',
-      '$7,593.60',
-    ]);
+    expect([symbol, name, quantity, avgCost, value]).toEqual(['AAPL', 'Apple Inc.', '40', '$171.20', '$7,593.60']);
+    expect(price).toContain('$189.84');
     expect(pnl).toContain('$745.60');
     expect(pnlPercent).toBe('10.89%');
     expect(weight).toBe('72.6%');
@@ -211,5 +225,64 @@ describe('Dashboard', () => {
     expect(cells(rows()[0])[5]).toBe('—');
     expect(card('pnl-label').textContent).toContain('Unavailable');
     expect(card('count-label').textContent).toContain('2');
+  });
+  describe('live prices', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const poll = (ms = 0) => {
+      vi.advanceTimersByTime(ms);
+      fixture.detectChanges();
+    };
+    const priceCell = (row: number) => rows()[row].querySelectorAll('td')[4];
+
+    it("polls live quotes for the user's holdings and values them over the daily close", async () => {
+      await setUp({ live: () => of([live('AAPL', 200)]) });
+      poll();
+
+      expect(getLivePrices).toHaveBeenCalledWith(['AAPL', 'TSLA']);
+      expect(priceCell(0).textContent).toContain('$200.00');
+      expect(priceCell(0).querySelector('.price-tag--live')?.textContent?.trim()).toBe('Live');
+      expect(priceCell(1).querySelector('.price-tag')?.textContent?.trim()).toBe('Close');
+      // 40 × 200 + 12 × 238.75
+      expect(card('invested-label').textContent).toContain('$10,865.00');
+    });
+
+    it('updates the page on every poll', async () => {
+      const quotes = [[live('AAPL', 200)], [live('AAPL', 210)]];
+      await setUp({ live: () => of(quotes.shift() ?? []) });
+      poll();
+      expect(priceCell(0).textContent).toContain('$200.00');
+
+      poll(LIVE_POLL_MS);
+      expect(priceCell(0).textContent).toContain('$210.00');
+      expect(getLivePrices).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the last live values and shows a note when a poll fails', async () => {
+      const responses: Observable<LivePrice[]>[] = [
+        of([live('AAPL', 200)]),
+        throwError(() => new Error('503')),
+        of([live('AAPL', 205)]),
+      ];
+      await setUp({ live: () => responses.shift()! });
+      poll();
+
+      poll(LIVE_POLL_MS);
+      expect(priceCell(0).textContent).toContain('$200.00');
+      expect(page.querySelector('.dashboard__stale')?.textContent).toContain('Live prices paused');
+      expect(page.querySelector('[aria-labelledby="positions-title"] [role="alert"]')).toBeNull();
+
+      poll(LIVE_POLL_MS);
+      expect(priceCell(0).textContent).toContain('$205.00');
+      expect(page.querySelector('.dashboard__stale')).toBeNull();
+    });
+
+    it('does not poll when the user holds nothing', async () => {
+      await setUp({ positions: of([]) });
+      poll(LIVE_POLL_MS * 2);
+
+      expect(getLivePrices).not.toHaveBeenCalled();
+    });
   });
 });

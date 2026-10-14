@@ -1,8 +1,11 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map } from 'rxjs';
+import { EMPTY, Observable, catchError, forkJoin, map, of, scan, switchMap, timer } from 'rxjs';
 
 export type AssetClass = 'Equity' | 'ETF' | 'Bond';
+
+// Matches how often trade-executor's MarketDataPoller asks Alpaca for quotes.
+export const LIVE_POLL_MS = 5000;
 
 
 export interface PricedAsset {
@@ -20,6 +23,21 @@ export interface LatestPrice {
   price: number | null;
   previousClose: number | null;
   tradeDate: string | null;
+}
+
+// Latest live quote from instruments-service's market-data cache; price is the mid of bid and ask.
+export interface LivePrice {
+  symbol: string;
+  price: number;
+  bid: number | null;
+  ask: number | null;
+  quoteTime: string;
+}
+
+// What watchLivePrices emits on every poll. A failed poll keeps the last prices and sets stale.
+export interface LivePriceFeed {
+  prices: ReadonlyMap<string, LivePrice>;
+  stale: boolean;
 }
 
 export interface DayChange {
@@ -41,6 +59,43 @@ export class Instruments {
 
   getBonds(): Observable<PricedAsset[]> {
     return this.http.get<PricedAsset[]>('/api/bonds');
+  }
+
+  // No symbols asks for every tracked symbol; an empty list asks for nothing.
+  // Symbols with no live quote (e.g. outside market hours) are left out of the result.
+  getLivePrices(symbols?: string[]): Observable<LivePrice[]> {
+    if (symbols?.length === 0) {
+      return of([]);
+    }
+    const params = symbols ? new HttpParams().set('symbols', symbols.join(',')) : undefined;
+    return this.http.get<LivePrice[]>('/api/instruments/live-prices', { params });
+  }
+
+  // Polls live quotes now and every LIVE_POLL_MS, merging each poll into the prices seen so far.
+  // A failed poll keeps the last prices and marks the feed stale until the next one succeeds.
+  watchLivePrices(symbols?: string[], intervalMs = LIVE_POLL_MS): Observable<LivePriceFeed> {
+    if (symbols?.length === 0) {
+      return EMPTY;
+    }
+    return timer(0, intervalMs).pipe(
+      switchMap(() =>
+        this.getLivePrices(symbols).pipe(
+          map((quotes): LivePrice[] | null => quotes),
+          catchError(() => of(null)),
+        ),
+      ),
+      scan(
+        (feed: LivePriceFeed, quotes) => {
+          if (quotes === null) {
+            return { prices: feed.prices, stale: true };
+          }
+          const prices = new Map(feed.prices);
+          quotes.forEach((q) => prices.set(q.symbol, q));
+          return { prices, stale: false };
+        },
+        { prices: new Map<string, LivePrice>(), stale: false },
+      ),
+    );
   }
 
   getLatestPrices(): Observable<Map<string, LatestPrice>> {

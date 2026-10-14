@@ -1,4 +1,4 @@
-import { LatestPrice } from '../../services/instruments';
+import { LatestPrice, LivePrice } from '../../services/instruments';
 import { Position } from '../../services/positions';
 import { Holding, marketValue, percentOf, sortHoldings, summarise, toHoldings, unrealisedPnl } from './portfolio';
 
@@ -74,6 +74,50 @@ describe('toHoldings', () => {
 
   it('drops positions that have been sold down to zero', () => {
     expect(toHoldings([position('AAPL', 0, 100)], prices(price('AAPL', 110)))).toEqual([]);
+  });
+});
+
+describe('toHoldings with live prices', () => {
+  const quote = (symbol: string, value: number): LivePrice => ({
+    symbol,
+    price: value,
+    bid: null,
+    ask: null,
+    quoteTime: '2026-10-13T14:30:00Z',
+  });
+
+  it('values a holding at its live quote when there is one', () => {
+    const [aapl] = toHoldings(
+      [position('AAPL', 40, 171.2)],
+      prices(price('AAPL', 189.84)),
+      new Map([['AAPL', quote('AAPL', 200)]]),
+    );
+
+    expect(aapl).toMatchObject({ price: 200, priceSource: 'live', marketValue: 8000 });
+    expect(aapl.unrealisedPnl).toBeCloseTo(1152);
+  });
+
+  it('falls back to the daily close and says so', () => {
+    const [aapl, tsla] = toHoldings(
+      [position('AAPL', 40, 171.2), position('TSLA', 12, 260)],
+      prices(price('AAPL', 189.84), price('TSLA', 238.75)),
+      new Map([['AAPL', quote('AAPL', 200)]]),
+    );
+
+    expect(aapl.priceSource).toBe('live');
+    expect(tsla).toMatchObject({ price: 238.75, priceSource: 'close' });
+  });
+
+  it('uses a live quote even when there is no daily close', () => {
+    const [agg] = toHoldings([position('AGG', 5, 98)], prices(), new Map([['AGG', quote('AGG', 99)]]));
+
+    expect(agg).toMatchObject({ price: 99, priceSource: 'live', marketValue: 495 });
+  });
+
+  it('has no price source when neither is available', () => {
+    const [agg] = toHoldings([position('AGG', 5, 98)], prices());
+
+    expect(agg).toMatchObject({ price: null, priceSource: null });
   });
 });
 

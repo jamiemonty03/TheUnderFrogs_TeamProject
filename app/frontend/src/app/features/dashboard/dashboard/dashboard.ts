@@ -6,9 +6,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { Subscription, finalize } from 'rxjs';
 import { Account, Accounts } from '../../../services/accounts';
-import { Instruments, LatestPrice } from '../../../services/instruments';
+import { Instruments, LatestPrice, LivePrice } from '../../../services/instruments';
 import { Position, Positions } from '../../../services/positions';
 import { sortHoldings, summarise, toHoldings } from '../portfolio';
 
@@ -58,11 +58,15 @@ export class Dashboard {
   protected readonly balance = signal<number | null>(null);
   private readonly positions = signal<Position[]>([]);
   private readonly prices = signal<ReadonlyMap<string, LatestPrice>>(new Map());
+  private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
+  // A failed poll keeps the last live values on screen and just shows a note.
+  protected readonly liveStale = signal(false);
+  private livePolling?: Subscription;
 
   protected readonly firstName = computed(() => this.account()?.holderName.trim().split(/\s+/)[0] ?? '');
 
   protected readonly sort = signal<Sort>({ active: '', direction: '' });
-  protected readonly holdings = computed(() => toHoldings(this.positions(), this.prices()));
+  protected readonly holdings = computed(() => toHoldings(this.positions(), this.prices(), this.livePrices()));
   protected readonly rows = computed(() => sortHoldings(this.holdings(), this.sort()));
   protected readonly summary = computed(() => summarise(this.holdings()));
 
@@ -102,7 +106,13 @@ export class Dashboard {
     this.positionsService
       .getPositions()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({ next: (positions) => this.positions.set(positions), error: () => this.positions.set([]) });
+      .subscribe({
+        next: (positions) => {
+          this.positions.set(positions);
+          this.watchLivePrices(positions.filter((p) => p.quantity > 0).map((p) => p.symbol));
+        },
+        error: () => this.positions.set([]),
+      });
   }
 
   protected loadPrices(): void {
@@ -117,6 +127,18 @@ export class Dashboard {
       .subscribe({
         next: (prices) => this.prices.set(prices),
         error: () => this.pricesError.set(PRICES_FAILED),
+      });
+  }
+
+  // Watches only the held symbols; an empty list means no polling at all.
+  private watchLivePrices(symbols: string[]): void {
+    this.livePolling?.unsubscribe();
+    this.livePolling = this.instruments
+      .watchLivePrices(symbols)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ prices, stale }) => {
+        this.livePrices.set(prices);
+        this.liveStale.set(stale);
       });
   }
 
