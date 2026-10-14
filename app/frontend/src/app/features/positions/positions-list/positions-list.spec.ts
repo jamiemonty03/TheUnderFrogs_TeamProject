@@ -1,11 +1,13 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
+import { Accounts } from '../../../services/accounts';
+import { Instruments, LatestPrice } from '../../../services/instruments';
 import { Portfolio, Portfolios } from '../../../services/portfolios';
 import { Position, Positions } from '../../../services/positions';
-import { PositionsList } from './positions-list';
+import { PositionsList, REFRESH_MS } from './positions-list';
 
 const MAIN: Portfolio = {
   portfolioId: 'PF0011',
@@ -23,15 +25,43 @@ const GROWTH: Portfolio = {
   benchmark: 'Nasdaq-100',
   defaultPortfolio: false,
 };
-const position = (portfolioId: string, symbol: string, quantity: number, averageCost: number): Position => ({
+const position = (
+  portfolioId: string,
+  symbol: string,
+  quantity: number,
+  averageCost: number,
+): Position => ({
   accountId: 'ACC0011',
   portfolioId,
   symbol,
   quantity,
   averageCost,
 });
-const ALL = [position('PF0011', 'AAPL', 10, 100), position('PF0012', 'NVDA', 2, 500), position('PF0012', 'AAPL', 4, 150)];
+const ALL = [
+  position('PF0011', 'AAPL', 10, 100),
+  position('PF0012', 'NVDA', 2, 500),
+  position('PF0012', 'AAPL', 4, 150),
+];
 const IN_GROWTH = ALL.filter((p) => p.portfolioId === 'PF0012');
+const quote = (
+  symbol: string,
+  name: string,
+  price: number,
+  previousClose: number,
+): LatestPrice => ({
+  symbol,
+  name,
+  assetClass: 'Equity',
+  price,
+  previousClose,
+  tradeDate: '2026-10-13',
+});
+const AAPL = quote('AAPL', 'Apple Inc.', 120, 100);
+const NVDA = quote('NVDA', 'NVIDIA Corp.', 450, 500);
+const PRICES = new Map([
+  ['AAPL', AAPL],
+  ['NVDA', NVDA],
+]);
 
 describe('PositionsList (Portfolios page)', () => {
   let fixture: ComponentFixture<PositionsList>;
@@ -48,6 +78,8 @@ describe('PositionsList (Portfolios page)', () => {
     error: ReturnType<typeof signal<string | null>>;
     getPositions: ReturnType<typeof vi.fn>;
   };
+  let instruments: { getLatestPrices: ReturnType<typeof vi.fn> };
+  let accounts: { getAccount: ReturnType<typeof vi.fn> };
 
   const el = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -58,15 +90,30 @@ describe('PositionsList (Portfolios page)', () => {
     await fixture.whenStable();
   };
   const rowCount = () => fixture.nativeElement.querySelectorAll('tr.mat-mdc-row').length;
+  const column = (name: string): string[] =>
+    Array.from(
+      fixture.nativeElement.querySelectorAll(
+        `td.mat-column-${name}.mat-mdc-cell`,
+      ) as NodeListOf<HTMLElement>,
+    ).map((td) => td.textContent?.trim() ?? '');
+  const reload = async () => {
+    fixture.componentInstance.refresh();
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
   const headers = () =>
-    Array.from(fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>).map((th) => th.textContent?.trim());
+    Array.from(fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>).map((th) =>
+      th.textContent?.trim(),
+    );
 
   beforeEach(async () => {
     portfolios = {
       loading: signal(false),
       error: signal<string | null>(null),
       getPortfolios: vi.fn(() => of([MAIN, GROWTH])),
-      createPortfolio: vi.fn(() => of({ ...GROWTH, portfolioId: 'PF0013', name: 'Income', risk: 'LOW' })),
+      createPortfolio: vi.fn(() =>
+        of({ ...GROWTH, portfolioId: 'PF0013', name: 'Income', risk: 'LOW' }),
+      ),
       updatePortfolio: vi.fn(() => of({ ...GROWTH, name: 'Long-term growth' })),
       deletePortfolio: vi.fn(() => of(undefined)),
     };
@@ -75,6 +122,17 @@ describe('PositionsList (Portfolios page)', () => {
       error: signal<string | null>(null),
       getPositions: vi.fn((portfolioId?: string) => of(portfolioId === 'PF0012' ? IN_GROWTH : ALL)),
     };
+    instruments = { getLatestPrices: vi.fn(() => of(PRICES)) };
+    accounts = {
+      getAccount: vi.fn(() =>
+        of({
+          accountId: 'ACC0011',
+          holderName: 'Demo Trader',
+          cashBalance: 97949.15,
+          status: 'ACTIVE',
+        }),
+      ),
+    };
 
     await TestBed.configureTestingModule({
       imports: [PositionsList],
@@ -82,6 +140,8 @@ describe('PositionsList (Portfolios page)', () => {
         provideRouter([]),
         { provide: Portfolios, useValue: portfolios },
         { provide: Positions, useValue: positions },
+        { provide: Instruments, useValue: instruments },
+        { provide: Accounts, useValue: accounts },
       ],
     }).compileComponents();
 
@@ -101,6 +161,96 @@ describe('PositionsList (Portfolios page)', () => {
   it('adds up the total cost of the holdings shown', () => {
     // 10 x 100 + 2 x 500 + 4 x 150
     expect(text('total-cost')).toBe('$2,600.00');
+  });
+
+  it('values each holding at the latest price, with P&L, day change and weight', () => {
+    // Sorted by market value, largest first: Main AAPL 1,200, NVDA 900, Growth AAPL 480 (total 2,580)
+    expect(column('symbol')).toEqual(['AAPL', 'NVDA', 'AAPL']);
+    expect(column('name')).toEqual(['Apple Inc.', 'NVIDIA Corp.', 'Apple Inc.']);
+    expect(column('assetClass')).toEqual(['Equity', 'Equity', 'Equity']);
+    expect(column('price')).toEqual(['$120.00', '$450.00', '$120.00']);
+    expect(column('marketValue')).toEqual(['$1,200.00', '$900.00', '$480.00']);
+    expect(column('pnl')).toEqual(['$200.00', '-$100.00', '-$120.00']);
+    expect(column('pnlPercent')).toEqual(['20.0%', '-10.0%', '-20.0%']);
+    expect(column('dayChange')).toEqual(['20.00%', '-10.00%', '20.00%']);
+    expect(column('weight')).toEqual(['46.5%', '34.9%', '18.6%']);
+  });
+
+  it('colours gains green and losses red', () => {
+    const pnlCells = fixture.nativeElement.querySelectorAll('td.mat-column-pnl.mat-mdc-cell');
+    expect(pnlCells[0].classList).toContain('pos');
+    expect(pnlCells[1].classList).toContain('neg');
+  });
+
+  it('adds up market value, P&L and day change in the tiles', () => {
+    expect(text('market-value')).toBe('$2,580.00');
+    // 2,580 - 2,600
+    expect(text('pnl')).toBe('-$20.00');
+    // 10 x 20 - 2 x 50 + 4 x 20
+    expect(text('day-change')).toBe('$180.00');
+    expect(el('day-change')!.classList).toContain('pos');
+  });
+
+  it('shows the shared cash balance', () => {
+    expect(text('cash')).toBe('$97,949.15');
+  });
+
+  it('shows a dash for cash when the account cannot be loaded', async () => {
+    accounts.getAccount.mockReturnValue(throwError(() => new Error('down')));
+
+    await reload();
+
+    expect(text('cash')).toBe('–');
+  });
+
+  it('shows a dash where a holding has no price, and leaves it out of the totals', async () => {
+    instruments.getLatestPrices.mockReturnValue(of(new Map([['AAPL', AAPL]])));
+
+    await reload();
+
+    expect(column('symbol')).toEqual(['AAPL', 'AAPL', 'NVDA']);
+    expect(column('marketValue')).toEqual(['$1,200.00', '$480.00', '–']);
+    expect(column('name')[2]).toBe('–');
+    expect(text('market-value')).toBe('$1,680.00');
+  });
+
+  it('says so when prices cannot be loaded', async () => {
+    expect(el('prices-failed')).toBeNull();
+    instruments.getLatestPrices.mockReturnValue(throwError(() => new Error('down')));
+
+    await reload();
+
+    expect(text('prices-failed')).toContain("Prices couldn't be loaded");
+  });
+
+  it('sorts by a column when its header is clicked', async () => {
+    const symbolHeader = fixture.nativeElement.querySelector('th.mat-column-symbol') as HTMLElement;
+
+    symbolHeader.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(column('symbol')).toEqual(['AAPL', 'AAPL', 'NVDA']);
+  });
+
+  it('refreshes holdings, prices and cash every 30 seconds', () => {
+    vi.useFakeTimers();
+    try {
+      fixture.destroy();
+      fixture = TestBed.createComponent(PositionsList);
+      fixture.detectChanges();
+      positions.getPositions.mockClear();
+      instruments.getLatestPrices.mockClear();
+      accounts.getAccount.mockClear();
+
+      vi.advanceTimersByTime(REFRESH_MS);
+
+      expect(positions.getPositions).toHaveBeenCalledTimes(1);
+      expect(instruments.getLatestPrices).toHaveBeenCalledTimes(1);
+      expect(accounts.getAccount).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('lists every portfolio in the sidebar, marking Main', () => {
@@ -137,7 +287,11 @@ describe('PositionsList (Portfolios page)', () => {
 
     await click('save-portfolio');
 
-    expect(portfolios.createPortfolio).toHaveBeenCalledWith({ name: 'Income', risk: 'MEDIUM', benchmark: '' });
+    expect(portfolios.createPortfolio).toHaveBeenCalledWith({
+      name: 'Income',
+      risk: 'MEDIUM',
+      benchmark: '',
+    });
     expect(positions.getPositions).toHaveBeenLastCalledWith('PF0013');
     expect(el('portfolio-form')).toBeNull();
   });
