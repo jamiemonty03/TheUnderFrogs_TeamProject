@@ -102,7 +102,6 @@ public class PriceTest {
         Price price = newPrice();
         var createdAt = price.getCreatedAt();
 
-        // No setCreatedAt exists on Price; re-reading the getter must return the same value.
         assertEquals(createdAt, price.getCreatedAt());
     }
 

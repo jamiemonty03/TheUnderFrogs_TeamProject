@@ -160,7 +160,6 @@ describe('Instruments', () => {
 
     http.expectOne('/api/stocks').flush([aapl]);
     http.expectOne('/api/etfs').flush(null, { status: 503, statusText: 'Service Unavailable' });
-    // forkJoin unsubscribes from the bonds request once ETFs fail
     http.match('/api/bonds');
 
     expect(error).toBeTruthy();

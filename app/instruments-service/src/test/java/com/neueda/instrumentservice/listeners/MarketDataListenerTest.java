@@ -18,7 +18,6 @@ public class MarketDataListenerTest {
     private final MarketDataListener listener =
             new MarketDataListener(cache, new ObjectMapper().findAndRegisterModules());
 
-    // The envelope trade-executor's MarketDataPoller publishes.
     private static String event(String eventType, String payload) {
         return """
                 {"eventId":"e-1","eventType":"%s","occurredAt":"2026-10-13T14:30:01Z","key":"AAPL","payload":%s}

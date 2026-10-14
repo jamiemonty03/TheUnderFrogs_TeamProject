@@ -27,8 +27,6 @@ public class InstrumentController {
         return ResponseEntity.ok(instrumentService.getAllInstruments());
     }
 
-    // Latest live quote for each symbol, or for every tracked symbol when none are given.
-    // Symbols with no quote yet (e.g. outside market hours) are left out.
     @GetMapping("/live-prices")
     public ResponseEntity<List<LivePriceResponse>> getLivePrices(
             @RequestParam(required = false) List<String> symbols) {

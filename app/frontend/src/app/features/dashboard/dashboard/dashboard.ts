@@ -59,7 +59,6 @@ export class Dashboard {
   private readonly positions = signal<Position[]>([]);
   private readonly prices = signal<ReadonlyMap<string, LatestPrice>>(new Map());
   private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
-  // A failed poll keeps the last live values on screen and just shows a note.
   protected readonly liveStale = signal(false);
   private livePolling?: Subscription;
 
@@ -130,7 +129,6 @@ export class Dashboard {
       });
   }
 
-  // Watches only the held symbols; an empty list means no polling at all.
   private watchLivePrices(symbols: string[]): void {
     this.livePolling?.unsubscribe();
     this.livePolling = this.instruments

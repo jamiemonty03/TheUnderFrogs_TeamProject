@@ -143,7 +143,6 @@ public class InstrumentControllerTest {
         mockMvc.perform(delete("/instruments/AAPL"))
                 .andExpect(status().isNoContent());
 
-        // tracked_tickers deactivation is asserted in InstrumentServiceTest
         verify(instrumentService).deleteInstrument("AAPL");
     }
 
