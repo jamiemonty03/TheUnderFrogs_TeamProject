@@ -118,6 +118,19 @@
   <section class="card" aria-labelledby="positions-title">
     <div class="dashboard__positions-header">
       <h2 id="positions-title" class="card__title">Positions</h2>
+      <mat-form-field appearance="outline" class="dashboard__portfolio-filter">
+        <mat-label>Portfolio</mat-label>
+        <mat-select
+          [value]="selectedPortfolioId()"
+          (selectionChange)="selectPortfolio($event.value)"
+          data-testid="dashboard-portfolio-filter"
+        >
+          <mat-option value="ALL">All holdings</mat-option>
+          @for (portfolio of portfolios(); track portfolio.portfolioId) {
+            <mat-option [value]="portfolio.portfolioId">{{ portfolio.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
       @if (liveStale()) {
         <output class="dashboard__stale">Live prices paused · showing the last values</output>
       }

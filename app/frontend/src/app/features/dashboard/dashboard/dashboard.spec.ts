@@ -7,13 +7,33 @@ import { Observable, of, throwError } from 'rxjs';
 import { MockInstance, vi } from 'vitest';
 import { Account, Accounts } from '../../../services/accounts';
 import { Instruments, LIVE_POLL_MS, LatestPrice, LivePrice } from '../../../services/instruments';
+import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position, Positions } from '../../../services/positions';
+import { Portfolios } from '../../../services/portfolios';
 import { Dashboard } from './dashboard';
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
-  { accountId: 'ACC0013', portfolioId: null, symbol: 'AAPL', quantity: 40, averageCost: 171.2 },
-  { accountId: 'ACC0013', portfolioId: null, symbol: 'TSLA', quantity: 12, averageCost: 260 },
+  { accountId: 'ACC0013', portfolioId: 'PF0011', symbol: 'AAPL', quantity: 40, averageCost: 171.2 },
+  { accountId: 'ACC0013', portfolioId: 'PF0012', symbol: 'TSLA', quantity: 12, averageCost: 260 },
+];
+const PORTFOLIOS: Portfolio[] = [
+  {
+    portfolioId: 'PF0011',
+    accountId: 'ACC0013',
+    name: 'Main',
+    risk: 'MEDIUM',
+    benchmark: null,
+    defaultPortfolio: true,
+  },
+  {
+    portfolioId: 'PF0012',
+    accountId: 'ACC0013',
+    name: 'Growth',
+    risk: 'HIGH',
+    benchmark: null,
+    defaultPortfolio: false,
+  },
 ];
 const latest = (symbol: string, name: string, price: number): LatestPrice => ({
   symbol,
@@ -88,6 +108,7 @@ describe('Dashboard', () => {
             getPositions: () => failWith(positionsError, calls.positions ?? of(POSITIONS)),
           },
         },
+        { provide: Portfolios, useValue: { getPortfolios: () => of(PORTFOLIOS) } },
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
@@ -121,6 +142,22 @@ describe('Dashboard', () => {
 
     expect(card('portfolio-label').textContent).toContain('$22,938.60');
     expect(card('cash-label').textContent).toContain('$12,480.00');
+  });
+
+  it('defaults to all holdings and filters the dashboard by portfolio', async () => {
+    await setUp();
+
+    expect(
+      (fixture.componentInstance as unknown as { selectedPortfolioId(): string }).selectedPortfolioId(),
+    ).toBe('ALL');
+    expect(rows()).toHaveLength(2);
+
+    (fixture.componentInstance as unknown as { selectPortfolio(portfolioId: string): void }).selectPortfolio('PF0012');
+    fixture.detectChanges();
+
+    expect(rows()).toHaveLength(1);
+    expect(cells(rows()[0])[0]).toBe('TSLA');
+    expect(card('invested-label').textContent).toContain('$2,865.00');
   });
 
   it('portfolio value is just cash when the user holds nothing', async () => {
