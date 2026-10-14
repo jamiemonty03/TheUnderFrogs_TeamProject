@@ -232,7 +232,14 @@ export class OrderDialog implements OnInit {
   }
 
   selectBuyInstrument(event: MatAutocompleteSelectedEvent): void {
-    const symbol = String(event.option.value);
+    this.selectBuySymbol(String(event.option.value));
+  }
+
+  selectSellInstrument(event: MatAutocompleteSelectedEvent): void {
+    this.selectSellSymbol(String(event.option.value));
+  }
+
+  private selectBuySymbol(symbol: string): void {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedBuyInstrument.set(selected);
     this.buyInstrumentStep.controls.instrumentInput.setValue(symbol);
@@ -241,8 +248,7 @@ export class OrderDialog implements OnInit {
     }
   }
 
-  selectSellInstrument(event: MatAutocompleteSelectedEvent): void {
-    const symbol = String(event.option.value);
+  private selectSellSymbol(symbol: string): void {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedSellInstrument.set(selected);
     this.sellInstrumentStep.controls.instrumentInput.setValue(symbol);
@@ -419,6 +425,13 @@ export class OrderDialog implements OnInit {
     this.instrumentsApi.getAllTradableInstruments().subscribe({
       next: (items) => {
         this.instruments.set(items);
+        if (this.data?.symbol) {
+          if (this.data.side === 'SELL') {
+            this.selectSellSymbol(this.data.symbol);
+          } else {
+            this.selectBuySymbol(this.data.symbol);
+          }
+        }
         this.instrumentsLoading.set(false);
         this.preselectInstrument();
       },
@@ -431,13 +444,12 @@ export class OrderDialog implements OnInit {
   }
 
   private loadAvailableCash(): void {
-    const accountId = this.auth.currentUser()?.accountId;
-    if (!accountId) {
+    if (!this.auth.currentUser()?.accountId) {
       this.accountLoadError.set('No trading account is linked to this user.');
       return;
     }
 
-    this.accountsApi.getAccount(accountId).subscribe({
+    this.accountsApi.getAccount().subscribe({
       next: (account) => {
         this.availableCash.set(Number(account.cashBalance));
       },

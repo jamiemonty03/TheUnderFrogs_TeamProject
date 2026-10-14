@@ -114,7 +114,7 @@ describe('OrderDialog', () => {
 
   it('loads instruments and available cash on initialization', () => {
     expect(instruments.getAllTradableInstruments).toHaveBeenCalledTimes(1);
-    expect(accounts.getAccount).toHaveBeenCalledWith(ACCOUNT);
+    expect(accounts.getAccount).toHaveBeenCalled();
     expect(component.instruments()).toEqual([AAPL, TSLA]);
     expect(component.availableCash()).toBe(1000);
   });

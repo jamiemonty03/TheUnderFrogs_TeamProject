@@ -4,6 +4,8 @@ import { Observable, catchError, of, throwError } from 'rxjs';
 import { Position } from './interfaces/positions.interfaces';
 import { AccountApi } from './shared/account-api';
 
+export type { Position } from './interfaces/positions.interfaces';
+
 const BASE_URL = '/api/positions';
 const LOAD_FAILED = "Couldn't load your positions. Try again in a moment.";
 
