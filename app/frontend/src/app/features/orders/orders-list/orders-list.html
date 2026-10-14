@@ -1,1 +1,109 @@
-<p>orders-list works!</p>
+<section class="orders-page">
+	<header class="orders-page__header">
+		<div>
+			<p class="orders-page__account">Account {{ accountId() }}</p>
+			<h1 class="orders-page__title">Orders</h1>
+		</div>
+
+		<button mat-flat-button type="button" class="orders-page__new-order" (click)="openOrderDialog()">
+			+ New order
+		</button>
+	</header>
+
+	<div class="orders-card">
+		<mat-chip-listbox class="orders-card__filters" [multiple]="false" aria-label="Order filters">
+			@for (filter of filters; track filter) {
+				<mat-chip-option
+					[selected]="activeFilter() === filter"
+					[disableRipple]="true"
+					(selectionChange)="setFilter(filter)"
+					class="orders-card__filter"
+					[class.orders-card__filter--active]="activeFilter() === filter"
+				>
+					{{ filter }} <span class="orders-card__dot">&middot;</span> {{ getFilterCount(filter) }}
+				</mat-chip-option>
+			}
+		</mat-chip-listbox>
+
+		<div class="orders-table-wrap">
+			<table mat-table [dataSource]="pagedOrders()" class="orders-table">
+				<ng-container matColumnDef="id">
+					<th mat-header-cell *matHeaderCellDef>ORDER ID</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__id">{{ order.id }}</td>
+				</ng-container>
+
+				<ng-container matColumnDef="placed">
+					<th mat-header-cell *matHeaderCellDef>PLACED</th>
+					<td mat-cell *matCellDef="let order">{{ order.placed }}</td>
+				</ng-container>
+
+				<ng-container matColumnDef="symbol">
+					<th mat-header-cell *matHeaderCellDef>SYMBOL</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__symbol">{{ order.symbol }}</td>
+				</ng-container>
+
+				<ng-container matColumnDef="side">
+					<th mat-header-cell *matHeaderCellDef>SIDE</th>
+					<td mat-cell *matCellDef="let order">
+						<span
+							class="orders-table__side"
+							[class.orders-table__side--buy]="order.side === 'BUY'"
+							[class.orders-table__side--sell]="order.side === 'SELL'"
+						>
+							{{ order.side }}
+						</span>
+					</td>
+				</ng-container>
+
+				<ng-container matColumnDef="quantity">
+					<th mat-header-cell *matHeaderCellDef>QUANTITY</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__qty">{{ order.quantity }}</td>
+				</ng-container>
+
+				<ng-container matColumnDef="price">
+					<th mat-header-cell *matHeaderCellDef>PRICE</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__price">{{ order.price }}</td>
+				</ng-container>
+
+				<ng-container matColumnDef="status">
+					<th mat-header-cell *matHeaderCellDef>STATUS</th>
+					<td mat-cell *matCellDef="let order">
+						<span
+							class="orders-table__status"
+							[class.orders-table__status--new]="order.status === 'NEW'"
+							[class.orders-table__status--filled]="order.status === 'FILLED'"
+							[class.orders-table__status--rejected]="order.status === 'REJECTED'"
+							[class.orders-table__status--cancelled]="order.status === 'CANCELLED'"
+						>
+							{{ order.status }}
+						</span>
+					</td>
+				</ng-container>
+
+				<ng-container matColumnDef="action">
+					<th mat-header-cell *matHeaderCellDef></th>
+					<td mat-cell *matCellDef="let order" class="orders-table__action">
+						@if (order.canCancel) {
+							<button mat-stroked-button class="orders-table__cancel">Cancel</button>
+						}
+					</td>
+				</ng-container>
+
+				<tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+				<tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+			</table>
+		</div>
+
+		@if (visibleOrders().length > pageSize()) {
+			<mat-paginator
+				[length]="visibleOrders().length"
+				[pageIndex]="pageIndex()"
+				[pageSize]="pageSize()"
+				[pageSizeOptions]="pageSizeOptions"
+				(page)="setPage($event)"
+				[showFirstLastButtons]="true"
+				aria-label="Orders table pagination"
+			></mat-paginator>
+		}
+	</div>
+</section>

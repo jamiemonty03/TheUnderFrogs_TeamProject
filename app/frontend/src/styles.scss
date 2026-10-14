@@ -22,9 +22,9 @@
   --ts-text-secondary: #c3d6cb;
   --ts-text-muted: #9db5a7;
 
-  --ts-loss: #ff6b4a;
-  --ts-on-loss: #1a0703;
-  --ts-sell: #ff9f5a;
+  --ts-loss: #FF6B4A;
+  --ts-on-loss: #1A0703;
+  --ts-sell: #FF6B4A;
 
   --ts-success-bg: #12321f;
   --ts-danger-text: #ff8a6e;
@@ -34,6 +34,46 @@
   --ts-info-bg: #12283a;
   --ts-neutral: #5e7468;
   --ts-neutral-bg: #1d2420;
+}
+
+html {
+  color-scheme: dark;
+
+  @include mat.theme((
+    color: (
+      theme-type: dark,
+      primary: mat.$green-palette,
+      tertiary: mat.$cyan-palette,
+      error: mat.$red-palette,
+    ),
+    density: 0,
+  ));
+
+  --mat-sys-primary: var(--ts-frog);
+  --mat-sys-on-primary: var(--ts-on-frog);
+  --mat-sys-primary-container: var(--ts-frog-tint);
+  --mat-sys-on-primary-container: var(--ts-frog-light);
+
+  --mat-sys-surface: var(--ts-bg);
+  --mat-sys-surface-container: var(--ts-bg-raised);
+  --mat-sys-surface-container-high: var(--ts-surface);
+  --mat-sys-on-surface: var(--ts-text);
+  --mat-sys-on-surface-variant: var(--ts-text-secondary);
+  --mat-sys-outline: var(--ts-border);
+
+  --mat-sys-error: var(--ts-danger-text);
+  --mat-sys-on-error: var(--ts-on-loss);
+  --mat-sys-error-container: var(--ts-danger-bg);
+  --mat-sys-on-error-container: var(--ts-danger-text);
+
+  --mdc-theme-primary: var(--ts-frog);
+  --mdc-theme-on-primary: var(--ts-on-frog);
+  --mdc-theme-surface: var(--ts-bg);
+  --mdc-theme-on-surface: var(--ts-text);
+  --mdc-theme-error: var(--ts-danger-text);
+
+  --mat-sys-on-secondary-container: var(--ts-on-frog);
+  --mat-sys-secondary-container: var(--ts-frog);
 }
 
 body {
