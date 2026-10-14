@@ -3,6 +3,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -11,9 +12,11 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import { Accounts } from '../../../services/accounts';
+import { Auth } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { Portfolio, PortfolioRisk, Portfolios } from '../../../services/portfolios';
 import { Position, Positions } from '../../../services/positions';
+import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
 
 export const ALL_HOLDINGS = 'ALL';
 export const REFRESH_MS = 30_000;
@@ -24,6 +27,7 @@ export interface HoldingRow {
   symbol: string;
   name: string;
   assetClass: string;
+  portfolioId: string | null;
   portfolioName: string;
   quantity: number;
   averageCost: number;
@@ -63,6 +67,8 @@ export class PositionsList implements OnInit {
   protected readonly positionsService = inject(Positions);
   private readonly instruments = inject(Instruments);
   private readonly accounts = inject(Accounts);
+  private readonly auth = inject(Auth);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
@@ -105,6 +111,7 @@ export class PositionsList implements OnInit {
     'pnlPercent',
     'dayChange',
     'weight',
+    'actions',
   ]);
 
   private readonly unsortedRows = computed<HoldingRow[]>(() => {
@@ -122,6 +129,7 @@ export class PositionsList implements OnInit {
         symbol: p.symbol,
         name: quote?.name ?? '',
         assetClass: quote?.assetClass ?? '',
+        portfolioId: p.portfolioId,
         portfolioName: (p.portfolioId && names.get(p.portfolioId)) || 'Main',
         quantity: p.quantity,
         averageCost: p.averageCost,
@@ -207,6 +215,24 @@ export class PositionsList implements OnInit {
     this.loadPositions();
     this.loadPrices();
     this.loadCash();
+  }
+
+  protected trade(row: HoldingRow, side: 'BUY' | 'SELL'): void {
+    const data: OrderDialogData = {
+      side,
+      symbol: row.symbol,
+      portfolioId: row.portfolioId ?? undefined,
+      portfolioName: row.portfolioName,
+    };
+    this.dialog
+      .open(OrderDialog, {
+        width: '920px',
+        maxWidth: '95vw',
+        panelClass: 'order-dialog-panel',
+        data,
+      })
+      .afterClosed()
+      .subscribe(() => this.refresh());
   }
 
   protected tone(value: number | null): string {
@@ -333,7 +359,12 @@ export class PositionsList implements OnInit {
   }
 
   private loadCash(): void {
-    this.accounts.getAccount().subscribe({
+    const accountId = this.auth.currentUser()?.accountId;
+    if (!accountId) {
+      this.cash.set(null);
+      return;
+    }
+    this.accounts.getAccount(accountId).subscribe({
       next: (account) => this.cash.set(account.cashBalance),
       error: () => this.cash.set(null),
     });
@@ -344,7 +375,6 @@ function sum(values: (number | null)[]): number {
   return values.reduce<number>((total, value) => total + (value ?? 0), 0);
 }
 
-// Text compares alphabetically; numbers numerically; missing values sort last in either direction
 function compare(a: unknown, b: unknown, factor: number): number {
   const aMissing = a === null || a === '';
   const bMissing = b === null || b === '';

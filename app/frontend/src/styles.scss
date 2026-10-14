@@ -163,3 +163,10 @@ html {
   background: var(--ts-loss);
   color: var(--ts-on-loss);
 }
+
+.row-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.4rem;
+	white-space: nowrap;
+}
