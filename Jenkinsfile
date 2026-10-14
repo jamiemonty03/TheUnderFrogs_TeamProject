@@ -115,6 +115,24 @@ pipeline {
             }
         }
 
+        stage('Frontend') {
+            agent {
+                docker {
+                    image 'node:24'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir('app/frontend') {
+                    sh 'node -v'
+                    sh 'npm ci'
+                    sh 'npm run lint'
+                    sh 'npm test -- --watch=false --coverage'
+                    sh 'npm run build'
+                }
+            }
+        }
+
         stage('Python Tests') {
             steps {
                 sh '''
