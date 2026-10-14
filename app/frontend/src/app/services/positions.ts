@@ -44,6 +44,7 @@ export class Positions extends AccountApi {
         ),
     );
   }
+
 }
 
 function portfolioParams(portfolioId?: string): Record<string, string> {

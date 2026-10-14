@@ -27,11 +27,6 @@
 
 		<div class="orders-table-wrap">
 			<table mat-table [dataSource]="pagedOrders()" class="orders-table">
-				<ng-container matColumnDef="id">
-					<th mat-header-cell *matHeaderCellDef>ORDER ID</th>
-					<td mat-cell *matCellDef="let order" class="orders-table__id">{{ order.id }}</td>
-				</ng-container>
-
 				<ng-container matColumnDef="placed">
 					<th mat-header-cell *matHeaderCellDef>PLACED</th>
 					<td mat-cell *matCellDef="let order">{{ order.placed }}</td>
@@ -77,15 +72,6 @@
 						>
 							{{ order.status }}
 						</span>
-					</td>
-				</ng-container>
-
-				<ng-container matColumnDef="action">
-					<th mat-header-cell *matHeaderCellDef></th>
-					<td mat-cell *matCellDef="let order" class="orders-table__action">
-						@if (order.canCancel) {
-							<button mat-stroked-button class="orders-table__cancel">Cancel</button>
-						}
 					</td>
 				</ng-container>
 
