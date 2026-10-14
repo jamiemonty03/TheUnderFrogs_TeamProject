@@ -3,7 +3,6 @@ import { Login } from './features/auth/login/login';
 import { Register } from './features/auth/register/register';
 import { Dashboard } from './features/dashboard/dashboard/dashboard';
 import { OrdersList } from './features/orders/orders-list/orders-list';
-import { OrdersDetail } from './features/orders/orders-detail/orders-detail';
 import { InstrumentsList } from './features/instruments/instruments-list/instruments-list';
 import { InstrumentsDetail } from './features/instruments/instruments-detail/instruments-detail';
 import { PositionsList } from './features/positions/positions-list/positions-list';
@@ -14,8 +13,6 @@ export const routes: Routes = [
   { path: 'register', component: Register },
   { path: 'dashboard', component: Dashboard },
   { path: 'orders', component: OrdersList },
-  { path: 'orders/new', component: OrdersDetail },
-  { path: 'orders/:id', component: OrdersDetail },
   { path: 'instruments', component: InstrumentsList },
   { path: 'instruments/:id', component: InstrumentsDetail },
   { path: 'positions', component: PositionsList },

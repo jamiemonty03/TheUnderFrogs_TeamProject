@@ -14,13 +14,14 @@ public interface PositionMovementRepository extends JpaRepository<PositionMoveme
 
     @Modifying
     @Query(value = """
-            INSERT INTO position_movements (order_id, movement_type, account_id, symbol, quantity, price)
-            VALUES (:orderId, :movementType, :accountId, :symbol, :quantity, :price)
+            INSERT INTO position_movements (order_id, movement_type, account_id, portfolio_id, symbol, quantity, price)
+            VALUES (:orderId, :movementType, :accountId, :portfolioId, :symbol, :quantity, :price)
             ON CONFLICT (order_id, movement_type) DO NOTHING
             """, nativeQuery = true)
     int insertIfAbsent(@Param("orderId") String orderId,
                        @Param("movementType") String movementType,
                        @Param("accountId") String accountId,
+                       @Param("portfolioId") String portfolioId,
                        @Param("symbol") String symbol,
                        @Param("quantity") BigDecimal quantity,
                        @Param("price") BigDecimal price);

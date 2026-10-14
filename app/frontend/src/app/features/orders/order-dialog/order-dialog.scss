@@ -1,0 +1,111 @@
+.order-dialog {
+	color: var(--ts-text);
+	background: var(--ts-bg);
+    padding: 1rem;
+
+	&__header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.75rem;
+	}
+
+	&__title {
+		margin: 0;
+		font-size: 1.6rem;
+	}
+
+	&__stepper {
+		background: transparent;
+	}
+
+	&__step-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.85rem;
+		padding-top: 0.5rem;
+	}
+
+	&__field {
+		width: 100%;
+	}
+
+	&__instrument-meta {
+		padding: 0.65rem;
+		border-radius: 0.75rem;
+		background: var(--ts-surface);
+		border: 1px solid var(--ts-divider);
+
+		p {
+			margin: 0.25rem 0;
+			font-size: 0.95rem;
+		}
+	}
+
+	&__slider-label {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--ts-text-secondary);
+	}
+
+	&__estimate {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 600;
+		color: var(--ts-text-secondary);
+	}
+
+	&__summary {
+		padding: 0.75rem;
+		border: 1px solid var(--ts-divider);
+		border-radius: 0.7rem;
+		background: var(--ts-surface);
+
+		p {
+			margin: 0.35rem 0;
+		}
+	}
+
+	&__result {
+		padding: 0.7rem;
+		border-radius: 0.7rem;
+		font-weight: 600;
+	}
+
+	&__result--success {
+		background: var(--ts-success-bg);
+		color: var(--ts-frog);
+	}
+
+	&__result--error {
+		background: var(--ts-danger-bg);
+		color: var(--ts-danger-text);
+	}
+
+	&__actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.6rem;
+	}
+}
+
+:host ::ng-deep .mat-mdc-dialog-surface {
+	background: var(--ts-bg);
+	color: var(--ts-text);
+}
+
+:host ::ng-deep .mat-step-label,
+:host ::ng-deep .mdc-tab__text-label {
+	color: var(--ts-text-secondary);
+}
+
+:host ::ng-deep .mat-mdc-form-field .mat-mdc-input-element,
+:host ::ng-deep .mat-mdc-form-field .mat-mdc-floating-label {
+	color: var(--ts-text);
+}
+
+:host ::ng-deep .mat-mdc-option .mdc-list-item__primary-text {
+	color: var(--ts-text);
+}

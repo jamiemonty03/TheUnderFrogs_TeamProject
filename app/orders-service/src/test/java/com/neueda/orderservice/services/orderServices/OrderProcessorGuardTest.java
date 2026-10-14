@@ -42,7 +42,7 @@ class OrderProcessorGuardTest {
         assertThrows(InvalidOrderException.class, () ->
             processor.processOrder(account, instrument, null, BigDecimal.ONE, BigDecimal.TEN, "key-1"));
 
-        verify(orderService, never()).placeOrder(any(), any(), any(), any(), any(), any());
+        verify(orderService, never()).placeOrder(any(), any(), any(), any(), any(), any(), any());
         verify(eventPublisher, never()).publishEvent(any(Object.class));
     }
 }

@@ -23,8 +23,6 @@ const BASE_URL = '/api/accounts';
 const NO_ACCOUNT = 'No trading account is linked to this user.';
 const LOAD_FAILED = "Couldn't load your account. Try again in a moment.";
 
-// Read-only on purpose: the browser only ever calls GET /api/accounts/{accountId}.
-// Credit, debit, reversal, create, update and delete belong to other services.
 @Injectable({ providedIn: 'root' })
 export class Accounts {
   private readonly http = inject(HttpClient);
@@ -64,7 +62,6 @@ export class Accounts {
     request: (accountId: string) => Observable<T>,
   ): Observable<T> {
     return defer(() => {
-      // accountId comes from the signed-in user's token, never from the URL or a form.
       const accountId = this.auth.currentUser()?.accountId;
       if (!accountId) {
         error.set(NO_ACCOUNT);

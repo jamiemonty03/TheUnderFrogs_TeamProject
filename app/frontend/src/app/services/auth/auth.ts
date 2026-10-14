@@ -2,15 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../api-config';
+import { CurrentUser, RegisterDetails } from '../interfaces/auth.interfaces';
 
-export interface CurrentUser {
-  userId: number;
-  username: string;
-  roles: string[];
-  accountId: string | null;
-}
+export type { CurrentUser, RegisterDetails };
 
-interface LoginResponse {
+interface SessionTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
@@ -35,22 +31,18 @@ export class Auth {
   readonly currentUser = this.user.asReadonly();
 
   login(username: string, password: string): Observable<CurrentUser> {
-    return this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { username, password }).pipe(
-      tap((tokens) =>
-        this.store({
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          user: null,
-        }),
-      ),
-      switchMap(() => this.http.get<CurrentUser>(`${this.baseUrl}/auth/me`)),
-      tap((user) => {
-        this.store({ ...this.session!, user });
-        this.user.set(user);
-      }),
-      catchError((error: unknown) => {
-        this.clearSession();
-        return throwError(() => error);
+    return this.startSession(
+      this.http.post<SessionTokens>(`${this.baseUrl}/auth/login`, { username, password }),
+    );
+  }
+
+  register(details: RegisterDetails): Observable<CurrentUser> {
+    return this.startSession(
+      this.http.post<SessionTokens>(`${this.baseUrl}/auth/register`, {
+        username: details.username,
+        email: details.email,
+        password: details.password,
+        full_name: details.fullName,
       }),
     );
   }
@@ -87,6 +79,27 @@ export class Auth {
     } catch {
       return;
     }
+  }
+
+  private startSession(tokens$: Observable<SessionTokens>): Observable<CurrentUser> {
+    return tokens$.pipe(
+      tap((tokens) =>
+        this.store({
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          user: null,
+        }),
+      ),
+      switchMap(() => this.http.get<CurrentUser>(`${this.baseUrl}/auth/me`)),
+      tap((user) => {
+        this.store({ ...this.session!, user });
+        this.user.set(user);
+      }),
+      catchError((error: unknown) => {
+        this.clearSession();
+        return throwError(() => error);
+      }),
+    );
   }
 
   private store(session: StoredSession): void {

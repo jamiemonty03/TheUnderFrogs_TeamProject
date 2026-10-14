@@ -41,6 +41,7 @@ class IdempotentPositionMovementIntegrationTest {
 
     private static final String ACCOUNT_ID = "ACC0001";
     private static final String SYMBOL = "AAPL";
+    private static final String MAIN_PORTFOLIO_ID = "PF9001";
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine");
@@ -76,16 +77,20 @@ class IdempotentPositionMovementIntegrationTest {
     void seedPosition() {
         jdbcTemplate.update("DELETE FROM position_movements");
         jdbcTemplate.update("DELETE FROM positions");
+        jdbcTemplate.update("DELETE FROM portfolios");
         jdbcTemplate.update(
-                "INSERT INTO positions (account_id, symbol, quantity, average_cost) VALUES (?, ?, 10, 100.0000)",
-                ACCOUNT_ID, SYMBOL);
+                "INSERT INTO portfolios (portfolio_id, account_id, name, is_default) VALUES (?, ?, 'Main', TRUE)",
+                MAIN_PORTFOLIO_ID, ACCOUNT_ID);
+        jdbcTemplate.update(
+                "INSERT INTO positions (account_id, portfolio_id, symbol, quantity, average_cost) VALUES (?, ?, ?, 10, 100.0000)",
+                ACCOUNT_ID, MAIN_PORTFOLIO_ID, SYMBOL);
     }
 
     @Test
     @DisplayName("Buy twice with the same orderId changes the position once")
     void buyIsAppliedOncePerOrder() {
-        positionService.updatePositionAfterBuy(ACCOUNT_ID, SYMBOL, 5, new BigDecimal("110.00"), "ORD-1");
-        Position second = positionService.updatePositionAfterBuy(ACCOUNT_ID, SYMBOL, 5, new BigDecimal("110.00"), "ORD-1");
+        positionService.updatePositionAfterBuy(ACCOUNT_ID, null, SYMBOL, 5, new BigDecimal("110.00"), "ORD-1");
+        Position second = positionService.updatePositionAfterBuy(ACCOUNT_ID, null, SYMBOL, 5, new BigDecimal("110.00"), "ORD-1");
 
         assertDecimal("15", second.getQuantity());
         assertPosition("15", "103.3333");
@@ -95,8 +100,8 @@ class IdempotentPositionMovementIntegrationTest {
     @Test
     @DisplayName("Sell twice with the same orderId changes the position once")
     void sellIsAppliedOncePerOrder() throws Exception {
-        positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 4, "ORD-2");
-        Position second = positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 4, "ORD-2");
+        positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 4, "ORD-2");
+        Position second = positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 4, "ORD-2");
 
         assertDecimal("6", second.getQuantity());
         assertPosition("6", "100.0000");
@@ -106,8 +111,8 @@ class IdempotentPositionMovementIntegrationTest {
     @Test
     @DisplayName("Without an orderId every call is applied, as before")
     void sellWithoutOrderIdKeepsOldBehaviour() throws Exception {
-        positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 2);
-        positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 2);
+        positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 2, null);
+        positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 2, null);
 
         assertPosition("6", "100.0000");
         assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM position_movements", Integer.class));
@@ -116,7 +121,7 @@ class IdempotentPositionMovementIntegrationTest {
     @Test
     @DisplayName("Reversing a buy removes its shares and cost once")
     void reversalOfBuyRestoresPosition() throws Exception {
-        positionService.updatePositionAfterBuy(ACCOUNT_ID, SYMBOL, 5, new BigDecimal("110.00"), "ORD-3");
+        positionService.updatePositionAfterBuy(ACCOUNT_ID, null, SYMBOL, 5, new BigDecimal("110.00"), "ORD-3");
 
         positionService.reverse(ACCOUNT_ID, SYMBOL, "ORD-3");
         positionService.reverse(ACCOUNT_ID, SYMBOL, "ORD-3");
@@ -128,7 +133,7 @@ class IdempotentPositionMovementIntegrationTest {
     @Test
     @DisplayName("Reversing a sell that emptied the position recreates it at the original average cost")
     void reversalOfFullSellRecreatesPosition() throws Exception {
-        positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 10, "ORD-4");
+        positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 10, "ORD-4");
         assertEquals(0, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM positions", Integer.class));
 
         positionService.reverse(ACCOUNT_ID, SYMBOL, "ORD-4");
@@ -151,11 +156,11 @@ class IdempotentPositionMovementIntegrationTest {
     @DisplayName("A failed check after the ledger insert rolls the ledger row back, so a retry still works")
     void insufficientHoldingsRollsBackLedgerRow() throws Exception {
         assertThrows(InsufficientHoldingsException.class,
-                () -> positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 20, "ORD-5"));
+                () -> positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 20, "ORD-5"));
         assertEquals(0, movements("ORD-5"));
 
-        positionService.updatePositionAfterBuy(ACCOUNT_ID, SYMBOL, 20, new BigDecimal("100.00"));
-        positionService.updatePositionAfterSell(ACCOUNT_ID, SYMBOL, 20, "ORD-5");
+        positionService.updatePositionAfterBuy(ACCOUNT_ID, null, SYMBOL, 20, new BigDecimal("100.00"), null);
+        positionService.updatePositionAfterSell(ACCOUNT_ID, null, SYMBOL, 20, "ORD-5");
 
         assertPosition("10", "100.0000");
         assertEquals(1, movements("ORD-5"));
@@ -167,7 +172,7 @@ class IdempotentPositionMovementIntegrationTest {
         doThrow(new RuntimeException("forced failure")).when(positionRepository).save(any(Position.class));
 
         assertThrows(RuntimeException.class,
-                () -> positionService.updatePositionAfterBuy(ACCOUNT_ID, SYMBOL, 5, new BigDecimal("110.00"), "ORD-6"));
+                () -> positionService.updatePositionAfterBuy(ACCOUNT_ID, null, SYMBOL, 5, new BigDecimal("110.00"), "ORD-6"));
 
         assertPosition("10", "100.0000");
         assertEquals(0, movements("ORD-6"));

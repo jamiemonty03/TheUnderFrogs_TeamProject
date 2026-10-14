@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard';
 
@@ -27,10 +27,7 @@ describe('RolesGuard', () => {
 
   describe('canActivate', () => {
     it('should allow access when no roles are required', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['user'] },
-        null,
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['user'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue(null);
 
       const result = guard.canActivate(context);
@@ -39,10 +36,7 @@ describe('RolesGuard', () => {
     });
 
     it('should allow access when user has required role', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['admin'] },
-        ['admin'],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['admin'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['admin']);
 
       const result = guard.canActivate(context);
@@ -51,10 +45,7 @@ describe('RolesGuard', () => {
     });
 
     it('should allow access when user has one of multiple required roles', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['moderator'] },
-        ['admin', 'moderator'],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['moderator'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue([
         'admin',
         'moderator',
@@ -66,10 +57,7 @@ describe('RolesGuard', () => {
     });
 
     it('should throw AUTH-403 when user lacks required role', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['user'] },
-        ['admin'],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['user'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['admin']);
 
       expect(() => guard.canActivate(context)).toThrow(
@@ -83,10 +71,7 @@ describe('RolesGuard', () => {
     });
 
     it('should throw AUTH-403 when user has none of multiple required roles', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['user'] },
-        ['admin', 'moderator'],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['user'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue([
         'admin',
         'moderator',
@@ -102,7 +87,7 @@ describe('RolesGuard', () => {
     });
 
     it('should throw AUTH-403 when user object is missing', () => {
-      const context = createMockExecutionContext(null, ['admin']);
+      const context = createMockExecutionContext(null);
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['admin']);
 
       expect(() => guard.canActivate(context)).toThrow(
@@ -116,10 +101,7 @@ describe('RolesGuard', () => {
     });
 
     it('should throw AUTH-403 when user has no roles array', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser' },
-        ['admin'],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser' });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue(['admin']);
 
       expect(() => guard.canActivate(context)).toThrow(
@@ -132,10 +114,7 @@ describe('RolesGuard', () => {
     });
 
     it('should allow access when required roles array is empty', () => {
-      const context = createMockExecutionContext(
-        { sub: 1, username: 'testuser', roles: ['user'] },
-        [],
-      );
+      const context = createMockExecutionContext({ sub: 1, username: 'testuser', roles: ['user'] });
       (reflector.getAllAndOverride as jest.Mock).mockReturnValue([]);
 
       const result = guard.canActivate(context);
@@ -147,7 +126,6 @@ describe('RolesGuard', () => {
 
 function createMockExecutionContext(
   user: any,
-  requiredRoles: string[] | null,
 ): ExecutionContext {
   const request = {
     user,

@@ -1,0 +1,56 @@
+<div class="auth">
+  <section class="auth__hero">
+    <a class="auth__brand" routerLink="/login">
+      <img class="auth__brand-mark" src="/brand/toadstock-mark.svg" alt="" />
+      <span class="auth__brand-name">Toadstock</span>
+      <span class="auth__brand-badge">NYSE: TOAD</span>
+    </a>
+
+    <div>
+      <p class="auth__headline">
+        Leap ahead<br />of the <span class="auth__headline-accent">market.</span>
+      </p>
+      <p class="auth__tagline">
+        Trade stocks, ETFs and bonds from one lily pad. Real-time prices, instant fills, zero
+        croaking.
+      </p>
+    </div>
+
+    <ul class="auth__ticker" aria-hidden="true">
+      @for (quote of tickerQuotes; track quote.symbol) {
+        <li class="auth__quote">
+          <span>{{ quote.symbol }}</span>
+          <span class="auth__quote-change" [class.auth__quote-change--down]="!quote.up">
+            {{ quote.up ? '▲' : '▼' }} {{ quote.percent }}%
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="auth__panel">
+    <div class="auth__content">
+      <h1 class="auth__title">{{ heading() }}</h1>
+      <p class="auth__subtitle">{{ subheading() }}</p>
+
+      <nav class="auth__tabs" aria-label="Account">
+        <a
+          class="auth__tab"
+          [class.auth__tab--active]="activeTab() === 'login'"
+          [attr.aria-current]="activeTab() === 'login' ? 'page' : null"
+          routerLink="/login"
+          >Log in</a
+        >
+        <a
+          class="auth__tab"
+          [class.auth__tab--active]="activeTab() === 'register'"
+          [attr.aria-current]="activeTab() === 'register' ? 'page' : null"
+          routerLink="/register"
+          >Create account</a
+        >
+      </nav>
+
+      <ng-content />
+    </div>
+  </section>
+</div>

@@ -8,9 +8,15 @@ public record SellRequest(
     @Positive(message = "Quantity must be greater than zero")
     Integer quantity,
 
-    String orderId
+    String orderId,
+
+    String portfolioId
 ) {
     public SellRequest(Integer quantity) {
-        this(quantity, null);
+        this(quantity, null, null);
+    }
+
+    public SellRequest(Integer quantity, String orderId) {
+        this(quantity, orderId, null);
     }
 }

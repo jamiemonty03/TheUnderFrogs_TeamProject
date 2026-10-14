@@ -7,5 +7,7 @@ import com.neueda.positionservice.models.PositionId;
 
 public interface PositionRepository extends JpaRepository<Position, PositionId> {
 
-    List<Position> findByAccountIdOrderBySymbol(String accountId);
+    List<Position> findByAccountIdOrderBySymbolAscPortfolioIdAsc(String accountId);
+
+    List<Position> findByPortfolioIdOrderBySymbol(String portfolioId);
 }

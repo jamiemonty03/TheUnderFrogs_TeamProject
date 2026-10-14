@@ -31,14 +31,20 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
     email: 'demo.trader@example.com',
   };
   const storedHashes: string[] = [];
-  const usersService = { verifyCredentials: jest.fn<any>(), createUser: jest.fn<any>() };
+  const usersService = {
+    verifyCredentials: jest.fn<UsersService['verifyCredentials']>(),
+    createUser: jest.fn<UsersService['createUser']>(),
+    getUserByUsername: jest.fn<UsersService['getUserByUsername']>().mockResolvedValue(null),
+    recordFailedLogin: jest.fn<UsersService['recordFailedLogin']>(),
+    recordSuccessfulLogin: jest.fn<UsersService['recordSuccessfulLogin']>(),
+  };
   const tokensRepository = {
     create: jest.fn(async (row: { token_hash: string }) => {
       storedHashes.push(row.token_hash);
       return row;
     }),
   };
-  const authRepository = { recordLogin: jest.fn<any>() };
+  const authRepository = { recordLogin: jest.fn<AuthRepository['recordLogin']>() };
 
   const tokenService = new TokenService(key, config);
   const authService = new AuthService(
@@ -52,7 +58,7 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
   const jwks = new JwksController(key).getJwks();
 
   it('returns an RS256 access token with the agreed claims that the published JWKS verifies', async () => {
-    usersService.verifyCredentials.mockResolvedValue(demo);
+    usersService.verifyCredentials.mockResolvedValue(demo as NonNullable<Awaited<ReturnType<UsersService['verifyCredentials']>>>);
 
     const result = await authService.login({ username: 'demo', password: 'Demo123!' });
 
@@ -78,7 +84,7 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
   });
 
   it('returns a refresh token whose hash, and only its hash, was stored', async () => {
-    usersService.verifyCredentials.mockResolvedValue(demo);
+    usersService.verifyCredentials.mockResolvedValue(demo as NonNullable<Awaited<ReturnType<UsersService['verifyCredentials']>>>);
 
     const { refreshToken, expiresIn, mfaRequired } = await authService.login({ username: 'demo', password: 'Demo123!' });
 
@@ -89,7 +95,7 @@ describe('Login end to end (real TokenService, RefreshTokensService and JWKS)', 
   });
 
   it('matches the AuthTokens schema in the OpenAPI spec served at /docs', async () => {
-    usersService.verifyCredentials.mockResolvedValue(demo);
+    usersService.verifyCredentials.mockResolvedValue(demo as NonNullable<Awaited<ReturnType<UsersService['verifyCredentials']>>>);
     const spec = load(readFileSync(join(process.cwd(), 'docs', 'auth-service.yaml'), 'utf8')) as {
       components: { schemas: Record<string, { required: string[]; properties: Record<string, { type: string }> }> };
     };

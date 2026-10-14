@@ -1,31 +1,21 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { EMPTY, Observable, catchError, forkJoin, map, of, scan, switchMap, timer } from 'rxjs';
+import {
+	BaseInstrumentResponse,
+	BondResponse,
+	EtfResponse,
+	InstrumentType,
+	StockResponse,
+	TradingInstrument,
+} from './interfaces/instruments.interfaces';
+import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
-export type AssetClass = 'Equity' | 'ETF' | 'Bond';
+export type { LatestPrice, DayChange } from './interfaces/instruments.interfaces';
+export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
 
-// Matches how often trade-executor's MarketDataPoller asks Alpaca for quotes.
 export const LIVE_POLL_MS = 5000;
 
-
-export interface PricedAsset {
-  symbol: string;
-  name: string;
-  price: number | null;
-  previousClose: number | null;
-  tradeDate: string | null;
-}
-
-export interface LatestPrice {
-  symbol: string;
-  name: string;
-  assetClass: AssetClass;
-  price: number | null;
-  previousClose: number | null;
-  tradeDate: string | null;
-}
-
-// Latest live quote from instruments-service's market-data cache; price is the mid of bid and ask.
 export interface LivePrice {
   symbol: string;
   price: number;
@@ -34,35 +24,27 @@ export interface LivePrice {
   quoteTime: string;
 }
 
-// What watchLivePrices emits on every poll. A failed poll keeps the last prices and sets stale.
 export interface LivePriceFeed {
   prices: ReadonlyMap<string, LivePrice>;
   stale: boolean;
 }
 
-export interface DayChange {
-  amount: number;
-  percent: number;
-}
-
 @Injectable({ providedIn: 'root' })
 export class Instruments {
-  private readonly http = inject(HttpClient);
+	constructor(private readonly http: HttpClient) {}
 
-  getStocks(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/stocks');
-  }
+	getStocks(): Observable<StockResponse[]> {
+		return this.http.get<StockResponse[]>('/api/stocks');
+	}
 
-  getEtfs(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/etfs');
-  }
+	getEtfs(): Observable<EtfResponse[]> {
+		return this.http.get<EtfResponse[]>('/api/etfs');
+	}
 
-  getBonds(): Observable<PricedAsset[]> {
-    return this.http.get<PricedAsset[]>('/api/bonds');
-  }
+	getBonds(): Observable<BondResponse[]> {
+		return this.http.get<BondResponse[]>('/api/bonds');
+	}
 
-  // No symbols asks for every tracked symbol; an empty list asks for nothing.
-  // Symbols with no live quote (e.g. outside market hours) are left out of the result.
   getLivePrices(symbols?: string[]): Observable<LivePrice[]> {
     if (symbols?.length === 0) {
       return of([]);
@@ -71,8 +53,6 @@ export class Instruments {
     return this.http.get<LivePrice[]>('/api/instruments/live-prices', { params });
   }
 
-  // Polls live quotes now and every LIVE_POLL_MS, merging each poll into the prices seen so far.
-  // A failed poll keeps the last prices and marks the feed stale until the next one succeeds.
   watchLivePrices(symbols?: string[], intervalMs = LIVE_POLL_MS): Observable<LivePriceFeed> {
     if (symbols?.length === 0) {
       return EMPTY;
@@ -98,7 +78,35 @@ export class Instruments {
     );
   }
 
-  getLatestPrices(): Observable<Map<string, LatestPrice>> {
+	getAllTradableInstruments(): Observable<TradingInstrument[]> {
+		return forkJoin({
+			stocks: this.getStocks(),
+			etfs: this.getEtfs(),
+			bonds: this.getBonds(),
+		}).pipe(
+			map(({ stocks, etfs, bonds }) => {
+				const fromStocks = stocks.map((item) => this.toTradingInstrument(item, 'Stock'));
+				const fromEtfs = etfs.map((item) => this.toTradingInstrument(item, 'ETF'));
+				const fromBonds = bonds.map((item) => this.toTradingInstrument(item, 'Bond'));
+
+				return [...fromStocks, ...fromEtfs, ...fromBonds]
+					.filter((item) => item.marketPrice > 0)
+					.sort((a, b) => a.symbol.localeCompare(b.symbol));
+			}),
+		);
+	}
+
+	private toTradingInstrument(item: BaseInstrumentResponse, type: InstrumentType): TradingInstrument {
+		return {
+			symbol: item.symbol,
+			name: item.name,
+			type,
+			marketPrice: Number(item.price ?? 0),
+			lastUpdated: item.lastUpdated ?? 'N/A',
+		};
+	}
+
+	getLatestPrices(): Observable<Map<string, LatestPrice>> {
     return forkJoin({
       Equity: this.getStocks(),
       ETF: this.getEtfs(),

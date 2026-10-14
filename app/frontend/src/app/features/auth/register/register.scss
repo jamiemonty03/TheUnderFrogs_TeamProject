@@ -1,0 +1,27 @@
+@use '../shared/auth-form';
+
+.register__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.register__column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.register__note {
+  margin: 1rem 0 0;
+  color: var(--ts-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .register__row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

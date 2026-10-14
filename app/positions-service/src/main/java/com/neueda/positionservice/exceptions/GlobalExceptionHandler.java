@@ -2,6 +2,7 @@ package com.neueda.positionservice.exceptions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PositionNotFoundException.class)
     public ResponseEntity<ErrorResponse> handlePositionNotFound(PositionNotFoundException ex) {
         return error(HttpStatus.NOT_FOUND, "POS-404", ex.getMessage());
+    }
+
+    @ExceptionHandler(PortfolioNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePortfolioNotFound(PortfolioNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, "PFL-404", ex.getMessage());
+    }
+
+    @ExceptionHandler(PortfolioConflictException.class)
+    public ResponseEntity<ErrorResponse> handlePortfolioConflict(PortfolioConflictException ex) {
+        return error(HttpStatus.CONFLICT, "PFL-409", ex.getMessage());
+    }
+
+    // e.g. two requests creating a portfolio with the same name at the same moment
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return error(HttpStatus.CONFLICT, "DB-409", "That change conflicts with existing data, please retry");
     }
 
     @ExceptionHandler(InsufficientHoldingsException.class)

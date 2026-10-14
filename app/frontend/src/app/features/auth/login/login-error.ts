@@ -1,13 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { AUTH_ERRORS, UNREACHABLE_STATUSES } from '../shared/auth-errors';
 
 export const LOGIN_ERRORS = {
   invalidCredentials: 'Invalid username or password.',
-  tooManyAttempts: 'Too many attempts. Wait a minute and try again.',
-  unreachable: "Can't reach the sign-in service.",
-  unexpected: 'Something went wrong. Try again.',
+  ...AUTH_ERRORS,
 } as const;
-
-const UNREACHABLE_STATUSES = [0, 502, 503, 504];
 
 export function loginErrorMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) {

@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +29,8 @@ import com.neueda.positionservice.dtos.requests.CreatePositionRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.enums.PortfolioRisk;
+import com.neueda.positionservice.models.Portfolio;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.repositories.PositionRepository;
@@ -40,15 +45,24 @@ class PositionServiceTest {
     @Mock
     private PositionMovementRepository movementRepository;
 
+    @Mock
+    private PortfolioService portfolioService;
+
     @InjectMocks
     private PositionService positionService;
+
+    @BeforeEach
+    void stubMainPortfolio() {
+        lenient().when(portfolioService.resolve(eq("ACC-1"), isNull()))
+            .thenReturn(new Portfolio("PF0001", "ACC-1", "Main", PortfolioRisk.MEDIUM, null));
+    }
 
     // Tests (applyBuy / applySell) 
 
     @Test
     @DisplayName("applyBuy: Calculates FIFO average cost correctly")
     void testApplyBuyCalculatesFIFOAverageCost() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
         
         positionService.applyBuy(position, new BigDecimal("50"), new BigDecimal("60"));
         
@@ -59,7 +73,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applyBuy: Multiple buy operations accumulate quantity and recalculate average cost")
     void testApplyBuyMultipleTimes() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("100"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("100"));
         
         positionService.applyBuy(position, new BigDecimal("10"), new BigDecimal("120"));
         positionService.applyBuy(position, new BigDecimal("5"), new BigDecimal("110"));
@@ -71,7 +85,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applySell: Reduces quantity while keeping average cost unchanged")
     void testApplySellReducesQuantityKeepsAverageCost() throws InsufficientHoldingsException {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
         BigDecimal originalCost = position.getAverageCost();
         
         positionService.applySell(position, new BigDecimal("30"));
@@ -83,7 +97,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applySell: Can sell exact quantity held")
     void testApplySellExactQuantity() throws InsufficientHoldingsException {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("50"));
         
         positionService.applySell(position, new BigDecimal("100"));
         
@@ -94,7 +108,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applySell: Throws exception when selling more than held")
     void testApplySellMoreThanHeldThrowsException() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("50"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("50"), new BigDecimal("50"));
         
         assertThrows(InsufficientHoldingsException.class, () -> {
             positionService.applySell(position, new BigDecimal("100"));
@@ -114,7 +128,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applyBuy: Throws exception when quantity is zero")
     void testApplyBuyZeroQuantityThrowsException() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
         
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applyBuy(position, BigDecimal.ZERO, new BigDecimal("50"));
@@ -124,7 +138,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applyBuy: Throws exception when quantity is negative")
     void testApplyBuyNegativeQuantityThrowsException() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
         
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applyBuy(position, new BigDecimal("-5"), new BigDecimal("50"));
@@ -134,7 +148,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applyBuy: Throws exception when price is zero")
     void testApplyBuyZeroPriceThrowsException() {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
         
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applyBuy(position, new BigDecimal("10"), BigDecimal.ZERO);
@@ -152,7 +166,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applySell: Throws exception when quantity is zero")
     void testApplySellZeroQuantityThrowsException() throws InsufficientHoldingsException {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
         
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applySell(position, BigDecimal.ZERO);
@@ -162,7 +176,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("applySell: Throws exception when quantity is negative")
     void testApplySellNegativeQuantityThrowsException() throws InsufficientHoldingsException {
-        Position position = new Position("ACC-1", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
+        Position position = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("10"), new BigDecimal("50"));
         
         assertThrows(IllegalArgumentException.class, () -> {
             positionService.applySell(position, new BigDecimal("-5"));
@@ -172,8 +186,8 @@ class PositionServiceTest {
     // Tests (patchPosition / updatePositionAfterSell)
 
     private Position stubExisting() {
-        Position existing = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
-        when(repository.findById(new PositionId("ACC-1", "AAPL"))).thenReturn(Optional.of(existing));
+        Position existing = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        when(repository.findById(new PositionId("PF0001", "AAPL"))).thenReturn(Optional.of(existing));
         when(repository.save(any(Position.class))).thenAnswer(inv -> inv.getArgument(0));
         return existing;
     }
@@ -183,7 +197,7 @@ class PositionServiceTest {
     void testPatchAverageCostOnlyKeepsQuantity() {
         stubExisting();
 
-        Position result = positionService.patchPosition("ACC-1", "AAPL",
+        Position result = positionService.patchPosition("ACC-1", null, "AAPL",
             new UpdatePositionRequest(null, new BigDecimal("160.00")));
 
         assertEquals(new BigDecimal("100"), result.getQuantity());
@@ -195,7 +209,7 @@ class PositionServiceTest {
     void testPatchQuantityOnlyKeepsAverageCost() {
         stubExisting();
 
-        Position result = positionService.patchPosition("ACC-1", "AAPL",
+        Position result = positionService.patchPosition("ACC-1", null, "AAPL",
             new UpdatePositionRequest(new BigDecimal("120"), null));
 
         assertEquals(new BigDecimal("120"), result.getQuantity());
@@ -205,22 +219,22 @@ class PositionServiceTest {
     @Test
     @DisplayName("patchPosition: Throws PositionNotFoundException when the position does not exist")
     void testPatchPositionNotFound() {
-        when(repository.findById(new PositionId("ACC-1", "MSFT"))).thenReturn(Optional.empty());
+        when(repository.findById(new PositionId("PF0001", "MSFT"))).thenReturn(Optional.empty());
 
-        assertThrows(PositionNotFoundException.class, () -> positionService.patchPosition("ACC-1", "MSFT",
+        assertThrows(PositionNotFoundException.class, () -> positionService.patchPosition("ACC-1", null, "MSFT",
             new UpdatePositionRequest(new BigDecimal("10"), null)));
     }
 
     @Test
     @DisplayName("updatePositionAfterSell: Selling all shares deletes the position and returns quantity 0")
     void testSellAllSharesDeletesAndReturnsPosition() throws InsufficientHoldingsException {
-        Position existing = new Position("ACC-1", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
-        when(repository.findById(new PositionId("ACC-1", "AAPL"))).thenReturn(Optional.of(existing));
+        Position existing = new Position("ACC-1", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        when(repository.findById(new PositionId("PF0001", "AAPL"))).thenReturn(Optional.of(existing));
 
-        Position result = positionService.updatePositionAfterSell("ACC-1", "AAPL", 100);
+        Position result = positionService.updatePositionAfterSell("ACC-1", null, "AAPL", 100, null);
 
         assertEquals(0, result.getQuantity().compareTo(BigDecimal.ZERO));
-        verify(repository).deleteById(new PositionId("ACC-1", "AAPL"));
+        verify(repository).deleteById(new PositionId("PF0001", "AAPL"));
         verify(repository, never()).save(any(Position.class));
     }
 
@@ -229,7 +243,7 @@ class PositionServiceTest {
     @Test
     @DisplayName("createPosition: Saves a new position when none exists")
     void testCreatePositionNew() {
-        when(repository.findById(new PositionId("ACC-1", "MSFT"))).thenReturn(Optional.empty());
+        when(repository.findById(new PositionId("PF0001", "MSFT"))).thenReturn(Optional.empty());
         when(repository.save(any(Position.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Position result = positionService.createPosition(

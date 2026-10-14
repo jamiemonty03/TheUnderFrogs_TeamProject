@@ -1,0 +1,43 @@
+@use '@angular/material' as mat;
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+      outlined-outline-color: var(--ts-border),
+      outlined-hover-outline-color: var(--ts-border-strong),
+    )
+  );
+}
+
+.auth-form__label {
+  margin-bottom: 0.4rem;
+  color: var(--ts-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.auth-form__field {
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+
+.auth-form__error {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ts-danger-border);
+  border-radius: 10px;
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+}
+
+.auth-form__submit {
+  height: 52px;
+  margin-top: 0.5rem;
+  border-radius: 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
