@@ -2,11 +2,15 @@ import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, OnInit, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -17,10 +21,20 @@ import { Instruments } from '../../../services/instruments';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
-import { Position, Positions } from '../../../services/positions';
+import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
+import { Portfolios } from '../../../services/portfolios';
+import { Position } from '../../../services/interfaces/positions.interfaces';
+import { Positions } from '../../../services/positions';
 import { startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
+
+export interface OrderDialogData {
+  side?: 'BUY' | 'SELL';
+  symbol?: string;
+  portfolioId?: string;
+  portfolioName?: string;
+}
 
 @Component({
   imports: [
@@ -31,6 +45,7 @@ type Instrument = TradingInstrument;
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSliderModule,
     MatStepperModule,
     MatTabsModule,
@@ -48,8 +63,24 @@ export class OrderDialog implements OnInit {
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
   private readonly positionsApi = inject(Positions);
+  private readonly portfoliosApi = inject(Portfolios);
+  readonly data = inject<OrderDialogData | null>(MAT_DIALOG_DATA, { optional: true });
 
   readonly selectedTab = signal(0);
+
+  readonly portfolios = signal<Portfolio[]>([]);
+  readonly selectedPortfolioId = signal<string | null>(this.data?.portfolioId ?? null);
+  readonly selectedPortfolio = computed(() => {
+    const portfolios = this.portfolios();
+    return (
+      portfolios.find((portfolio) => portfolio.portfolioId === this.selectedPortfolioId()) ??
+      portfolios.find((portfolio) => portfolio.defaultPortfolio) ??
+      null
+    );
+  });
+  readonly portfolioName = computed(
+    () => this.selectedPortfolio()?.name ?? this.data?.portfolioName ?? 'Main',
+  );
 
   readonly instruments = signal<Instrument[]>([]);
   readonly instrumentsLoading = signal(false);
@@ -90,27 +121,37 @@ export class OrderDialog implements OnInit {
   readonly selectedSellInstrument = signal<Instrument | null>(null);
 
   readonly buyInstrumentInput = toSignal(
-    this.buyInstrumentStep.controls.instrumentInput.valueChanges.pipe(startWith(this.buyInstrumentStep.controls.instrumentInput.value || '')),
+    this.buyInstrumentStep.controls.instrumentInput.valueChanges.pipe(
+      startWith(this.buyInstrumentStep.controls.instrumentInput.value || ''),
+    ),
     { initialValue: this.buyInstrumentStep.controls.instrumentInput.value || '' },
   );
 
   readonly sellInstrumentInput = toSignal(
-    this.sellInstrumentStep.controls.instrumentInput.valueChanges.pipe(startWith(this.sellInstrumentStep.controls.instrumentInput.value || '')),
+    this.sellInstrumentStep.controls.instrumentInput.valueChanges.pipe(
+      startWith(this.sellInstrumentStep.controls.instrumentInput.value || ''),
+    ),
     { initialValue: this.sellInstrumentStep.controls.instrumentInput.value || '' },
   );
 
   readonly buyQuantityInput = toSignal(
-    this.buyOrderStep.controls.quantity.valueChanges.pipe(startWith(this.buyOrderStep.controls.quantity.value || 0)),
+    this.buyOrderStep.controls.quantity.valueChanges.pipe(
+      startWith(this.buyOrderStep.controls.quantity.value || 0),
+    ),
     { initialValue: this.buyOrderStep.controls.quantity.value || 0 },
   );
 
   readonly buyPriceLimitInput = toSignal(
-    this.buyOrderStep.controls.priceLimit.valueChanges.pipe(startWith(this.buyOrderStep.controls.priceLimit.value || 0)),
+    this.buyOrderStep.controls.priceLimit.valueChanges.pipe(
+      startWith(this.buyOrderStep.controls.priceLimit.value || 0),
+    ),
     { initialValue: this.buyOrderStep.controls.priceLimit.value || 0 },
   );
 
   readonly sellQuantityInput = toSignal(
-    this.sellOrderStep.controls.quantity.valueChanges.pipe(startWith(this.sellOrderStep.controls.quantity.value || 0)),
+    this.sellOrderStep.controls.quantity.valueChanges.pipe(
+      startWith(this.sellOrderStep.controls.quantity.value || 0),
+    ),
     { initialValue: this.sellOrderStep.controls.quantity.value || 0 },
   );
 
@@ -124,8 +165,12 @@ export class OrderDialog implements OnInit {
     { initialValue: this.sellOrderStep.valid },
   );
 
-  readonly buyMatches = computed(() => this.filterInstruments(String(this.buyInstrumentInput() || '')));
-  readonly sellMatches = computed(() => this.filterInstruments(String(this.sellInstrumentInput() || '')));
+  readonly buyMatches = computed(() =>
+    this.filterInstruments(String(this.buyInstrumentInput() || '')),
+  );
+  readonly sellMatches = computed(() =>
+    this.filterInstruments(String(this.sellInstrumentInput() || '')),
+  );
 
   readonly buyEstimate = computed(() => {
     const qty = Number(this.buyQuantityInput() || 0);
@@ -147,10 +192,12 @@ export class OrderDialog implements OnInit {
   readonly sellDetailsInvalid = computed(() => {
     const position = this.heldPosition();
     const quantity = Number(this.sellQuantityInput() || 0);
-    return !this.sellOrderValid()
-      || this.positionLoading()
-      || position === null
-      || quantity > (position?.quantity ?? 0);
+    return (
+      !this.sellOrderValid() ||
+      this.positionLoading() ||
+      position === null ||
+      quantity > (position?.quantity ?? 0)
+    );
   });
 
   displayInstrument = (instrument: Instrument | string | null): string => {
@@ -168,8 +215,20 @@ export class OrderDialog implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.data?.side === 'SELL') {
+      this.selectedTab.set(1);
+    }
     this.loadInstruments();
     this.loadAvailableCash();
+    this.loadPortfolios();
+  }
+
+  selectPortfolio(portfolioId: string): void {
+    this.selectedPortfolioId.set(portfolioId);
+    const instrument = this.selectedSellInstrument();
+    if (instrument) {
+      this.loadHeldPosition(instrument.symbol);
+    }
   }
 
   selectBuyInstrument(event: MatAutocompleteSelectedEvent): void {
@@ -230,26 +289,31 @@ export class OrderDialog implements OnInit {
     this.buyPlaced.set(null);
     this.buySubmitting.set(true);
     this.buyResultMessage.set(null);
-    this.ordersApi.placeOrder({
-      accountId,
-      symbol: instrument.symbol,
-      side: 'BUY',
-      quantity: Number(this.buyOrderStep.controls.quantity.value),
-      priceLimit: Number(this.buyOrderStep.controls.priceLimit.value),
-      idempotencyKey: this.createIdempotencyKey(),
-    }).subscribe({
-      next: (response) => {
-        this.buyResponse.set(response);
-        this.buyPlaced.set(true);
-        this.buySubmitting.set(false);
-        this.buyResultMessage.set(`Order ${response.orderId} was placed with status ${response.orderStatus}.`);
-      },
-      error: (error: unknown) => {
-        this.buyPlaced.set(false);
-        this.buySubmitting.set(false);
-        this.buyResultMessage.set(this.orderErrorMessage(error));
-      },
-    });
+    this.ordersApi
+      .placeOrder({
+        accountId,
+        symbol: instrument.symbol,
+        side: 'BUY',
+        quantity: Number(this.buyOrderStep.controls.quantity.value),
+        priceLimit: Number(this.buyOrderStep.controls.priceLimit.value),
+        idempotencyKey: this.createIdempotencyKey(),
+        ...this.portfolio(),
+      })
+      .subscribe({
+        next: (response) => {
+          this.buyResponse.set(response);
+          this.buyPlaced.set(true);
+          this.buySubmitting.set(false);
+          this.buyResultMessage.set(
+            `Order ${response.orderId} was placed with status ${response.orderStatus}.`,
+          );
+        },
+        error: (error: unknown) => {
+          this.buyPlaced.set(false);
+          this.buySubmitting.set(false);
+          this.buyResultMessage.set(this.orderErrorMessage(error));
+        },
+      });
   }
 
   placeSellOrder(): void {
@@ -264,26 +328,31 @@ export class OrderDialog implements OnInit {
     this.sellPlaced.set(null);
     this.sellSubmitting.set(true);
     this.sellResultMessage.set(null);
-    this.ordersApi.placeOrder({
-      accountId,
-      symbol: instrument.symbol,
-      side: 'SELL',
-      quantity: Number(this.sellOrderStep.controls.quantity.value),
-      priceLimit: 0.01,
+    this.ordersApi
+      .placeOrder({
+        accountId,
+        symbol: instrument.symbol,
+        side: 'SELL',
+        quantity: Number(this.sellOrderStep.controls.quantity.value),
+        priceLimit: 0.01,
         idempotencyKey: this.createIdempotencyKey(),
-    }).subscribe({
-      next: (response) => {
-        this.sellResponse.set(response);
-        this.sellPlaced.set(true);
+        ...this.portfolio(),
+      })
+      .subscribe({
+        next: (response) => {
+          this.sellResponse.set(response);
+          this.sellPlaced.set(true);
           this.sellSubmitting.set(false);
-        this.sellResultMessage.set(`Order ${response.orderId} was placed with status ${response.orderStatus}.`);
-      },
-      error: (error: unknown) => {
-        this.sellPlaced.set(false);
+          this.sellResultMessage.set(
+            `Order ${response.orderId} was placed with status ${response.orderStatus}.`,
+          );
+        },
+        error: (error: unknown) => {
+          this.sellPlaced.set(false);
           this.sellSubmitting.set(false);
-        this.sellResultMessage.set(this.orderErrorMessage(error));
-      },
-    });
+          this.sellResultMessage.set(this.orderErrorMessage(error));
+        },
+      });
   }
 
   close(): void {
@@ -298,9 +367,9 @@ export class OrderDialog implements OnInit {
     }
     return items.filter((instrument) => {
       return (
-        instrument.symbol.toLowerCase().includes(normalized)
-        || instrument.name.toLowerCase().includes(normalized)
-        || instrument.type.toLowerCase().includes(normalized)
+        instrument.symbol.toLowerCase().includes(normalized) ||
+        instrument.name.toLowerCase().includes(normalized) ||
+        instrument.type.toLowerCase().includes(normalized)
       );
     });
   }
@@ -313,6 +382,7 @@ export class OrderDialog implements OnInit {
       next: (items) => {
         this.instruments.set(items);
         this.instrumentsLoading.set(false);
+        this.preselectInstrument();
       },
       error: () => {
         this.instruments.set([]);
@@ -343,7 +413,11 @@ export class OrderDialog implements OnInit {
     this.positionLoading.set(true);
     this.positionLoadError.set(null);
     this.heldPosition.set(null);
-    this.positionsApi.getPosition(symbol).subscribe({
+    const portfolioId = this.portfolioIdToSend();
+    const position$ = portfolioId
+      ? this.positionsApi.getPosition(symbol, portfolioId)
+      : this.positionsApi.getPosition(symbol);
+    position$.subscribe({
       next: (position) => {
         this.heldPosition.set(position);
         this.positionLoading.set(false);
@@ -353,6 +427,39 @@ export class OrderDialog implements OnInit {
         this.positionLoading.set(false);
       },
     });
+  }
+
+  private preselectInstrument(): void {
+    const symbol = this.data?.symbol;
+    if (!symbol || !this.instruments().some((instrument) => instrument.symbol === symbol)) {
+      return;
+    }
+    const event = { option: { value: symbol } } as MatAutocompleteSelectedEvent;
+    if (this.data?.side === 'SELL') {
+      this.selectSellInstrument(event);
+    } else {
+      this.selectBuyInstrument(event);
+    }
+  }
+
+  private loadPortfolios(): void {
+    this.portfoliosApi.getPortfolios().subscribe({
+      next: (portfolios) => this.portfolios.set(portfolios),
+      error: () => this.portfolios.set([]),
+    });
+  }
+
+  private portfolioIdToSend(): string | undefined {
+    const selected = this.selectedPortfolio();
+    if (selected) {
+      return selected.defaultPortfolio ? undefined : selected.portfolioId;
+    }
+    return this.data?.portfolioId;
+  }
+
+  private portfolio(): { portfolioId?: string } {
+    const portfolioId = this.portfolioIdToSend();
+    return portfolioId ? { portfolioId } : {};
   }
 
   private orderErrorMessage(error: unknown): string {

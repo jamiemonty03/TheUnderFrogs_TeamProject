@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, forkJoin, map } from 'rxjs';
 import {
@@ -16,7 +16,7 @@ export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previ
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {
-	constructor(private readonly http: HttpClient) {}
+	private readonly http = inject(HttpClient);
 
 	getStocks(): Observable<StockResponse[]> {
 		return this.http.get<StockResponse[]>('/api/stocks');
