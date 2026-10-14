@@ -23,6 +23,7 @@
       <a
         class="nav-bar__link"
         routerLink="/dashboard"
+        data-testid="nav-dashboard"
         routerLinkActive="nav-bar__link--active"
         (click)="closeMenu()"
         >Dashboard</a
@@ -30,6 +31,7 @@
       <a
         class="nav-bar__link"
         routerLink="/instruments"
+        data-testid="nav-markets"
         routerLinkActive="nav-bar__link--active"
         (click)="closeMenu()"
         >Markets</a
@@ -37,6 +39,7 @@
       <a
         class="nav-bar__link"
         routerLink="/orders"
+        data-testid="nav-orders"
         routerLinkActive="nav-bar__link--active"
         (click)="closeMenu()"
         >Orders</a
@@ -44,6 +47,7 @@
       <a
         class="nav-bar__link"
         routerLink="/positions"
+        data-testid="nav-portfolios"
         routerLinkActive="nav-bar__link--active"
         (click)="closeMenu()"
         >Portfolios</a
@@ -54,7 +58,37 @@
       <label class="nav-bar__search-wrap" aria-label="Search instruments">
         <input class="nav-bar__search" type="search" placeholder="Search AAPL, SPY, BND..." />
       </label>
-      <div class="nav-bar__avatar" aria-label="Profile initials">KF</div>
+      <button
+        type="button"
+        class="nav-bar__avatar"
+        [matMenuTriggerFor]="accountMenu"
+        data-testid="account-menu"
+        [attr.aria-label]="'Account menu for ' + username()"
+      >
+        {{ initial() }}
+      </button>
+
+      <mat-menu #accountMenu="matMenu" xPosition="before" class="nav-bar__account-menu">
+        <div class="nav-bar__account" role="presentation">
+          <span class="nav-bar__account-avatar" aria-hidden="true">{{ initial() }}</span>
+          <div class="nav-bar__account-details">
+            <span class="nav-bar__account-name">{{ username() }}</span>
+            <span class="nav-bar__account-role">{{ role() }}</span>
+          </div>
+        </div>
+        <button
+          mat-menu-item
+          type="button"
+          class="nav-bar__logout"
+          (click)="logout()"
+          data-testid="logout"
+        >
+          <svg class="nav-bar__logout-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+          </svg>
+          <span>Log out</span>
+        </button>
+      </mat-menu>
     </div>
   </div>
 </header>

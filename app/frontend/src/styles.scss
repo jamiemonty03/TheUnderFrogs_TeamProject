@@ -179,3 +179,16 @@ html {
   color: var(--ts-loss);
   border-color: var(--ts-loss);
 }
+
+.mat-mdc-menu-panel.nav-bar__account-menu {
+  @include mat.menu-overrides(
+    (
+      container-color: var(--ts-surface),
+      container-shape: 14px,
+      container-elevation-shadow: 0 16px 40px rgb(0 0 0 / 0.5),
+    )
+  );
+  min-width: 15rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--ts-border);
+}

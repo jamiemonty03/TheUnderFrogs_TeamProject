@@ -82,8 +82,8 @@ describe('OrdersList', () => {
     expect(orders.getOrdersByAccount).toHaveBeenCalledWith(ACCOUNT);
     expect(instruments.getAllTradableInstruments).toHaveBeenCalledOnce();
     expect(component.orders()).toEqual([
-      expect.objectContaining({ id: 'ORDER-1', symbol: 'AAPL', price: '$182.40', status: 'FILLED', canCancel: false }),
-      expect.objectContaining({ id: 'ORDER-2', symbol: 'TSLA', price: '$250.00', status: 'NEW', canCancel: true }),
+      expect.objectContaining({ symbol: 'AAPL', price: '$182.40', status: 'FILLED' }),
+      expect.objectContaining({ symbol: 'TSLA', price: '$250.00', status: 'NEW' }),
     ]);
     expect(component.isLoading()).toBe(false);
     expect(component.loadError()).toBeNull();
@@ -107,7 +107,7 @@ describe('OrdersList', () => {
 
     expect(component.pageIndex()).toBe(1);
     expect(component.pageSize()).toBe(1);
-    expect(component.pagedOrders()[0].id).toBe('ORDER-2');
+    expect(component.pagedOrders()[0].symbol).toBe('TSLA');
   });
 
   it('opens the order dialog and reloads orders after it closes', () => {

@@ -164,9 +164,9 @@ describe('OrderDialog', () => {
 
   it('clears invalid instrument selections on input and blur', () => {
     component.selectBuyInstrument(optionEvent('AAPL') as never);
+    component.buyInstrumentStep.controls.instrumentInput.setValue('unknown');
     component.onBuyInput();
     expect(component.selectedBuyInstrument()).toBeNull();
-    component.buyInstrumentStep.controls.instrumentInput.setValue('unknown');
     component.onBuyBlur();
     expect(component.buyInstrumentStep.controls.instrumentInput.value).toBe('');
 

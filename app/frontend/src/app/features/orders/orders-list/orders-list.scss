@@ -160,16 +160,6 @@ mat-paginator {
 		color: var(--ts-neutral);
 	}
 
-	&__action {
-		text-align: right;
-	}
-
-    &__cancel {
-        color: var(--ts-danger-text) !important;
-        border-color: var(--ts-danger-text) !important;
-        font-weight: 700;
-        font-size: 1.35rem;
-    }
 }
 
 @media (max-width: 1024px) {

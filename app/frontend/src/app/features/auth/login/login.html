@@ -9,6 +9,7 @@
       <input
         matInput
         id="login-username"
+        data-testid="login-username"
         formControlName="username"
         autocomplete="username"
         placeholder="kermit"
@@ -23,6 +24,7 @@
       <input
         matInput
         id="login-password"
+        data-testid="login-password"
         type="password"
         formControlName="password"
         autocomplete="current-password"
@@ -34,10 +36,16 @@
     </mat-form-field>
 
     @if (errorMessage(); as message) {
-      <p class="auth-form__error" role="alert">{{ message }}</p>
+      <p class="auth-form__error" role="alert" data-testid="login-error">{{ message }}</p>
     }
 
-    <button mat-flat-button type="submit" class="auth-form__submit" [disabled]="submitting()">
+    <button
+      mat-flat-button
+      type="submit"
+      class="auth-form__submit"
+      [disabled]="submitting()"
+      data-testid="login-submit"
+    >
       @if (submitting()) {
         Logging in…
       } @else {

@@ -1,28 +1,59 @@
 import { Routes } from '@angular/router';
-import { Login } from './features/auth/login/login';
-import { Register } from './features/auth/register/register';
-import { Dashboard } from './features/dashboard/dashboard/dashboard';
-import { InstrumentsList } from './features/instruments/instruments-list/instruments-list';
-import { InstrumentsDetail } from './features/instruments/instruments-detail/instruments-detail';
-import { PositionsDetail } from './features/positions/positions-detail/positions-detail';
+import { authGuard, guestGuard } from './services/auth';
 
 export const routes: Routes = [
-  { path: 'login', component: Login },
-  { path: 'register', component: Register },
-  { path: 'dashboard', component: Dashboard },
   {
-    path: 'orders',
-    loadComponent: () =>
-      import('./features/orders/orders-list/orders-list').then((m) => m.OrdersList),
+    path: 'login',
+    loadComponent: () => import('./features/auth/login/login').then((m) => m.Login),
+    canActivate: [guestGuard],
   },
-  { path: 'instruments', component: InstrumentsList },
-  { path: 'instruments/:id', component: InstrumentsDetail },
   {
-    path: 'positions',
-    loadComponent: () =>
-      import('./features/positions/positions-list/positions-list').then((m) => m.PositionsList),
+    path: 'register',
+    loadComponent: () => import('./features/auth/register/register').then((m) => m.Register),
+    canActivate: [guestGuard],
   },
-  { path: 'positions/:id', component: PositionsDetail },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: '/dashboard' },
+  {
+    path: '',
+    canActivateChild: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboard/dashboard/dashboard').then((m) => m.Dashboard),
+      },
+      {
+        path: 'orders',
+        loadComponent: () =>
+          import('./features/orders/orders-list/orders-list').then((m) => m.OrdersList),
+      },
+      {
+        path: 'instruments',
+        loadComponent: () =>
+          import('./features/instruments/instruments-list/instruments-list').then(
+            (m) => m.InstrumentsList,
+          ),
+      },
+      {
+        path: 'instruments/:id',
+        loadComponent: () =>
+          import('./features/instruments/instruments-detail/instruments-detail').then(
+            (m) => m.InstrumentsDetail,
+          ),
+      },
+      {
+        path: 'positions',
+        loadComponent: () =>
+          import('./features/positions/positions-list/positions-list').then((m) => m.PositionsList),
+      },
+      {
+        path: 'positions/:id',
+        loadComponent: () =>
+          import('./features/positions/positions-detail/positions-detail').then(
+            (m) => m.PositionsDetail,
+          ),
+      },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+    ],
+  },
+  { path: '**', redirectTo: 'dashboard' },
 ];

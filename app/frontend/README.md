@@ -46,13 +46,31 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+The e2e tests use [Playwright](https://playwright.dev/) and live in `e2e/`. They run against the real app, so start the stack first, from the repo root:
 
 ```bash
-ng e2e
+docker-compose up -d --build
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Then run them from the repo root, inside Playwright's Docker image (its browsers don't install on Amazon Linux).
+
+Run them all once:
+
+```bash
+docker run --rm --network host --ipc=host -v "$PWD/app/frontend":/app -v /app/node_modules -w /app \
+  mcr.microsoft.com/playwright:v1.64.0-noble \
+  sh -c "npm ci && npx playwright test; s=\$?; chown -R $(id -u):$(id -g) test-results playwright-report playwright 2>/dev/null; exit \$s"
+```
+
+Or open the interactive UI, then open port 9323 in your browser and click ▶ to run tests and watch each step:
+
+```bash
+docker run --rm -it --network host --ipc=host -v "$PWD/app/frontend":/app -v /app/node_modules -w /app \
+  mcr.microsoft.com/playwright:v1.64.0-noble \
+  sh -c "npm ci && npx playwright test --ui-host=0.0.0.0 --ui-port=9323"
+```
+
+The auth-service allows 5 logins a minute, so if a test fails with "Too many attempts", wait a minute and run again.
 
 ## Additional Resources
 
