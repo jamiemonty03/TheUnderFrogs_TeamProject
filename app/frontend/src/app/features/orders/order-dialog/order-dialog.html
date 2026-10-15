@@ -108,6 +108,11 @@
             </mat-form-field>
 
             <p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
+            @if (insufficientCash()) {
+              <p class="order-dialog__validation-error" role="alert">
+                Not enough cash balance to place this order.
+              </p>
+            }
             @if (availableCash() !== null) {
               <p class="order-dialog__availability">
                 Available cash: {{ availableCash() | currency }}
@@ -260,6 +265,11 @@
             <p class="order-dialog__estimate">
               Market value estimate: {{ sellEstimate() | currency }}
             </p>
+            @if (insufficientQuantity()) {
+              <p class="order-dialog__validation-error" role="alert">
+                Not enough quantity held to place this order.
+              </p>
+            }
             @if (heldPosition(); as position) {
               <p class="order-dialog__availability">
                 Quantity held in {{ portfolioName() }}: {{ position.quantity }}

@@ -69,6 +69,9 @@ public class Order {
     @Column(name = "order_status")
     private OrderStatus orderStatus;
 
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
     private int version;
 
     @Column(name = "created_at", updatable = false)
@@ -185,6 +188,14 @@ public class Order {
 
     public void setOrderStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public int getVersion() {

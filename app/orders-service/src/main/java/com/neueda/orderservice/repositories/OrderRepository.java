@@ -16,10 +16,15 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     boolean existsByIdempotencyKey(String idempotencyKey);
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
 
+    default int updateStatusIfCurrent(String orderId, String expectedStatus, String newStatus) {
+      return updateStatusIfCurrent(orderId, expectedStatus, newStatus, null);
+    }
+
     @Modifying(clearAutomatically = true)
     @Query(value = """
             UPDATE orders
             SET order_status = :newStatus,
+              rejection_reason = :reason,
                 last_updated = NOW(),
                 version = version + 1,
                 updated_by = 'SYSTEM'
@@ -28,5 +33,6 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             """, nativeQuery = true)
     int updateStatusIfCurrent(@Param("orderId") String orderId,
                               @Param("expectedStatus") String expectedStatus,
-                              @Param("newStatus") String newStatus);
+                              @Param("newStatus") String newStatus,
+                              @Param("reason") String reason);
 }

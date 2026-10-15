@@ -12,6 +12,7 @@ CREATE TABLE orders (
     quantity         INT NOT NULL CHECK (quantity > 0),
     price_limit      NUMERIC(18,2) NOT NULL CHECK (price_limit > 0),
     order_status     VARCHAR(20) NOT NULL CHECK (order_status IN ('NEW', 'FILLED', 'CANCELLED', 'REJECTED')),
+    rejection_reason VARCHAR(500),
     version       INTEGER NOT NULL DEFAULT 0,
     created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
     last_updated  TIMESTAMP  NOT NULL DEFAULT NOW(),

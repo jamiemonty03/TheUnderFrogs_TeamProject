@@ -49,7 +49,8 @@ public class OrderStatusService {
             throw new IllegalArgumentException("fillPrice is only allowed when newStatus is FILLED");
         }
 
-        int updated = orderRepository.updateStatusIfCurrent(orderId, expectedStatus.name(), newStatus.name());
+        int updated = orderRepository.updateStatusIfCurrent(
+            orderId, expectedStatus.name(), newStatus.name(), newStatus == OrderStatus.REJECTED ? reason : null);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
