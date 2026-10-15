@@ -10,8 +10,8 @@ export const RECONNECT_MS = 5_000;
 /**
  * Live quotes pushed from the instruments service over a WebSocket.
  * Every watcher shares one connection: it opens with the first watcher and
- * closes after the last one unsubscribes. The server sends every held quote
- * on connect, then each new quote as it arrives.
+ * closes after the last one unsubscribes. The server sends each new quote as it
+ * arrives; until a symbol ticks, callers show its last close.
  *
  *   inject(LivePrices).watch(['AAPL', 'SPY']).subscribe(({ prices, stale }) => ...)
  */
