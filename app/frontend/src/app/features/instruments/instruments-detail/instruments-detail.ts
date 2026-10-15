@@ -11,12 +11,14 @@ import {
   BondResponse,
   EtfResponse,
   InstrumentSummary,
+  PricePoint,
   StockResponse,
 } from '../../../services/interfaces/instruments.interfaces';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position } from '../../../services/interfaces/positions.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Positions } from '../../../services/positions';
+import { PriceChart } from '../price-chart/price-chart';
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
 type Details = StockResponse | EtfResponse | BondResponse;
@@ -29,7 +31,7 @@ export interface Fact {
 export const MISSING = '-';
 
 @Component({
-  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, RouterLink],
+  imports: [CurrencyPipe, DecimalPipe, MatButtonModule, PriceChart, RouterLink],
   selector: 'app-instruments-detail',
   styleUrl: './instruments-detail.scss',
   templateUrl: './instruments-detail.html',
@@ -46,6 +48,8 @@ export class InstrumentsDetail {
   protected readonly instrument = signal<InstrumentSummary | null>(null);
   protected readonly details = signal<Details | null>(null);
   protected readonly detailsStatus = signal<'loading' | 'ready' | 'error'>('loading');
+  protected readonly history = signal<PricePoint[]>([]);
+  protected readonly historyStatus = signal<'loading' | 'ready' | 'error'>('loading');
   private readonly live = signal<LivePrice | null>(null);
   private readonly positions = signal<Position[]>([]);
   private readonly portfolios = signal<Portfolio[]>([]);
@@ -92,6 +96,24 @@ export class InstrumentsDetail {
     this.route.paramMap
       .pipe(
         map((params) => (params.get('id') ?? '').trim().toUpperCase()),
+        switchMap((symbol) =>
+          this.instruments.getHistory(symbol).pipe(
+            catchError(() => {
+              this.historyStatus.set('error');
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((history) => {
+        this.history.set(history);
+        this.historyStatus.set('ready');
+      });
+
+    this.route.paramMap
+      .pipe(
+        map((params) => (params.get('id') ?? '').trim().toUpperCase()),
         switchMap((symbol) => this.instruments.watchLivePrices([symbol])),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -124,9 +146,10 @@ export class InstrumentsDetail {
     this.details.set(null);
     this.detailsStatus.set('loading');
     this.live.set(null);
+    this.history.set([]);
+    this.historyStatus.set('loading');
   }
 
-  // Find out what the instrument is, then load the key facts for its type
   private load(symbol: string): Observable<unknown> {
     return this.instruments.getInstrument(symbol).pipe(
       catchError((err: unknown) => {

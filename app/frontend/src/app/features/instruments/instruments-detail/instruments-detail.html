@@ -77,6 +77,27 @@
           </div>
         </header>
 
+        <section class="instrument__card" aria-labelledby="chart-title">
+          <h2 class="instrument__card-title" id="chart-title">Price history</h2>
+          @switch (historyStatus()) {
+            @case ('loading') {
+              <p class="instrument__muted">Loading price history…</p>
+            }
+            @case ('error') {
+              <p class="instrument__muted" data-testid="history-error">
+                Price history couldn't be loaded.
+              </p>
+            }
+            @case ('ready') {
+              @if (history().length) {
+                <app-price-chart [points]="history()" />
+              } @else {
+                <p class="instrument__muted" data-testid="history-empty">No price history yet.</p>
+              }
+            }
+          }
+        </section>
+
         <div class="instrument__grid">
           <section class="instrument__card" aria-labelledby="facts-title">
             <h2 class="instrument__card-title" id="facts-title">Key facts</h2>

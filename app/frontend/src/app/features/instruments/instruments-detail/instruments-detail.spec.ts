@@ -96,6 +96,12 @@ describe('InstrumentsDetail', () => {
       getEtf: vi.fn(() => of(DIA)),
       getBond: vi.fn(() => of(AGG)),
       watchLivePrices: vi.fn(() => live),
+      getHistory: vi.fn(() =>
+        of([
+          { date: '2026-10-13', close: 341.27, movingAvg20: 336.28, movingAvg50: 323.77 },
+          { date: '2026-10-14', close: 342.96, movingAvg20: 336.81, movingAvg50: 324.44 },
+        ]),
+      ),
     };
 
     await TestBed.configureTestingModule({
@@ -216,6 +222,21 @@ describe('InstrumentsDetail', () => {
     expect(text('fact-Distribution yield')).toBe('4.19%');
     expect(text('fact-Expense ratio')).toBe('0.03%');
     expect(text('fact-YTD return')).toBe('-2.84%');
+  });
+
+  it('shows the price history chart', () => {
+    expect(instruments['getHistory']).toHaveBeenCalledWith('AAPL');
+    expect(el('price-chart')).not.toBeNull();
+    expect(text('chart-change')).toBe('+$1.69 (+0.50%) over 1Y');
+  });
+
+  it('says so when the price history cannot be loaded, and the rest of the page still works', async () => {
+    instruments['getHistory'].mockReturnValue(throwError(() => new Error('down')));
+    params.next(convertToParamMap({ id: 'AAPL' }));
+    await render();
+
+    expect(text('history-error')).toBe("Price history couldn't be loaded.");
+    expect(text('fact-Sector')).toBe('Technology');
   });
 
   it('says so when the symbol does not exist', async () => {
