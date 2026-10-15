@@ -48,7 +48,14 @@ export class UsersRepository {
   }
 
   async update(id: number, user: Partial<User>): Promise<User | null> {
-    await this.repository.update(id, user);
+    try {
+      await this.repository.update(id, user);
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error.driverError as { code?: string }).code === UNIQUE_VIOLATION) {
+        throw new ConflictException('Username or email already exists');
+      }
+      throw error;
+    }
     return this.findById(id);
   }
 
