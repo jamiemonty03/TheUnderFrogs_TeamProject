@@ -3,7 +3,6 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -17,7 +16,6 @@ import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolio
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
-import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
 
 export const ALL_HOLDINGS = 'ALL';
 export const REFRESH_MS = 30_000;
@@ -50,7 +48,6 @@ export class PositionsList implements OnInit {
   protected readonly positionsService = inject(Positions);
   private readonly instruments = inject(Instruments);
   private readonly accounts = inject(Accounts);
-  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
@@ -197,24 +194,6 @@ export class PositionsList implements OnInit {
     this.loadPositions();
     this.loadPrices();
     this.loadCash();
-  }
-
-  protected trade(row: HoldingRow, side: 'BUY' | 'SELL'): void {
-    const data: OrderDialogData = {
-      side,
-      symbol: row.symbol,
-      portfolioId: row.portfolioId ?? undefined,
-      portfolioName: row.portfolioName,
-    };
-    this.dialog
-      .open(OrderDialog, {
-        width: '920px',
-        maxWidth: '95vw',
-        panelClass: 'order-dialog-panel',
-        data,
-      })
-      .afterClosed()
-      .subscribe(() => this.refresh());
   }
 
   protected tone(value: number | null): string {

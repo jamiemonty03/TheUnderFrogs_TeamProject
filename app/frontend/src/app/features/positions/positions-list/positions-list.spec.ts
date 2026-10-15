@@ -1,6 +1,5 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
@@ -10,7 +9,6 @@ import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
-import { OrderDialog } from '../../orders/order-dialog/order-dialog';
 import { PositionsList, REFRESH_MS } from './positions-list';
 
 const MAIN: Portfolio = {
@@ -84,7 +82,6 @@ describe('PositionsList (Portfolios page)', () => {
   };
   let instruments: { getLatestPrices: ReturnType<typeof vi.fn> };
   let accounts: { getAccount: ReturnType<typeof vi.fn> };
-  let dialog: { open: ReturnType<typeof vi.fn> };
 
   const el = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -128,7 +125,6 @@ describe('PositionsList (Portfolios page)', () => {
       getPositions: vi.fn((portfolioId?: string) => of(portfolioId === 'PF0012' ? IN_GROWTH : ALL)),
     };
     instruments = { getLatestPrices: vi.fn(() => of(PRICES)) };
-    dialog = { open: vi.fn(() => ({ afterClosed: () => of(undefined) })) };
     accounts = {
       getAccount: vi.fn(() =>
         of({
@@ -148,7 +144,6 @@ describe('PositionsList (Portfolios page)', () => {
         { provide: Positions, useValue: positions },
         { provide: Instruments, useValue: instruments },
         { provide: Accounts, useValue: accounts },
-        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
 
@@ -203,29 +198,11 @@ describe('PositionsList (Portfolios page)', () => {
     expect(text('cash')).toBe('$97,949.15');
   });
 
-  it("opens the order dialog to buy more of a holding, in that holding's portfolio", async () => {
-    await click('buy-AAPL');
+  it("Buy and Sell go to the Orders page's dialog, with the holding's symbol and portfolio", () => {
+    const href = (testId: string) => el(testId)!.getAttribute('href');
 
-    expect(dialog.open).toHaveBeenCalledWith(
-      OrderDialog,
-      expect.objectContaining({
-        data: { side: 'BUY', symbol: 'AAPL', portfolioId: 'PF0011', portfolioName: 'Main' },
-      }),
-    );
-  });
-
-  it('opens the order dialog to sell a holding, and refreshes once it closes', async () => {
-    positions.getPositions.mockClear();
-
-    await click('sell-NVDA');
-
-    expect(dialog.open).toHaveBeenCalledWith(
-      OrderDialog,
-      expect.objectContaining({
-        data: { side: 'SELL', symbol: 'NVDA', portfolioId: 'PF0012', portfolioName: 'Growth' },
-      }),
-    );
-    expect(positions.getPositions).toHaveBeenCalledTimes(1);
+    expect(href('buy-AAPL')).toBe('/orders?new=true&symbol=AAPL&side=BUY&portfolioId=PF0011');
+    expect(href('sell-NVDA')).toBe('/orders?new=true&symbol=NVDA&side=SELL&portfolioId=PF0012');
   });
 
   it('shows a dash for cash when the account cannot be loaded', async () => {

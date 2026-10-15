@@ -173,11 +173,13 @@ html {
   white-space: nowrap;
 }
 
-.button--sell.mat-mdc-outlined-button {
-  --mat-button-outlined-label-text-color: var(--ts-loss);
-  --mat-button-outlined-outline-color: var(--ts-loss);
-  color: var(--ts-loss);
-  border-color: var(--ts-loss);
+// Set the colour Material's outlined button reads, since a plain `color` here loses to Material's own rule
+.row-actions .buy {
+  --mat-button-outlined-label-text-color: var(--ts-frog);
+}
+
+.row-actions .sell {
+  --mat-button-outlined-label-text-color: var(--ts-sell);
 }
 
 .mat-mdc-menu-panel.nav-bar__account-menu {

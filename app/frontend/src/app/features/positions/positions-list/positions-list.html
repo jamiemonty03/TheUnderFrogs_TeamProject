@@ -367,23 +367,34 @@
               </th>
               <td mat-cell *matCellDef="let row">
                 <span class="row-actions">
-                  <button
+                  <a
                     mat-stroked-button
-                    type="button"
-                    (click)="trade(row, 'BUY')"
+                    class="buy"
+                    routerLink="/orders"
+                    [queryParams]="{
+                      new: true,
+                      symbol: row.symbol,
+                      side: 'BUY',
+                      portfolioId: row.portfolioId,
+                    }"
+                    [attr.aria-label]="'Buy ' + row.symbol"
                     [attr.data-testid]="'buy-' + row.symbol"
+                    >Buy</a
                   >
-                    Buy
-                  </button>
-                  <button
+                  <a
                     mat-stroked-button
-                    type="button"
-                    class="button--sell"
-                    (click)="trade(row, 'SELL')"
+                    class="sell"
+                    routerLink="/orders"
+                    [queryParams]="{
+                      new: true,
+                      symbol: row.symbol,
+                      side: 'SELL',
+                      portfolioId: row.portfolioId,
+                    }"
+                    [attr.aria-label]="'Sell ' + row.symbol"
                     [attr.data-testid]="'sell-' + row.symbol"
+                    >Sell</a
                   >
-                    Sell
-                  </button>
                 </span>
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
