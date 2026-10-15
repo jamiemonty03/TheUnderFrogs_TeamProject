@@ -2,7 +2,15 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
-import { Instruments, LIVE_POLL_MS, LatestPrice, LivePrice, LivePriceFeed, PricedAsset, dayChange } from './instruments';
+import {
+  Instruments,
+  LIVE_POLL_MS,
+  LatestPrice,
+  LivePrice,
+  LivePriceFeed,
+  PricedAsset,
+  dayChange,
+} from './instruments';
 
 describe('Instruments', () => {
   let service: Instruments;
@@ -61,7 +69,9 @@ describe('Instruments', () => {
     const req = http.expectOne((r) => r.url === '/api/instruments/live-prices');
     expect(req.request.method).toBe('GET');
     expect(req.request.params.get('symbols')).toBe('AAPL,SPY');
-    const quotes = [{ symbol: 'AAPL', price: 189.85, bid: 189.8, ask: 189.9, quoteTime: '2026-10-13T14:30:00Z' }];
+    const quotes = [
+      { symbol: 'AAPL', price: 189.85, bid: 189.8, ask: 189.9, quoteTime: '2026-10-13T14:30:00Z' },
+    ];
     req.flush(quotes);
 
     expect(result).toEqual(quotes);
@@ -163,6 +173,38 @@ describe('Instruments', () => {
     http.match('/api/bonds');
 
     expect(error).toBeTruthy();
+  });
+
+  it('getInstrument, getStock, getEtf and getBond load one instrument by symbol', () => {
+    service.getInstrument('AAPL').subscribe();
+    service.getStock('AAPL').subscribe();
+    service.getEtf('SPY').subscribe();
+    service.getBond('AGG').subscribe();
+
+    http.expectOne('/api/instruments/AAPL').flush({});
+    http.expectOne('/api/stocks/AAPL').flush({});
+    http.expectOne('/api/etfs/SPY').flush({});
+    http.expectOne('/api/bonds/AGG').flush({});
+  });
+
+  it('getHistory asks for about a year of daily closes by default', () => {
+    service.getHistory('AAPL').subscribe();
+    service.getHistory('AAPL', 21).subscribe();
+
+    http.expectOne('/api/instruments/AAPL/history?days=252').flush([]);
+    http.expectOne('/api/instruments/AAPL/history?days=21').flush([]);
+  });
+
+  it('getNews can ask for one symbol only', () => {
+    service.getNews(5, 'AAPL').subscribe();
+
+    http.expectOne('/api/news?limit=5&symbol=AAPL').flush([]);
+  });
+
+  it('encodes the symbol in the URL', () => {
+    service.getStock('BRK/B').subscribe();
+
+    http.expectOne('/api/stocks/BRK%2FB').flush({});
   });
 
   it('getNews requests the configured number of recent headlines', () => {

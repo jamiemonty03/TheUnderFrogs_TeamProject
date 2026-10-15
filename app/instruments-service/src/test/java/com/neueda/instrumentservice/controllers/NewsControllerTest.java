@@ -78,4 +78,29 @@ class NewsControllerTest {
 
         verifyNoInteractions(newsClient);
     }
+
+    @Test
+    void returnsNewsForOneTrackedSymbol() throws Exception {
+        when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("AAPL", "SPY"));
+        when(newsClient.getNews(5, List.of("AAPL"))).thenReturn(List.of(new NewsResponse(
+                "Apple earnings beat", "https://example.com/apple",
+                Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"))));
+
+        mockMvc.perform(get("/news").param("symbol", "aapl"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].headline").value("Apple earnings beat"));
+
+        verify(newsClient).getNews(5, List.of("AAPL"));
+    }
+
+    @Test
+    void returnsNoNewsForASymbolThatIsNotTracked() throws Exception {
+        when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("AAPL", "SPY"));
+
+        mockMvc.perform(get("/news").param("symbol", "NOPE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        verifyNoInteractions(newsClient);
+    }
 }

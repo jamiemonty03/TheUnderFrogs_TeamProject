@@ -1,0 +1,79 @@
+<div class="chart">
+  <div class="chart__controls">
+    <div class="chart__ranges" role="group" aria-label="Chart range">
+      @for (r of ranges; track r.key) {
+        <button
+          type="button"
+          class="chart__range"
+          [class.chart__range--active]="range() === r.key"
+          [attr.aria-pressed]="range() === r.key"
+          (click)="setRange(r.key)"
+          [attr.data-testid]="'range-' + r.key"
+        >
+          {{ r.key }}
+        </button>
+      }
+    </div>
+    @if (change(); as c) {
+      <p
+        class="chart__change"
+        [class.pos]="c.amount > 0"
+        [class.neg]="c.amount < 0"
+        data-testid="chart-change"
+      >
+        {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{ c.percent > 0 ? '+' : ''
+        }}{{ c.percent | number: '1.2-2' }}%) over {{ range() }}
+      </p>
+    }
+  </div>
+
+  <ul class="chart__legend" data-testid="chart-legend">
+    @for (s of series; track s.key) {
+      <li><span class="chart__key" [style.background]="s.colour"></span>{{ s.label }}</li>
+    }
+  </ul>
+
+  <div
+    class="chart__plot"
+    tabindex="0"
+    role="img"
+    [attr.aria-label]="
+      'Daily closing price over ' + range() + '. Use the arrow keys to step through the days.'
+    "
+    (keydown)="onKeydown($event)"
+    (blur)="clearActive()"
+    data-testid="price-chart"
+  >
+    <canvas
+      baseChart
+      type="line"
+      [data]="data()"
+      [options]="options()"
+      [plugins]="plugins"
+    ></canvas>
+  </div>
+
+  <details class="chart__table">
+    <summary>Show as a table</summary>
+    <table data-testid="chart-table">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          @for (s of series; track s.key) {
+            <th scope="col">{{ s.label }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of tableRows(); track p.date) {
+          <tr>
+            <td>{{ p.date | date: 'd MMM y' }}</td>
+            <td>{{ p.close | currency: 'USD' }}</td>
+            <td>{{ p.movingAvg20 === null ? '–' : (p.movingAvg20 | currency: 'USD') }}</td>
+            <td>{{ p.movingAvg50 === null ? '–' : (p.movingAvg50 | currency: 'USD') }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </details>
+</div>

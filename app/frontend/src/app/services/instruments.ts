@@ -6,7 +6,9 @@ import {
 	BaseInstrumentResponse,
 	BondResponse,
 	EtfResponse,
+	InstrumentSummary,
 	InstrumentType,
+	PricePoint,
   LivePrice,
   LivePriceFeed,
 	StockResponse,
@@ -28,8 +30,8 @@ export const LIVE_POLL_MS = 30_000;
 export interface NewsArticle {
 	headline: string;
 	articleUrl: string;
-	publishedAt: string;
-	updatedAt: string;
+	publishedAt: string | null;
+	updatedAt: string | null;
 	symbols: string[];
 }
 
@@ -49,8 +51,31 @@ export class Instruments {
 		return this.http.get<BondResponse[]>('/api/bonds');
 	}
 
-	getNews(limit = 5): Observable<NewsArticle[]> {
-		return this.http.get<NewsArticle[]>('/api/news', { params: { limit } });
+	getInstrument(symbol: string): Observable<InstrumentSummary> {
+		return this.http.get<InstrumentSummary>(`/api/instruments/${encodeURIComponent(symbol)}`);
+	}
+
+	getHistory(symbol: string, days = 252): Observable<PricePoint[]> {
+		return this.http.get<PricePoint[]>(`/api/instruments/${encodeURIComponent(symbol)}/history`, {
+			params: { days },
+		});
+	}
+
+	getStock(symbol: string): Observable<StockResponse> {
+		return this.http.get<StockResponse>(`/api/stocks/${encodeURIComponent(symbol)}`);
+	}
+
+	getEtf(symbol: string): Observable<EtfResponse> {
+		return this.http.get<EtfResponse>(`/api/etfs/${encodeURIComponent(symbol)}`);
+	}
+
+	getBond(symbol: string): Observable<BondResponse> {
+		return this.http.get<BondResponse>(`/api/bonds/${encodeURIComponent(symbol)}`);
+	}
+
+	getNews(limit = 5, symbol?: string): Observable<NewsArticle[]> {
+		const params: Record<string, string | number> = symbol ? { limit, symbol } : { limit };
+		return this.http.get<NewsArticle[]>('/api/news', { params });
 	}
 	
 	getLivePrices(symbols?: string[]): Observable<LivePrice[]> {

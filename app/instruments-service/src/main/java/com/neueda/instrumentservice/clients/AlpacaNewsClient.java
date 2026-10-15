@@ -14,6 +14,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.web.util.HtmlUtils;
 import com.neueda.instrumentservice.dtos.responses.NewsResponse;
 import com.neueda.instrumentservice.exceptions.AlpacaNewsException;
 
@@ -75,7 +76,7 @@ public class AlpacaNewsClient {
     }
 
     private static NewsResponse toNewsResponse(AlpacaNewsArticle article) {
-        return new NewsResponse(article.headline(), article.url(), article.publishedAt(),
+        return new NewsResponse(HtmlUtils.htmlUnescape(article.headline()), article.url(), article.publishedAt(),
                 article.updatedAt(), article.symbols() == null ? List.of() : article.symbols());
     }
 
@@ -88,7 +89,7 @@ public class AlpacaNewsClient {
     record AlpacaNewsArticle(
             String headline,
             String url,
-            @JsonProperty("published_at") Instant publishedAt,
+            @JsonProperty("created_at") Instant publishedAt,
             @JsonProperty("updated_at") Instant updatedAt,
             List<String> symbols) {}
 }
