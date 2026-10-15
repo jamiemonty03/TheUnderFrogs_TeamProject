@@ -22,6 +22,7 @@ import com.neueda.instrumentservice.clients.AlpacaNewsClient;
 import com.neueda.instrumentservice.config.SecurityConfig;
 import com.neueda.instrumentservice.config.TestJwtIssuer;
 import com.neueda.instrumentservice.dtos.responses.NewsResponse;
+import com.neueda.instrumentservice.mappers.TrackedTickerMapper;
 
 @WebMvcTest(NewsController.class)
 @Import(SecurityConfig.class)
@@ -39,9 +40,13 @@ class NewsControllerTest {
     @MockBean
     private AlpacaNewsClient newsClient;
 
+    @MockBean
+    private TrackedTickerMapper trackedTickerMapper;
+
     @Test
     void returnsNewsWithDefaultLimit() throws Exception {
-        when(newsClient.getNews(5)).thenReturn(List.of(new NewsResponse(
+        when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("AAPL", "SPY"));
+        when(newsClient.getNews(5, List.of("AAPL", "SPY"))).thenReturn(List.of(new NewsResponse(
                 "Markets rally", "https://example.com/article",
                 Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"))));
 
@@ -51,7 +56,7 @@ class NewsControllerTest {
                 .andExpect(jsonPath("$[0].articleUrl").value("https://example.com/article"))
                 .andExpect(jsonPath("$[0].symbols[0]").value("AAPL"));
 
-        verify(newsClient).getNews(5);
+        verify(newsClient).getNews(5, List.of("AAPL", "SPY"));
     }
 
     @Test
@@ -59,6 +64,17 @@ class NewsControllerTest {
         mockMvc.perform(get("/news").param("limit", "26"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.errorCode").value("VAL-422"));
+
+        verifyNoInteractions(newsClient, trackedTickerMapper);
+    }
+
+    @Test
+    void returnsEmptyNewsWhenNoSymbolsAreActive() throws Exception {
+        when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of());
+
+        mockMvc.perform(get("/news"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
 
         verifyNoInteractions(newsClient);
     }

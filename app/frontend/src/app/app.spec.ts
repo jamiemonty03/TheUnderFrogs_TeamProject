@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { App } from './app';
+import { Instruments } from './services/instruments';
 
 @Component({ template: '' })
 class Blank {}
@@ -11,6 +13,7 @@ describe('App', () => {
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
+        { provide: Instruments, useValue: { getNews: () => of([]) } },
         provideRouter([
           { path: 'dashboard', component: Blank },
           { path: 'login', component: Blank },
@@ -36,6 +39,7 @@ describe('App', () => {
     const page = await open('/dashboard');
 
     expect(page.querySelector('app-navigation-bar')).not.toBeNull();
+    expect(page.querySelector('app-news-footer')).not.toBeNull();
     expect(page.querySelector('main')?.classList).toContain('page-shell');
     expect(page.querySelector('main router-outlet')).not.toBeNull();
   });
@@ -46,6 +50,7 @@ describe('App', () => {
       const page = await open(url);
 
       expect(page.querySelector('app-navigation-bar')).toBeNull();
+      expect(page.querySelector('app-news-footer')).toBeNull();
       expect(page.querySelector('main')?.classList).not.toContain('page-shell');
     },
   );

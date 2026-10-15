@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -11,7 +11,11 @@ import { LivePrices } from '../../../services/live-prices';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position, Positions } from '../../../services/positions';
 import { Portfolios } from '../../../services/portfolios';
+import { MarketOverview } from '../../instruments/market-overview/market-overview';
 import { Dashboard } from './dashboard';
+
+@Component({ selector: 'app-market-overview', template: '' })
+class MarketOverviewStub {}
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
@@ -117,7 +121,12 @@ describe('Dashboard', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(Dashboard, {
+        remove: { imports: [MarketOverview] },
+        add: { imports: [MarketOverviewStub] },
+      })
+      .compileComponents();
     const instruments = TestBed.inject(Instruments);
     vi.spyOn(instruments, 'getLatestPrices').mockImplementation(() => calls.prices ?? of(PRICES));
     fixture = TestBed.createComponent(Dashboard);
@@ -205,16 +214,14 @@ describe('Dashboard', () => {
     expect(sell.getAttribute('href')).toBe('/orders?new=true&symbol=AAPL&side=SELL');
   });
 
-  it('links Place order and Order history', async () => {
+  it('links Place order, with no Order history button', async () => {
     await setUp();
 
     const topActions = Array.from(page.querySelectorAll<HTMLAnchorElement>('.dashboard__welcome .dashboard__actions a'));
     expect(topActions.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Place order', '/orders?new=true'],
     ]);
-    const history = page.querySelector<HTMLAnchorElement>('.dashboard__orders-footer a');
-    expect(history?.textContent?.trim()).toBe('Order history');
-    expect(history?.getAttribute('href')).toBe('/orders');
+    expect(page.textContent).not.toContain('Order history');
   });
 
   it('sorts the table when a column header is clicked', async () => {

@@ -1,4 +1,5 @@
 import { Controller, Get, Header, Inject } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../../common/decorators/public.decorator';
 import type { SigningKey } from '../../../config/signing-key';
 import { SIGNING_KEY } from '../services/token.service';
@@ -26,6 +27,7 @@ export class JwksController {
   }
 
   @Public()
+  @SkipThrottle()
   @Get('jwks.json')
   @Header('Cache-Control', 'public, max-age=300')
   getJwks(): Jwks {

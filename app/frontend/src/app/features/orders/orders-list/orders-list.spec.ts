@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Auth, CurrentUser } from '../../../services/auth/auth';
@@ -58,7 +59,12 @@ describe('OrdersList', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
-    user = signal<CurrentUser | null>({ userId: 42, username: 'trader', roles: ['TRADER'], accountId: ACCOUNT });
+    user = signal<CurrentUser | null>({
+      userId: 42,
+      username: 'trader',
+      roles: ['TRADER'],
+      accountId: ACCOUNT,
+    });
     instruments = { getAllTradableInstruments: vi.fn(() => of([AAPL, TSLA])) };
     orders = { getOrdersByAccount: vi.fn(() => of([BUY_ORDER, SELL_ORDER])) };
     dialog = { open: vi.fn(() => closedDialog) };
@@ -71,7 +77,9 @@ describe('OrdersList', () => {
         { provide: Orders, useValue: orders },
         { provide: MatDialog, useValue: dialog },
       ],
-    }).overrideProvider(MatDialog, { useValue: dialog }).compileComponents();
+    })
+      .overrideProvider(MatDialog, { useValue: dialog })
+      .compileComponents();
 
     fixture = TestBed.createComponent(OrdersList);
     component = fixture.componentInstance;
@@ -147,5 +155,46 @@ describe('OrdersList', () => {
     expect(instruments.getAllTradableInstruments).not.toHaveBeenCalled();
     expect(component.orders()).toEqual([]);
     expect(component.loadError()).toBe('No account is associated with the current user.');
+  });
+});
+
+describe('OrdersList opened from a Buy or Sell link', () => {
+  it('opens the order dialog on that instrument, side and portfolio', async () => {
+    const dialog = { open: vi.fn(() => ({ afterClosed: () => of(undefined) })) };
+    await TestBed.configureTestingModule({
+      imports: [OrdersList],
+      providers: [
+        {
+          provide: Auth,
+          useValue: {
+            currentUser: signal<CurrentUser | null>({
+              userId: 42,
+              username: 'trader',
+              roles: ['TRADER'],
+              accountId: ACCOUNT,
+            }).asReadonly(),
+          },
+        },
+        { provide: Instruments, useValue: { getAllTradableInstruments: vi.fn(() => of([AAPL])) } },
+        { provide: Orders, useValue: { getOrdersByAccount: vi.fn(() => of([])) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              queryParams: { new: 'true', symbol: 'AAPL', side: 'SELL', portfolioId: 'PF0013' },
+            },
+          },
+        },
+      ],
+    })
+      .overrideProvider(MatDialog, { useValue: dialog })
+      .compileComponents();
+
+    TestBed.createComponent(OrdersList).detectChanges();
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ data: { symbol: 'AAPL', side: 'SELL', portfolioId: 'PF0013' } }),
+    );
   });
 });

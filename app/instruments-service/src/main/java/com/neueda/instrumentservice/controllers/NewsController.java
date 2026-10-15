@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.neueda.instrumentservice.clients.AlpacaNewsClient;
 import com.neueda.instrumentservice.dtos.responses.NewsResponse;
+import com.neueda.instrumentservice.mappers.TrackedTickerMapper;
 
 @RestController
 @RequestMapping("/news")
@@ -16,9 +17,11 @@ public class NewsController {
     private static final int MAX_LIMIT = 25;
 
     private final AlpacaNewsClient newsClient;
+    private final TrackedTickerMapper trackedTickerMapper;
 
-    public NewsController(AlpacaNewsClient newsClient) {
+    public NewsController(AlpacaNewsClient newsClient, TrackedTickerMapper trackedTickerMapper) {
         this.newsClient = newsClient;
+        this.trackedTickerMapper = trackedTickerMapper;
     }
 
     @GetMapping
@@ -27,6 +30,10 @@ public class NewsController {
         if (limit < 1 || limit > MAX_LIMIT) {
             throw new IllegalArgumentException("limit must be between 1 and " + MAX_LIMIT);
         }
-        return ResponseEntity.ok(newsClient.getNews(limit));
+        List<String> symbols = trackedTickerMapper.findActiveSymbols();
+        if (symbols.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(newsClient.getNews(limit, symbols));
     }
 }

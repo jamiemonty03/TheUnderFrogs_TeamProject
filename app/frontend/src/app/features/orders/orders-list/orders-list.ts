@@ -12,7 +12,7 @@ import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { forkJoin } from 'rxjs';
-import { OrderFilter, OrderRow, OrderStatus, OrderSide } from './orders-list.interfaces';
+import { OrderFilter, OrderRow } from './orders-list.interfaces';
 
 @Component({
   imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],
@@ -59,10 +59,11 @@ export class OrdersList implements OnInit {
   ngOnInit(): void {
     this.loadOrders();
     if (this.route?.snapshot.queryParams['new'] === 'true') {
-      const { symbol, side } = this.route.snapshot.queryParams;
+      const { symbol, side, portfolioId } = this.route.snapshot.queryParams;
       this.openOrderDialog({
         symbol: typeof symbol === 'string' ? symbol : undefined,
         side: side === 'BUY' || side === 'SELL' ? side : undefined,
+        portfolioId: typeof portfolioId === 'string' ? portfolioId : undefined,
       });
     }
   }

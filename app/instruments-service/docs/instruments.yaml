@@ -28,7 +28,7 @@ paths:
       tags:
         - News
       summary: List recent market news
-      description: Returns recent news mapped from Alpaca without exposing provider credentials or response details
+      description: Returns recent news mapped from Alpaca for active symbols in tracked_tickers without exposing provider credentials or response details
       operationId: getNews
       parameters:
         - name: limit

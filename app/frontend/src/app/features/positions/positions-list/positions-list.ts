@@ -1,24 +1,22 @@
-import { CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
-import { interval } from 'rxjs';
+import { Subscription, interval } from 'rxjs';
 import { Accounts } from '../../../services/accounts';
-import { Auth } from '../../../services/auth/auth';
-import { Instruments, LatestPrice } from '../../../services/instruments';
+import { Instruments, LatestPrice, LivePrice } from '../../../services/instruments';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
-import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
+import { summarise, toHoldings } from '../../dashboard/portfolio';
 
 export const ALL_HOLDINGS = 'ALL';
 export const REFRESH_MS = 30_000;
@@ -32,7 +30,6 @@ type SortKey = keyof HoldingRow;
     CurrencyPipe,
     DatePipe,
     DecimalPipe,
-    PercentPipe,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -51,8 +48,6 @@ export class PositionsList implements OnInit {
   protected readonly positionsService = inject(Positions);
   private readonly instruments = inject(Instruments);
   private readonly accounts = inject(Accounts);
-  private readonly auth = inject(Auth);
-  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
 
@@ -63,6 +58,9 @@ export class PositionsList implements OnInit {
   protected readonly positions = signal<Position[]>([]);
   protected readonly prices = signal<Map<string, LatestPrice>>(new Map());
   protected readonly pricesFailed = signal(false);
+  private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
+  private livePolling?: Subscription;
+  private watchedSymbols = '';
   protected readonly cash = signal<number | null>(null);
   protected readonly sort = signal<Sort>({ active: 'marketValue', direction: 'desc' });
   protected readonly formMode = signal<FormMode>('closed');
@@ -98,39 +96,35 @@ export class PositionsList implements OnInit {
     'actions',
   ]);
 
+  private readonly heldPositions = computed(() => this.positions().filter((p) => p.quantity > 0));
+
+  // The dashboard's own calculations, so both pages show the same numbers
+  private readonly holdings = computed(() =>
+    toHoldings(this.heldPositions(), this.prices(), this.livePrices()),
+  );
+
+  private readonly summary = computed(() => summarise(this.holdings()));
+
   private readonly unsortedRows = computed<HoldingRow[]>(() => {
     const names = new Map(this.portfolios().map((p) => [p.portfolioId, p.name]));
-    const prices = this.prices();
-    const rows = this.positions().map((p) => {
-      const quote = prices.get(p.symbol);
-      const price = quote?.price ?? null;
-      const totalCost = p.quantity * p.averageCost;
-      const marketValue = price === null ? null : p.quantity * price;
-      const pnl = marketValue === null ? null : marketValue - totalCost;
-      const previousClose = quote?.previousClose ?? null;
-      const hasDay = price !== null && previousClose !== null && previousClose !== 0;
-      return {
-        symbol: p.symbol,
-        name: quote?.name ?? '',
-        assetClass: quote?.assetClass ?? '',
-        portfolioId: p.portfolioId,
-        portfolioName: (p.portfolioId && names.get(p.portfolioId)) || 'Main',
-        quantity: p.quantity,
-        averageCost: p.averageCost,
-        totalCost,
-        price,
-        marketValue,
-        pnl,
-        pnlPercent: pnl === null || totalCost === 0 ? null : pnl / totalCost,
-        dayChange: hasDay ? (price - previousClose) * p.quantity : null,
-        dayPercent: hasDay ? (price - previousClose) / previousClose : null,
-        weight: null as number | null,
-      };
-    });
-    const totalValue = sum(rows.map((r) => r.marketValue));
-    return rows.map((r) => ({
-      ...r,
-      weight: r.marketValue === null || totalValue === 0 ? null : r.marketValue / totalValue,
+    const held = this.heldPositions();
+    return this.holdings().map((h, i) => ({
+      symbol: h.symbol,
+      name: h.name,
+      assetClass: this.prices().get(h.symbol)?.assetClass ?? '',
+      portfolioId: held[i].portfolioId,
+      portfolioName: names.get(held[i].portfolioId ?? '') ?? 'Main',
+      quantity: h.quantity,
+      averageCost: h.averageCost,
+      totalCost: h.costBasis,
+      price: h.price,
+      priceSource: h.priceSource,
+      marketValue: h.marketValue,
+      pnl: h.unrealisedPnl,
+      pnlPercent: h.pnlPercent,
+      dayChange: h.dailyPnl,
+      dayPercent: h.dailyPnlPercent,
+      weight: h.weight,
     }));
   });
 
@@ -146,27 +140,15 @@ export class PositionsList implements OnInit {
 
   protected readonly totalCost = computed(() => sum(this.rows().map((r) => r.totalCost)));
 
-  protected readonly marketValue = computed(() => sum(this.rows().map((r) => r.marketValue)));
+  protected readonly marketValue = computed(() => this.summary().invested);
 
-  protected readonly pnl = computed(() => sum(this.rows().map((r) => r.pnl)));
+  protected readonly pnl = computed(() => this.summary().unrealisedPnl);
 
-  protected readonly pnlPercent = computed(() => {
-    const pricedCost = sum(
-      this.rows()
-        .filter((r) => r.pnl !== null)
-        .map((r) => r.totalCost),
-    );
-    return pricedCost === 0 ? null : this.pnl() / pricedCost;
-  });
+  protected readonly pnlPercent = computed(() => this.summary().pnlPercent);
 
-  protected readonly dayChange = computed(() => sum(this.rows().map((r) => r.dayChange)));
+  protected readonly dayChange = computed(() => this.summary().dailyPnl);
 
-  protected readonly dayPercent = computed(() => {
-    const withDay = this.rows().filter((r) => r.dayChange !== null);
-    const previousValue =
-      sum(withDay.map((r) => r.marketValue)) - sum(withDay.map((r) => r.dayChange));
-    return previousValue === 0 ? null : this.dayChange() / previousValue;
-  });
+  protected readonly dayPercent = computed(() => this.summary().dailyPnlPercent);
 
   protected readonly allPriced = computed(() => this.rows().every((r) => r.price !== null));
 
@@ -199,24 +181,6 @@ export class PositionsList implements OnInit {
     this.loadPositions();
     this.loadPrices();
     this.loadCash();
-  }
-
-  protected trade(row: HoldingRow, side: 'BUY' | 'SELL'): void {
-    const data: OrderDialogData = {
-      side,
-      symbol: row.symbol,
-      portfolioId: row.portfolioId ?? undefined,
-      portfolioName: row.portfolioName,
-    };
-    this.dialog
-      .open(OrderDialog, {
-        width: '920px',
-        maxWidth: '95vw',
-        panelClass: 'order-dialog-panel',
-        data,
-      })
-      .afterClosed()
-      .subscribe(() => this.refresh());
   }
 
   protected tone(value: number | null): string {
@@ -327,7 +291,10 @@ export class PositionsList implements OnInit {
   private loadPositions(): void {
     const portfolioId = this.showingAll() ? undefined : this.selectedId();
     this.positionsService.getPositions(portfolioId).subscribe({
-      next: (positions) => this.positions.set(positions),
+      next: (positions) => {
+        this.positions.set(positions);
+        this.watchLivePrices(positions.filter((p) => p.quantity > 0).map((p) => p.symbol));
+      },
       error: () => this.positions.set([]),
     });
   }
@@ -342,12 +309,21 @@ export class PositionsList implements OnInit {
     });
   }
 
-  private loadCash(): void {
-    const accountId = this.auth.currentUser()?.accountId;
-    if (!accountId) {
-      this.cash.set(null);
+  // Live prices for the holdings shown, as on the dashboard. Only restarts when the symbols change
+  private watchLivePrices(symbols: string[]): void {
+    const key = [...new Set(symbols)].sort().join(',');
+    if (key === this.watchedSymbols) {
       return;
     }
+    this.watchedSymbols = key;
+    this.livePolling?.unsubscribe();
+    this.livePolling = this.instruments
+      .watchLivePrices(key ? key.split(',') : [])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ prices }) => this.livePrices.set(prices));
+  }
+
+  private loadCash(): void {
     this.accounts.getAccount().subscribe({
       next: (account) => this.cash.set(account.cashBalance),
       error: () => this.cash.set(null),

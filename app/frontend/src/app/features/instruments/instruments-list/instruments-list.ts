@@ -1,8 +1,7 @@
 import { Component } from '@angular/core';
-import { MarketOverview } from '../market-overview/market-overview';
 
 @Component({
-  imports: [MarketOverview],
+  imports: [],
   selector: 'app-instruments-list',
   styleUrl: './instruments-list.scss',
   templateUrl: './instruments-list.html',

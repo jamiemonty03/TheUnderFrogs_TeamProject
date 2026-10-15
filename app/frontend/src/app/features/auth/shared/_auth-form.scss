@@ -34,6 +34,39 @@
   color: var(--ts-danger-text);
 }
 
+.auth-form input::-ms-reveal,
+.auth-form input::-ms-clear {
+  display: none;
+}
+
+.auth-form__reveal {
+  color: var(--ts-text-muted);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--ts-text);
+  }
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.auth-form__notice {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--ts-info) 35%, transparent);
+  border-radius: 10px;
+  background: var(--ts-info-bg);
+  color: var(--ts-info);
+}
+
 .auth-form__submit {
   height: 52px;
   margin-top: 0.5rem;
