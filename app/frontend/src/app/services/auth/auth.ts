@@ -1,6 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, map, of, switchMap, tap, throwError } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  finalize,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+  throwError,
+} from 'rxjs';
 import { API_BASE_URL } from '../api-config';
 import { CurrentUser, RegisterDetails } from '../interfaces/auth.interfaces';
 
@@ -21,12 +31,20 @@ interface StoredSession {
 
 export const SESSION_KEY = 'auth.session';
 
+export class NoRefreshTokenError extends Error {
+  constructor() {
+    super('There is no refresh token to renew the session with.');
+    this.name = 'NoRefreshTokenError';
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class Auth {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
   private session: StoredSession | null = readSession();
   private readonly user = signal<CurrentUser | null>(this.session?.user ?? null);
+  private refreshing$: Observable<string> | null = null;
 
   readonly currentUser = this.user.asReadonly();
 
@@ -60,6 +78,36 @@ export class Auth {
         map(() => undefined),
         finalize(() => this.clearSession()),
       );
+  }
+
+  refresh(): Observable<string> {
+    const refreshToken = this.session?.refreshToken;
+    if (!refreshToken) {
+      this.clearSession();
+      return throwError(() => new NoRefreshTokenError());
+    }
+    this.refreshing$ ??= this.http
+      .post<SessionTokens>(`${this.baseUrl}/auth/refresh`, { refresh_token: refreshToken })
+      .pipe(
+        map((tokens) => {
+          if (!this.session) {
+            throw new NoRefreshTokenError();
+          }
+          this.store({
+            ...this.session,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+          });
+          return tokens.accessToken;
+        }),
+        catchError((error: unknown) => {
+          this.clearSession();
+          return throwError(() => error);
+        }),
+        finalize(() => (this.refreshing$ = null)),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    return this.refreshing$;
   }
 
   isAuthenticated(): boolean {
