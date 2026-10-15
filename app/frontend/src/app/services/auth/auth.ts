@@ -115,6 +115,10 @@ export class Auth {
     return !!token && !isExpired(token);
   }
 
+  canRefresh(): boolean {
+    return !!this.session?.refreshToken;
+  }
+
   getToken(): string | null {
     return this.isAuthenticated() ? this.session!.accessToken : null;
   }
