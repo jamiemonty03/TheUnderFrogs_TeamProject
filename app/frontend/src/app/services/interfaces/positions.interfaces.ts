@@ -20,6 +20,7 @@ export interface HoldingRow {
   averageCost: number;
   totalCost: number;
   price: number | null;
+  priceSource: 'live' | 'close' | null;
   marketValue: number | null;
   pnl: number | null;
   pnlPercent: number | null;
