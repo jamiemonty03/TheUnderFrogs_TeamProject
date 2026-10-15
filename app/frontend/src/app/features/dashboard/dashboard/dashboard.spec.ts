@@ -13,7 +13,6 @@ import { Portfolios } from '../../../services/portfolios';
 import { MarketOverview } from '../../instruments/market-overview/market-overview';
 import { Dashboard } from './dashboard';
 
-// The market overview has its own tests; a stub keeps its price polling out of these.
 @Component({ selector: 'app-market-overview', template: '' })
 class MarketOverviewStub {}
 
