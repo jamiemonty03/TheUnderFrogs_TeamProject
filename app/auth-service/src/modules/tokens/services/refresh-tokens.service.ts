@@ -78,7 +78,7 @@ export class RefreshTokensService {
 
   async revokeOtherSessions(userId: number, presented?: string): Promise<number> {
     const current = presented ? await this.findValid(presented) : null;
-    const keepFamilyId = current && current.user_id === userId ? current.family_id : null;
+    const keepFamilyId = current && Number(current.user_id) === userId ? current.family_id : null;
     return this.refreshTokensRepository.revokeAllForUser(userId, keepFamilyId);
   }
 

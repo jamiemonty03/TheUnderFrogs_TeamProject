@@ -35,7 +35,7 @@ describe('RefreshTokensService', () => {
       return active.length;
     }),
     revokeAllForUser: jest.fn(async (userId: number, keepFamilyId: string | null) => {
-      const active = rows.filter((r) => r.user_id === userId && !r.revoked_at && r.family_id !== keepFamilyId);
+      const active = rows.filter((r) => Number(r.user_id) === userId && !r.revoked_at && r.family_id !== keepFamilyId);
       active.forEach((r) => (r.revoked_at = new Date()));
       return active.length;
     }),
@@ -331,6 +331,16 @@ describe('RefreshTokensService', () => {
       expect(await service.findValid(laptop.refreshToken)).toBeNull();
       expect(await service.findValid(phone.refreshToken)).toBeNull();
       expect(await service.findValid(someoneElse.refreshToken)).not.toBeNull();
+    });
+
+    it('keeps this session when Postgres returns the BIGINT user_id as a string', async () => {
+      const thisBrowser = await service.issue(5);
+      const laptop = await service.issue(5);
+      rows.forEach((row) => ((row as { user_id: unknown }).user_id = '5'));
+
+      expect(await service.revokeOtherSessions(5, thisBrowser.refreshToken)).toBe(1);
+      expect(await service.findValid(thisBrowser.refreshToken)).not.toBeNull();
+      expect(await service.findValid(laptop.refreshToken)).toBeNull();
     });
 
     it('signs out every session when no refresh token is sent', async () => {
