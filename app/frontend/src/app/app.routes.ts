@@ -52,6 +52,11 @@ export const routes: Routes = [
             (m) => m.PositionsDetail,
           ),
       },
+      {
+        path: 'wallet/return',
+        loadComponent: () =>
+          import('./features/wallet/wallet-return/wallet-return').then((m) => m.WalletReturn),
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },

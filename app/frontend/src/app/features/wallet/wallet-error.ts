@@ -45,3 +45,36 @@ export function walletErrorMessage(error: unknown): string {
   }
   return WALLET_ERRORS.unexpected;
 }
+
+export const CONFIRM_ERRORS = {
+  notFound: "We couldn't find that payment.",
+} as const;
+
+const CONFIRM_SERVER_MESSAGE_CODES = ['PAY-409', 'AUTH-403'];
+const RETRYABLE_CODES = ['PAY-502'];
+
+export function confirmErrorMessage(error: unknown): string {
+  const errorCode = errorCodeOf(error);
+  if (errorCode === 'PAY-404') {
+    return CONFIRM_ERRORS.notFound;
+  }
+  const serverMessage =
+    error instanceof HttpErrorResponse
+      ? (error.error as { message?: unknown } | null)?.message
+      : undefined;
+  if (
+    CONFIRM_SERVER_MESSAGE_CODES.includes(String(errorCode)) &&
+    typeof serverMessage === 'string'
+  ) {
+    return serverMessage.endsWith('.') ? serverMessage : `${serverMessage}.`;
+  }
+  return walletErrorMessage(error);
+}
+
+export function canRetryConfirm(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    (RETRYABLE_CODES.includes(String(errorCodeOf(error))) ||
+      UNREACHABLE_STATUSES.includes(error.status))
+  );
+}

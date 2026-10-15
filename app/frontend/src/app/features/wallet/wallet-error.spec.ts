@@ -1,6 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { NoTradingAccountError } from '../../services/wallet';
-import { WALLET_ERRORS, isPaymentsUnavailable, walletErrorMessage } from './wallet-error';
+import {
+  CONFIRM_ERRORS,
+  WALLET_ERRORS,
+  canRetryConfirm,
+  confirmErrorMessage,
+  isPaymentsUnavailable,
+  walletErrorMessage,
+} from './wallet-error';
 
 const httpError = (status: number, errorCode?: string, message = 'from server') =>
   new HttpErrorResponse({ status, error: errorCode ? { errorCode, message } : null });
@@ -28,5 +35,39 @@ describe('walletErrorMessage', () => {
     expect(isPaymentsUnavailable(httpError(503, 'PAY-503'))).toBe(true);
     expect(isPaymentsUnavailable(httpError(503))).toBe(false);
     expect(isPaymentsUnavailable(new Error('x'))).toBe(false);
+  });
+});
+
+describe('confirmErrorMessage', () => {
+  it.each([
+    ['PAY-404', httpError(404, 'PAY-404'), CONFIRM_ERRORS.notFound],
+    [
+      "PAY-409 uses the server's message",
+      httpError(409, 'PAY-409', "This payment hasn't been completed"),
+      "This payment hasn't been completed.",
+    ],
+    [
+      "AUTH-403 uses the server's message",
+      httpError(403, 'AUTH-403', 'This payment belongs to a different account'),
+      'This payment belongs to a different account.',
+    ],
+    [
+      'PAY-503 falls back to the wallet message',
+      httpError(503, 'PAY-503'),
+      WALLET_ERRORS.unavailable,
+    ],
+    ['network down', httpError(0), WALLET_ERRORS.unreachable],
+  ])('maps %s', (_label, error, message) => {
+    expect(confirmErrorMessage(error)).toBe(message);
+  });
+
+  it.each([
+    ['network down', httpError(0), true],
+    ['Stripe failed (PAY-502)', httpError(502, 'PAY-502'), true],
+    ['not paid (PAY-409)', httpError(409, 'PAY-409'), false],
+    ['not configured (PAY-503)', httpError(503, 'PAY-503'), false],
+    ['not found (PAY-404)', httpError(404, 'PAY-404'), false],
+  ])('only offers a retry for temporary failures: %s', (_label, error, retry) => {
+    expect(canRetryConfirm(error)).toBe(retry);
   });
 });
