@@ -4,7 +4,7 @@ import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Login } from './login';
-import { LOGIN_ERRORS } from './login-error';
+import { LOGIN_ERRORS, SESSION_EXPIRED_NOTICE } from './login-error';
 import { Auth, CurrentUser } from '../../../services/auth';
 
 const demo: CurrentUser = { userId: 11, username: 'demo', roles: ['TRADER'], accountId: 'ACC0011' };
@@ -17,7 +17,7 @@ describe('Login', () => {
   >;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
-  async function setUp(returnUrl: string | null = null) {
+  async function setUp(returnUrl: string | null = null, params: Record<string, string> = {}) {
     login = vi.fn(() => of(demo));
     await TestBed.configureTestingModule({
       imports: [Login],
@@ -27,7 +27,9 @@ describe('Login', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { queryParamMap: convertToParamMap(returnUrl ? { returnUrl } : {}) },
+            snapshot: {
+              queryParamMap: convertToParamMap({ ...(returnUrl ? { returnUrl } : {}), ...params }),
+            },
           },
         },
       ],
@@ -242,6 +244,45 @@ describe('Login', () => {
       expect(JSON.stringify(spies.flatMap((spy) => spy.mock.calls))).not.toContain('Demo123!');
       spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
       vi.restoreAllMocks();
+    });
+  });
+
+  describe('session expired notice', () => {
+    const notice = () => page.querySelector<HTMLElement>('[data-testid="login-expired"]');
+
+    it('explains why the user is here when the session expired', async () => {
+      await setUp('/orders', { expired: '1' });
+
+      expect(notice()?.textContent?.trim()).toBe(SESSION_EXPIRED_NOTICE);
+      expect(notice()?.getAttribute('role')).toBe('status');
+      expect(alert()).toBeNull();
+    });
+
+    it.each([
+      ['no flag', {}],
+      ['a different value', { expired: 'yes' }],
+    ])('is not shown with %s', async (_label, params: Record<string, string>) => {
+      await setUp(null, params);
+
+      expect(notice()).toBeNull();
+    });
+
+    it('goes away once the user tries to log in again', async () => {
+      await setUp('/orders', { expired: '1' });
+      login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+
+      await fillAndSubmit();
+
+      expect(notice()).toBeNull();
+      expect(alert()?.textContent?.trim()).toBe(LOGIN_ERRORS.invalidCredentials);
+    });
+
+    it('still returns to the page the user was on after logging in', async () => {
+      await setUp('/orders', { expired: '1' });
+
+      await fillAndSubmit();
+
+      expect(navigateByUrl).toHaveBeenCalledWith('/orders');
     });
   });
 });

@@ -34,6 +34,15 @@
   color: var(--ts-danger-text);
 }
 
+.auth-form__notice {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--ts-info) 35%, transparent);
+  border-radius: 10px;
+  background: var(--ts-info-bg);
+  color: var(--ts-info);
+}
+
 .auth-form__submit {
   height: 52px;
   margin-top: 0.5rem;

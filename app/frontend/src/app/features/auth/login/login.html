@@ -4,6 +4,12 @@
   activeTab="login"
 >
   <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (sessionExpired()) {
+      <p class="auth-form__notice" role="status" data-testid="login-expired">
+        {{ sessionExpiredNotice }}
+      </p>
+    }
+
     <label class="auth-form__label" for="login-username">Username</label>
     <mat-form-field appearance="outline" class="auth-form__field">
       <input
