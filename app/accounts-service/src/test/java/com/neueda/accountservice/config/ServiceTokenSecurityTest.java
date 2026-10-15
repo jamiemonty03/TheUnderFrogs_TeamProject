@@ -30,10 +30,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 
 import com.neueda.accountservice.controllers.AccountController;
+import com.neueda.accountservice.controllers.TopUpController;
 import com.neueda.accountservice.services.AccountService;
+import com.neueda.accountservice.services.TopUpService;
 import com.neueda.accountservice.utils.AuthorizationUtils;
 
-@WebMvcTest(AccountController.class)
+@WebMvcTest({AccountController.class, TopUpController.class})
 @Import(SecurityConfig.class)
 class ServiceTokenSecurityTest {
 
@@ -54,6 +56,9 @@ class ServiceTokenSecurityTest {
 
     @MockBean
     private AccountService accountService;
+
+    @MockBean
+    private TopUpService topUpService;
     
     private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
@@ -84,9 +89,64 @@ class ServiceTokenSecurityTest {
     }
 
     @Test
-    @DisplayName("Authenticated user can still debit an account")
-    void userTokenCanDebit() throws Exception {
-        mockMvc.perform(debit(TestJwtIssuer.userToken())).andExpect(status().isOk());
+    @DisplayName("User token cannot debit an account and gets 403")
+    void userTokenCannotDebit() throws Exception {
+        mockMvc.perform(debit(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Service token can credit an account")
+    void serviceTokenCanCredit() throws Exception {
+        mockMvc.perform(credit(TestJwtIssuer.serviceToken())).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("User token cannot credit an account and gets 403, so cash only arrives through a verified payment")
+    void userTokenCannotCredit() throws Exception {
+        mockMvc.perform(credit(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Service token can reverse a cash movement")
+    void serviceTokenCanReverse() throws Exception {
+        mockMvc.perform(reversal(TestJwtIssuer.serviceToken())).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("User token cannot reverse a cash movement and gets 403")
+    void userTokenCannotReverse() throws Exception {
+        mockMvc.perform(reversal(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Crediting without a token is rejected with 401")
+    void creditWithoutToken() throws Exception {
+        mockMvc.perform(post("/accounts/ACC0001/credit")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"amount\": 100}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("User token can start a top-up and confirm it, the only way for a user to add cash")
+    void userTokenCanTopUp() throws Exception {
+        mockMvc.perform(post("/accounts/ACC0001/top-ups")
+                .header(HttpHeaders.AUTHORIZATION, bearer(TestJwtIssuer.userToken()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"amount\": 50}"))
+            .andExpect(status().isOk());
+        mockMvc.perform(post("/accounts/ACC0001/top-ups/cs_test_a1B2c3/confirm")
+                .header(HttpHeaders.AUTHORIZATION, bearer(TestJwtIssuer.userToken())))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Starting a top-up without a token is rejected with 401")
+    void topUpWithoutToken() throws Exception {
+        mockMvc.perform(post("/accounts/ACC0001/top-ups")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"amount\": 50}"))
+            .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -179,6 +239,20 @@ class ServiceTokenSecurityTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"amount\": 100}");
+    }
+
+    private static RequestBuilder credit(String token) {
+        return post("/accounts/ACC0001/credit")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"amount\": 100}");
+    }
+
+    private static RequestBuilder reversal(String token) {
+        return post("/accounts/ACC0001/reversal")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderId\": \"ORD-1\"}");
     }
 
     private static String bearer(String token) {
