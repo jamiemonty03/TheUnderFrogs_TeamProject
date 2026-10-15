@@ -102,6 +102,19 @@
         <button
           mat-menu-item
           type="button"
+          class="nav-bar__profile"
+          (click)="openProfile()"
+          data-testid="edit-profile"
+        >
+          <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+          </svg>
+          <span>Edit profile</span>
+        </button>
+        <button
+          mat-menu-item
+          type="button"
           class="nav-bar__wallet"
           (click)="openWallet()"
           data-testid="wallet"

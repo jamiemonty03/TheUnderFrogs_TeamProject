@@ -110,6 +110,15 @@ export class Auth {
     return this.refreshing$;
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    const refreshToken = this.session?.refreshToken;
+    return this.http.post<void>(`${this.baseUrl}/auth/password`, {
+      currentPassword,
+      newPassword,
+      ...(refreshToken ? { refreshToken } : {}),
+    });
+  }
+
   isAuthenticated(): boolean {
     const token = this.session?.accessToken;
     return !!token && !isExpired(token);

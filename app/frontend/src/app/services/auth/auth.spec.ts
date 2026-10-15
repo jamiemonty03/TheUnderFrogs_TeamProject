@@ -285,6 +285,42 @@ describe('Auth', () => {
     });
   });
 
+  describe('changePassword()', () => {
+    it("sends both passwords and this browser's refresh token, so this session stays signed in", async () => {
+      setUp();
+      await logInAsDemo();
+
+      const result = firstValueFrom(auth.changePassword('Demo123!', 'lily-pad-leap-2026'), {
+        defaultValue: undefined,
+      });
+      const request = http.expectOne('/auth/password');
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await result;
+
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({
+        currentPassword: 'Demo123!',
+        newPassword: 'lily-pad-leap-2026',
+        refreshToken: 'refresh-1',
+      });
+    });
+
+    it('leaves the session as it is after changing the password', async () => {
+      setUp();
+      const accessToken = jwt(900);
+      await logInAsDemo(accessToken);
+
+      const result = firstValueFrom(auth.changePassword('Demo123!', 'lily-pad-leap-2026'), {
+        defaultValue: undefined,
+      });
+      http.expectOne('/auth/password').flush(null, { status: 204, statusText: 'No Content' });
+      await result;
+
+      expect(auth.getToken()).toBe(accessToken);
+      expect(auth.currentUser()).toEqual(demo);
+    });
+  });
+
   describe('refresh()', () => {
     const renewed = (accessToken: string, refreshToken: string) => ({
       accessToken,

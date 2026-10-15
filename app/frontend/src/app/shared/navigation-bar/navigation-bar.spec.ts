@@ -7,6 +7,7 @@ import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { NavigationBar } from './navigation-bar';
 import { WalletDialog } from '../../features/wallet/wallet-dialog/wallet-dialog';
+import { ProfileDialog } from '../../features/profile/profile-dialog/profile-dialog';
 import { Auth, SESSION_KEY, authGuard, authInterceptor, guestGuard } from '../../services/auth';
 import { CurrentUser } from '../../services/interfaces/auth.interfaces';
 
@@ -248,7 +249,7 @@ describe('NavigationBar', () => {
     const walletItem = () =>
       document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');
 
-    it('has a Wallet item above Log out in the account menu', async () => {
+    it('has Edit profile, Wallet and Log out, in that order, in the account menu', async () => {
       await setUp();
 
       await openMenu();
@@ -256,7 +257,7 @@ describe('NavigationBar', () => {
       const items = Array.from(
         document.querySelectorAll('.cdk-overlay-container [mat-menu-item]'),
       ).map((item) => item.textContent?.trim());
-      expect(items).toEqual(['Wallet', 'Log out']);
+      expect(items).toEqual(['Edit profile', 'Wallet', 'Log out']);
     });
 
     it('opens the wallet dialog', async () => {
@@ -269,6 +270,22 @@ describe('NavigationBar', () => {
       await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
       expect(open.mock.calls[0][0]).toBe(WalletDialog);
       expect(open.mock.calls[0][1]).toMatchObject({ width: '440px', maxWidth: '95vw' });
+    });
+  });
+
+  describe('edit profile', () => {
+    it('opens the edit profile dialog', async () => {
+      await setUp();
+      const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({} as never);
+
+      await openMenu();
+      document
+        .querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="edit-profile"]')!
+        .click();
+
+      await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+      expect(open.mock.calls[0][0]).toBe(ProfileDialog);
+      expect(open.mock.calls[0][1]).toMatchObject({ width: '480px', maxWidth: '95vw' });
     });
   });
 });
