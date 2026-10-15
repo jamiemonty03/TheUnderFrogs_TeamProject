@@ -176,4 +176,26 @@ describe('NavigationBar', () => {
       expect(auth.isAuthenticated()).toBe(false);
     });
   });
+
+  it('searching for a ticker opens its instrument page', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const search = page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+
+    search.value = ' aapl ';
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(navigate).toHaveBeenCalledWith(['/instruments', 'AAPL']);
+    expect(search.value).toBe('');
+  });
+
+  it('an empty search does nothing', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const search = page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+
+    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });

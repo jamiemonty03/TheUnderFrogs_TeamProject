@@ -56,7 +56,13 @@
 
     <div class="nav-bar__right">
       <label class="nav-bar__search-wrap" aria-label="Search instruments">
-        <input class="nav-bar__search" type="search" placeholder="Search AAPL, SPY, BND..." />
+        <input
+          class="nav-bar__search"
+          type="search"
+          placeholder="Search AAPL, SPY, BND..."
+          (keydown.enter)="search($event)"
+          data-testid="nav-search"
+        />
       </label>
       <button
         type="button"

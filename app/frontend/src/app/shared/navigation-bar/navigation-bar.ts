@@ -30,6 +30,17 @@ export class NavigationBar {
     this.isMenuOpen = false;
   }
 
+  search(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const symbol = input.value.trim().toUpperCase();
+    if (!symbol) {
+      return;
+    }
+    input.value = '';
+    this.closeMenu();
+    void this.router.navigate(['/instruments', symbol]);
+  }
+
   logout(): void {
     this.closeMenu();
     this.auth.logout().subscribe({
