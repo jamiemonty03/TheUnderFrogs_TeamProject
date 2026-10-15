@@ -17,6 +17,7 @@ import {
 import type { LatestPrice, AssetClass, DayChange } from './interfaces/instruments.interfaces';
 
 export type {
+  AssetClass,
   DayChange,
   LatestPrice,
   LivePrice,

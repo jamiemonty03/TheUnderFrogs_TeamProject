@@ -1,6 +1,5 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
@@ -10,7 +9,6 @@ import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
-import { OrderDialog } from '../../orders/order-dialog/order-dialog';
 import { PositionsList, REFRESH_MS } from './positions-list';
 
 const MAIN: Portfolio = {
@@ -82,9 +80,11 @@ describe('PositionsList (Portfolios page)', () => {
     error: ReturnType<typeof signal<string | null>>;
     getPositions: ReturnType<typeof vi.fn>;
   };
-  let instruments: { getLatestPrices: ReturnType<typeof vi.fn> };
+  let instruments: {
+    getLatestPrices: ReturnType<typeof vi.fn>;
+    watchLivePrices: ReturnType<typeof vi.fn>;
+  };
   let accounts: { getAccount: ReturnType<typeof vi.fn> };
-  let dialog: { open: ReturnType<typeof vi.fn> };
 
   const el = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -100,7 +100,7 @@ describe('PositionsList (Portfolios page)', () => {
       fixture.nativeElement.querySelectorAll(
         `td.mat-column-${name}.mat-mdc-cell`,
       ) as NodeListOf<HTMLElement>,
-    ).map((td) => td.textContent?.trim() ?? '');
+    ).map((td) => td.textContent?.replace(/\s+/g, ' ').trim() ?? '');
   const reload = async () => {
     fixture.componentInstance.refresh();
     fixture.detectChanges();
@@ -127,8 +127,10 @@ describe('PositionsList (Portfolios page)', () => {
       error: signal<string | null>(null),
       getPositions: vi.fn((portfolioId?: string) => of(portfolioId === 'PF0012' ? IN_GROWTH : ALL)),
     };
-    instruments = { getLatestPrices: vi.fn(() => of(PRICES)) };
-    dialog = { open: vi.fn(() => ({ afterClosed: () => of(undefined) })) };
+    instruments = {
+      getLatestPrices: vi.fn(() => of(PRICES)),
+      watchLivePrices: vi.fn(() => of({ prices: new Map(), stale: false })),
+    };
     accounts = {
       getAccount: vi.fn(() =>
         of({
@@ -148,7 +150,6 @@ describe('PositionsList (Portfolios page)', () => {
         { provide: Positions, useValue: positions },
         { provide: Instruments, useValue: instruments },
         { provide: Accounts, useValue: accounts },
-        { provide: MatDialog, useValue: dialog },
       ],
     }).compileComponents();
 
@@ -175,12 +176,26 @@ describe('PositionsList (Portfolios page)', () => {
     expect(column('symbol')).toEqual(['AAPL', 'NVDA', 'AAPL']);
     expect(column('name')).toEqual(['Apple Inc.', 'NVIDIA Corp.', 'Apple Inc.']);
     expect(column('assetClass')).toEqual(['Equity', 'Equity', 'Equity']);
-    expect(column('price')).toEqual(['$120.00', '$450.00', '$120.00']);
+    expect(column('price')).toEqual(['$120.00 Close', '$450.00 Close', '$120.00 Close']);
     expect(column('marketValue')).toEqual(['$1,200.00', '$900.00', '$480.00']);
     expect(column('pnl')).toEqual(['$200.00', '-$100.00', '-$120.00']);
-    expect(column('pnlPercent')).toEqual(['20.0%', '-10.0%', '-20.0%']);
+    expect(column('pnlPercent')).toEqual(['20.00%', '-10.00%', '-20.00%']);
     expect(column('dayChange')).toEqual(['20.00%', '-10.00%', '20.00%']);
     expect(column('weight')).toEqual(['46.5%', '34.9%', '18.6%']);
+  });
+
+  it('uses the live price when there is one, as the dashboard does', async () => {
+    const live = new Map([
+      ['AAPL', { symbol: 'AAPL', price: 130, bid: null, ask: null, quoteTime: '' }],
+    ]);
+    instruments.watchLivePrices.mockReturnValue(of({ prices: live, stale: false }));
+    positions.getPositions.mockReturnValue(of([position('PF0011', 'AAPL', 10, 100)]));
+
+    await click('portfolio-PF0011');
+
+    expect(column('price')).toEqual(['$130.00 Live']);
+    expect(column('pnl')).toEqual(['$300.00']);
+    expect(instruments.watchLivePrices).toHaveBeenLastCalledWith(['AAPL']);
   });
 
   it('colours gains green and losses red', () => {
@@ -203,29 +218,11 @@ describe('PositionsList (Portfolios page)', () => {
     expect(text('cash')).toBe('$97,949.15');
   });
 
-  it("opens the order dialog to buy more of a holding, in that holding's portfolio", async () => {
-    await click('buy-AAPL');
+  it("Buy and Sell go to the Orders page's dialog, with the holding's symbol and portfolio", () => {
+    const href = (testId: string) => el(testId)!.getAttribute('href');
 
-    expect(dialog.open).toHaveBeenCalledWith(
-      OrderDialog,
-      expect.objectContaining({
-        data: { side: 'BUY', symbol: 'AAPL', portfolioId: 'PF0011', portfolioName: 'Main' },
-      }),
-    );
-  });
-
-  it('opens the order dialog to sell a holding, and refreshes once it closes', async () => {
-    positions.getPositions.mockClear();
-
-    await click('sell-NVDA');
-
-    expect(dialog.open).toHaveBeenCalledWith(
-      OrderDialog,
-      expect.objectContaining({
-        data: { side: 'SELL', symbol: 'NVDA', portfolioId: 'PF0012', portfolioName: 'Growth' },
-      }),
-    );
-    expect(positions.getPositions).toHaveBeenCalledTimes(1);
+    expect(href('buy-AAPL')).toBe('/orders?new=true&symbol=AAPL&side=BUY&portfolioId=PF0011');
+    expect(href('sell-NVDA')).toBe('/orders?new=true&symbol=NVDA&side=SELL&portfolioId=PF0012');
   });
 
   it('shows a dash for cash when the account cannot be loaded', async () => {
