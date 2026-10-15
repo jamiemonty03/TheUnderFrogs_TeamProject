@@ -248,10 +248,12 @@ th.num ::ng-deep .mat-sort-header-container {
 }
 
 .dashboard__row-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
+  text-align: right;
   white-space: nowrap;
+
+  a + a {
+    margin-left: 0.5rem;
+  }
 
   .buy {
     color: var(--ts-frog);

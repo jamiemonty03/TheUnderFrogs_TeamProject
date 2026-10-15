@@ -188,11 +188,33 @@ html {
   white-space: nowrap;
 }
 
-.button--sell.mat-mdc-outlined-button {
-  --mat-button-outlined-label-text-color: var(--ts-loss);
-  --mat-button-outlined-outline-color: var(--ts-loss);
-  color: var(--ts-loss);
-  border-color: var(--ts-loss);
+// Set the colour Material's outlined button reads, since a plain `color` here loses to Material's own rule
+// The dashboard's Live / Close price tag, for the Portfolios page's holdings table
+.holdings-table .price-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-neutral);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.holdings-table .price-tag--live {
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+}
+
+.row-actions .buy {
+  --mat-button-outlined-label-text-color: var(--ts-frog);
+}
+
+.row-actions .sell {
+  --mat-button-outlined-label-text-color: var(--ts-sell);
 }
 
 .mat-mdc-menu-panel.nav-bar__account-menu {
