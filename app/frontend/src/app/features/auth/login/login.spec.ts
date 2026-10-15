@@ -4,7 +4,7 @@ import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Login } from './login';
-import { LOGIN_ERRORS } from './login-error';
+import { LOGIN_ERRORS, SESSION_EXPIRED_NOTICE } from './login-error';
 import { Auth, CurrentUser } from '../../../services/auth';
 
 const demo: CurrentUser = { userId: 11, username: 'demo', roles: ['TRADER'], accountId: 'ACC0011' };
@@ -17,7 +17,7 @@ describe('Login', () => {
   >;
   let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
-  async function setUp(returnUrl: string | null = null) {
+  async function setUp(returnUrl: string | null = null, params: Record<string, string> = {}) {
     login = vi.fn(() => of(demo));
     await TestBed.configureTestingModule({
       imports: [Login],
@@ -27,7 +27,9 @@ describe('Login', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            snapshot: { queryParamMap: convertToParamMap(returnUrl ? { returnUrl } : {}) },
+            snapshot: {
+              queryParamMap: convertToParamMap({ ...(returnUrl ? { returnUrl } : {}), ...params }),
+            },
           },
         },
       ],
@@ -242,6 +244,97 @@ describe('Login', () => {
       expect(JSON.stringify(spies.flatMap((spy) => spy.mock.calls))).not.toContain('Demo123!');
       spies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
       vi.restoreAllMocks();
+    });
+  });
+
+  describe('session expired notice', () => {
+    const notice = () => page.querySelector<HTMLElement>('[data-testid="login-expired"]');
+
+    it('explains why the user is here when the session expired', async () => {
+      await setUp('/orders', { expired: '1' });
+
+      expect(notice()?.textContent?.trim()).toBe(SESSION_EXPIRED_NOTICE);
+      expect(notice()?.getAttribute('role')).toBe('status');
+      expect(alert()).toBeNull();
+    });
+
+    it.each([
+      ['no flag', {}],
+      ['a different value', { expired: 'yes' }],
+    ])('is not shown with %s', async (_label, params: Record<string, string>) => {
+      await setUp(null, params);
+
+      expect(notice()).toBeNull();
+    });
+
+    it('goes away once the user tries to log in again', async () => {
+      await setUp('/orders', { expired: '1' });
+      login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+
+      await fillAndSubmit();
+
+      expect(notice()).toBeNull();
+      expect(alert()?.textContent?.trim()).toBe(LOGIN_ERRORS.invalidCredentials);
+    });
+
+    it('still returns to the page the user was on after logging in', async () => {
+      await setUp('/orders', { expired: '1' });
+
+      await fillAndSubmit();
+
+      expect(navigateByUrl).toHaveBeenCalledWith('/orders');
+    });
+  });
+
+  describe('showing the password', () => {
+    const toggle = () =>
+      page.querySelector<HTMLButtonElement>('[data-testid="login-toggle-password"]')!;
+    const clickToggle = () => {
+      toggle().click();
+      fixture.detectChanges();
+    };
+
+    beforeEach(() => setUp());
+
+    it('starts hidden, with a button that says it will show the password', () => {
+      expect(input('password').type).toBe('password');
+      expect(toggle().getAttribute('aria-label')).toBe('Show password');
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('shows the password, then hides it again', () => {
+      clickToggle();
+
+      expect(input('password').type).toBe('text');
+      expect(toggle().getAttribute('aria-label')).toBe('Hide password');
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+
+      clickToggle();
+
+      expect(input('password').type).toBe('password');
+      expect(toggle().getAttribute('aria-label')).toBe('Show password');
+    });
+
+    it('keeps what was typed and does not submit the form', () => {
+      type('password', 'Demo123!');
+
+      clickToggle();
+
+      expect(input('password').value).toBe('Demo123!');
+      expect(toggle().type).toBe('button');
+      expect(login).not.toHaveBeenCalled();
+    });
+
+    it('is still there and still works after a wrong password', async () => {
+      login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+      await fillAndSubmit();
+      expect(alert()?.textContent?.trim()).toBe(LOGIN_ERRORS.invalidCredentials);
+
+      clickToggle();
+
+      expect(toggle()).not.toBeNull();
+      expect(input('password').type).toBe('text');
+      expect(input('password').value).toBe('Demo123!');
     });
   });
 });

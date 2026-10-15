@@ -12,7 +12,7 @@ import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { forkJoin } from 'rxjs';
-import { OrderFilter, OrderRow, OrderStatus, OrderSide } from './orders-list.interfaces';
+import { OrderFilter, OrderRow } from './orders-list.interfaces';
 
 @Component({
   imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],

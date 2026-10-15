@@ -4,6 +4,12 @@
   activeTab="login"
 >
   <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    @if (sessionExpired()) {
+      <p class="auth-form__notice" role="status" data-testid="login-expired">
+        {{ sessionExpiredNotice }}
+      </p>
+    }
+
     <label class="auth-form__label" for="login-username">Username</label>
     <mat-form-field appearance="outline" class="auth-form__field">
       <input
@@ -25,11 +31,29 @@
         matInput
         id="login-password"
         data-testid="login-password"
-        type="password"
+        [type]="showPassword() ? 'text' : 'password'"
         formControlName="password"
         autocomplete="current-password"
         placeholder="••••••••"
       />
+      <button
+        mat-icon-button
+        matSuffix
+        type="button"
+        class="auth-form__reveal"
+        data-testid="login-toggle-password"
+        [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        [attr.aria-pressed]="showPassword()"
+        (click)="showPassword.set(!showPassword())"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" />
+          @if (showPassword()) {
+            <path d="M3 3l18 18" />
+          }
+        </svg>
+      </button>
       @if (form.controls.password.hasError('required')) {
         <mat-error>Password is required.</mat-error>
       }

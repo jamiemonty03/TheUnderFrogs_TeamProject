@@ -12,7 +12,6 @@ import { MatTableModule } from '@angular/material/table';
 import { RouterLink } from '@angular/router';
 import { interval } from 'rxjs';
 import { Accounts } from '../../../services/accounts';
-import { Auth } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
@@ -51,7 +50,6 @@ export class PositionsList implements OnInit {
   protected readonly positionsService = inject(Positions);
   private readonly instruments = inject(Instruments);
   private readonly accounts = inject(Accounts);
-  private readonly auth = inject(Auth);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
@@ -343,11 +341,6 @@ export class PositionsList implements OnInit {
   }
 
   private loadCash(): void {
-    const accountId = this.auth.currentUser()?.accountId;
-    if (!accountId) {
-      this.cash.set(null);
-      return;
-    }
     this.accounts.getAccount().subscribe({
       next: (account) => this.cash.set(account.cashBalance),
       error: () => this.cash.set(null),

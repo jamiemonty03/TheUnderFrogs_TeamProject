@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
-import { Auth, CurrentUser, SESSION_KEY } from './auth';
+import { Auth, CurrentUser, NoRefreshTokenError, SESSION_KEY } from './auth';
 import { authInterceptor } from './auth.interceptor';
 import { API_BASE_URL } from '../api-config';
 import { environment as productionEnvironment } from '../../../environments/environment';
@@ -282,6 +282,105 @@ describe('Auth', () => {
       http.expectOne('https://api.example.com/auth/me').flush(kermit);
 
       expect(await result).toEqual(kermit);
+    });
+  });
+
+  describe('refresh()', () => {
+    const renewed = (accessToken: string, refreshToken: string) => ({
+      accessToken,
+      refreshToken,
+      expiresIn: 900,
+      mfaRequired: false,
+    });
+
+    it('swaps the refresh token for a new pair of tokens and keeps the user', async () => {
+      setUp();
+      await logInAsDemo(jwt(-1));
+      const newAccessToken = jwt(900);
+
+      const result = firstValueFrom(auth.refresh());
+      const request = http.expectOne('/auth/refresh');
+      request.flush(renewed(newAccessToken, 'refresh-2'));
+
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ refresh_token: 'refresh-1' });
+      expect(await result).toBe(newAccessToken);
+      expect(auth.getToken()).toBe(newAccessToken);
+      expect(auth.currentUser()).toEqual(demo);
+      expect(JSON.parse(sessionStorage.getItem(SESSION_KEY)!)).toEqual({
+        accessToken: newAccessToken,
+        refreshToken: 'refresh-2',
+        user: demo,
+      });
+    });
+
+    it('shares one request between calls made at the same time', async () => {
+      setUp();
+      await logInAsDemo(jwt(-1));
+      const newAccessToken = jwt(900);
+
+      const results = Promise.all([
+        firstValueFrom(auth.refresh()),
+        firstValueFrom(auth.refresh()),
+        firstValueFrom(auth.refresh()),
+      ]);
+      http.expectOne('/auth/refresh').flush(renewed(newAccessToken, 'refresh-2'));
+
+      expect(await results).toEqual([newAccessToken, newAccessToken, newAccessToken]);
+    });
+
+    it('sends the newest refresh token the next time, because the server rotates it', async () => {
+      setUp();
+      await logInAsDemo(jwt(-1));
+      const first = firstValueFrom(auth.refresh());
+      http.expectOne('/auth/refresh').flush(renewed(jwt(-1), 'refresh-2'));
+      await first;
+
+      const second = firstValueFrom(auth.refresh());
+      const request = http.expectOne('/auth/refresh');
+      request.flush(renewed(jwt(900), 'refresh-3'));
+      await second;
+
+      expect(request.request.body).toEqual({ refresh_token: 'refresh-2' });
+    });
+
+    it('clears the session when the server refuses the refresh token', async () => {
+      setUp();
+      await logInAsDemo(jwt(-1));
+
+      const result = firstValueFrom(auth.refresh());
+      http
+        .expectOne('/auth/refresh')
+        .flush(
+          { errorCode: 'AUTH-401', message: 'Invalid refresh token' },
+          { status: 401, statusText: 'Unauthorized' },
+        );
+
+      await expect(result).rejects.toMatchObject({ status: 401 });
+      expect(auth.isAuthenticated()).toBe(false);
+      expect(auth.currentUser()).toBeNull();
+      expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+    });
+
+    it('lets a new refresh start after a failed one', async () => {
+      setUp();
+      await logInAsDemo(jwt(-1));
+      const failed = firstValueFrom(auth.refresh());
+      http.expectOne('/auth/refresh').flush(null, { status: 503, statusText: 'Unavailable' });
+      await expect(failed).rejects.toBeTruthy();
+
+      await logInAsDemo(jwt(-1));
+      const retried = firstValueFrom(auth.refresh());
+      http.expectOne('/auth/refresh').flush(renewed(jwt(900), 'refresh-2'));
+
+      await expect(retried).resolves.toBeTruthy();
+    });
+
+    it('fails without calling the server when there is no refresh token', async () => {
+      setUp();
+
+      await expect(firstValueFrom(auth.refresh())).rejects.toBeInstanceOf(NoRefreshTokenError);
+      http.expectNone('/auth/refresh');
     });
   });
 

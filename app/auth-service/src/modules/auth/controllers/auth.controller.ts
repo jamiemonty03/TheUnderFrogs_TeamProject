@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, Header, HttpCode, HttpException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { REFRESH_THROTTLE } from '../../../config/throttle.config';
 import { AuthService } from '../services/auth.service';
 import {
   ClientCredentialsDto,
@@ -47,6 +48,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(REFRESH_THROTTLE)
   @Post('refresh')
   @HttpCode(200)
   @Header('Cache-Control', 'no-store')

@@ -9,7 +9,6 @@ import {
 	InstrumentType,
   LivePrice,
   LivePriceFeed,
-  PricedAsset,
 	StockResponse,
 	TradingInstrument,
 } from './interfaces/instruments.interfaces';
@@ -25,6 +24,14 @@ export type {
 } from './interfaces/instruments.interfaces';
 
 export const LIVE_POLL_MS = 30_000;
+
+export interface NewsArticle {
+	headline: string;
+	articleUrl: string;
+	publishedAt: string;
+	updatedAt: string;
+	symbols: string[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class Instruments {
@@ -42,38 +49,42 @@ export class Instruments {
 		return this.http.get<BondResponse[]>('/api/bonds');
 	}
 
-  getLivePrices(symbols?: string[]): Observable<LivePrice[]> {
-    if (symbols?.length === 0) {
-      return of([]);
-    }
-    const params = symbols ? new HttpParams().set('symbols', symbols.join(',')) : undefined;
-    return this.http.get<LivePrice[]>('/api/instruments/live-prices', { params });
-  }
+	getNews(limit = 5): Observable<NewsArticle[]> {
+		return this.http.get<NewsArticle[]>('/api/news', { params: { limit } });
+	}
+	
+	getLivePrices(symbols?: string[]): Observable<LivePrice[]> {
+		if (symbols?.length === 0) {
+		return of([]);
+		}
+		const params = symbols ? new HttpParams().set('symbols', symbols.join(',')) : undefined;
+		return this.http.get<LivePrice[]>('/api/instruments/live-prices', { params });
+	}
 
-  watchLivePrices(symbols?: string[], intervalMs = LIVE_POLL_MS): Observable<LivePriceFeed> {
-    if (symbols?.length === 0) {
-      return EMPTY;
-    }
-    return timer(0, intervalMs).pipe(
-      switchMap(() =>
-        this.getLivePrices(symbols).pipe(
-          map((quotes): LivePrice[] | null => quotes),
-          catchError(() => of(null)),
-        ),
-      ),
-      scan(
-        (feed: LivePriceFeed, quotes) => {
-          if (quotes === null) {
-            return { prices: feed.prices, stale: true };
-          }
-          const prices = new Map(feed.prices);
-          quotes.forEach((q) => prices.set(q.symbol, q));
-          return { prices, stale: false };
-        },
-        { prices: new Map<string, LivePrice>(), stale: false },
-      ),
-    );
-  }
+	watchLivePrices(symbols?: string[], intervalMs = LIVE_POLL_MS): Observable<LivePriceFeed> {
+		if (symbols?.length === 0) {
+		return EMPTY;
+		}
+		return timer(0, intervalMs).pipe(
+		switchMap(() =>
+			this.getLivePrices(symbols).pipe(
+			map((quotes): LivePrice[] | null => quotes),
+			catchError(() => of(null)),
+			),
+		),
+		scan(
+			(feed: LivePriceFeed, quotes) => {
+			if (quotes === null) {
+				return { prices: feed.prices, stale: true };
+			}
+			const prices = new Map(feed.prices);
+			quotes.forEach((q) => prices.set(q.symbol, q));
+			return { prices, stale: false };
+			},
+			{ prices: new Map<string, LivePrice>(), stale: false },
+		),
+		);
+	}
 
 	getAllTradableInstruments(): Observable<TradingInstrument[]> {
 		return forkJoin({
