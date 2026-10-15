@@ -102,6 +102,43 @@ paths:
                       exchange: "NYSEArca"
                       tradable: true
 
+  /instruments/live-prices:
+    get:
+      tags:
+        - Instruments
+      summary: Latest live quotes, for some symbols or all of them
+      description: >-
+        Returns the latest live quote held for each requested symbol, read from the market-data Kafka topic
+        (PRICE_UPDATED events from trade-executor). Symbols with no live quote yet, for example outside market
+        hours, are left out, so callers should fall back to the daily close.
+      operationId: getLivePrices
+      parameters:
+        - name: symbols
+          in: query
+          required: false
+          description: Comma-separated ticker symbols. Leave out to get every tracked symbol's quote.
+          schema:
+            type: string
+            example: "AAPL,SPY"
+      responses:
+        '200':
+          description: Live quotes for the symbols that have one
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LivePriceResponse'
+              examples:
+                success:
+                  summary: One symbol quoted, one without a quote
+                  value:
+                    - symbol: "AAPL"
+                      price: 189.85
+                      bid: 189.80
+                      ask: 189.90
+                      quoteTime: "2026-10-13T14:30:00Z"
+
   /instruments/{symbol}:
     get:
       tags:
@@ -249,6 +286,27 @@ components:
         - currency
         - exchange
         - tradable
+
+    LivePriceResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        price:
+          type: number
+          description: Mid of bid and ask
+          example: 189.85
+        bid:
+          type: number
+          example: 189.80
+        ask:
+          type: number
+          example: 189.90
+        quoteTime:
+          type: string
+          format: date-time
+          example: "2026-10-13T14:30:00Z"
 
     ErrorResponse:
       type: object

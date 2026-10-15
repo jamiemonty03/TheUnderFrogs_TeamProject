@@ -51,6 +51,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Live prices: reads PRICE_UPDATED events from the market-data topic -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- JWT bearer authentication -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

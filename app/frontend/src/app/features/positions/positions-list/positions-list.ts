@@ -348,7 +348,7 @@ export class PositionsList implements OnInit {
       this.cash.set(null);
       return;
     }
-    this.accounts.getAccount(accountId).subscribe({
+    this.accounts.getAccount().subscribe({
       next: (account) => this.cash.set(account.cashBalance),
       error: () => this.cash.set(null),
     });

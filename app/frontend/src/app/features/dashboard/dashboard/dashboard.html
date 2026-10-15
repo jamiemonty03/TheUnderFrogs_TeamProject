@@ -1,1 +1,279 @@
-<p>dashboard works!</p>
+<div class="dashboard">
+  <section class="dashboard__welcome" aria-label="Account">
+    <div class="dashboard__welcome-text">
+      @if (accountState.loading()) {
+        <output class="dashboard__status">
+          <mat-progress-spinner mode="indeterminate" diameter="20" />
+          Loading your account…
+        </output>
+      } @else if (accountState.error(); as error) {
+        <div class="dashboard__error" role="alert">
+          <span>{{ error }}</span>
+          <button mat-button type="button" (click)="loadAccount()">Try again</button>
+        </div>
+      } @else if (account(); as acc) {
+        <p class="dashboard__greeting">Welcome, {{ firstName() }} <em>ribbet</em></p>
+        <h1 class="dashboard__title">Your pond at a glance</h1>
+        <p class="dashboard__account">
+          Account <span class="dashboard__mono">{{ acc.accountId }}</span>
+          <span [class]="'pill pill--' + acc.status.toLowerCase()">{{ acc.status }}</span>
+        </p>
+      }
+    </div>
+
+    <div class="dashboard__actions">
+      <a mat-flat-button routerLink="/orders" [queryParams]="{ new: true }">Place order</a>
+    </div>
+  </section>
+
+  <div class="dashboard__overview">
+    <section class="card card--balance" aria-labelledby="portfolio-label">
+      <h2 id="portfolio-label" class="card__label">Portfolio value</h2>
+      @if (balanceState.loading() || valuationLoading()) {
+        <output class="dashboard__status">
+          <mat-progress-spinner mode="indeterminate" diameter="20" />
+          Loading…
+        </output>
+      } @else if (balanceState.error(); as error) {
+        <div class="dashboard__error" role="alert">
+          <span>{{ error }}</span>
+          <button mat-button type="button" (click)="loadBalance()">Try again</button>
+        </div>
+      } @else if (valuationError(); as error) {
+        <div class="dashboard__error" role="alert">
+          <span>{{ error }}</span>
+          <button mat-button type="button" (click)="retryValuation()">Try again</button>
+        </div>
+      } @else if (portfolioValue() !== null) {
+        <p class="card__balance dashboard__mono">{{ portfolioValue() | currency: 'USD' }}</p>
+        @if (summary().unpriced > 0) {
+          <p class="card__hint">Excludes {{ summary().unpriced }} unpriced</p>
+        }
+      }
+    </section>
+
+    <div class="dashboard__tiles">
+      <section class="card" aria-labelledby="cash-label">
+        <h2 id="cash-label" class="card__label">Cash</h2>
+        @if (balanceState.loading()) {
+          <output class="dashboard__status">Loading…</output>
+        } @else if (balanceState.error()) {
+          <p class="dashboard__error-text" role="alert">Unavailable</p>
+        } @else if (balance() !== null) {
+          <p class="card__value dashboard__mono">{{ balance() | currency: 'USD' }}</p>
+        }
+      </section>
+
+      <section class="card" aria-labelledby="invested-label">
+        <h2 id="invested-label" class="card__label">Invested</h2>
+        @if (valuationLoading()) {
+          <output class="dashboard__status">Loading…</output>
+        } @else if (valuationError()) {
+          <p class="dashboard__error-text" role="alert">Unavailable</p>
+        } @else {
+          <p class="card__value dashboard__mono">{{ summary().invested | currency: 'USD' }}</p>
+          <p class="card__hint">
+            Market value
+            @if (summary().unpriced > 0) {
+              · excludes {{ summary().unpriced }} unpriced
+            }
+          </p>
+        }
+      </section>
+
+      <section class="card" aria-labelledby="pnl-label">
+        <h2 id="pnl-label" class="card__label">P&amp;L</h2>
+        @if (valuationLoading()) {
+          <output class="dashboard__status">Loading…</output>
+        } @else if (valuationError()) {
+          <p class="dashboard__error-text" role="alert">Unavailable</p>
+        } @else {
+          <p
+            class="card__value dashboard__mono"
+            [class.gain]="summary().unrealisedPnl > 0"
+            [class.loss]="summary().unrealisedPnl < 0"
+          >
+            {{ summary().unrealisedPnl > 0 ? '▲' : summary().unrealisedPnl < 0 ? '▼' : '' }}
+            {{ summary().unrealisedPnl | currency: 'USD' }}
+          </p>
+          @if (summary().pnlPercent !== null) {
+            <p class="card__hint dashboard__mono">{{ summary().pnlPercent | number: '1.2-2' }}% on cost</p>
+          }
+        }
+      </section>
+
+      <section class="card" aria-labelledby="count-label">
+        <h2 id="count-label" class="card__label">Positions</h2>
+        @if (positionsLoading()) {
+          <output class="dashboard__status">Loading…</output>
+        } @else if (positionsError()) {
+          <p class="dashboard__error-text" role="alert">Unavailable</p>
+        } @else {
+          <p class="card__value dashboard__mono">{{ summary().positions }}</p>
+        }
+      </section>
+    </div>
+  </div>
+
+  <section class="card" aria-labelledby="positions-title">
+    <div class="dashboard__positions-header">
+      <h2 id="positions-title" class="card__title">Positions</h2>
+      <mat-form-field appearance="outline" class="dashboard__portfolio-filter">
+        <mat-label>Portfolio</mat-label>
+        <mat-select
+          [value]="selectedPortfolioId()"
+          (selectionChange)="selectPortfolio($event.value)"
+          data-testid="dashboard-portfolio-filter"
+        >
+          <mat-option value="ALL">All holdings</mat-option>
+          @for (portfolio of portfolios(); track portfolio.portfolioId) {
+            <mat-option [value]="portfolio.portfolioId">{{ portfolio.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (liveStale()) {
+        <output class="dashboard__stale">Live prices paused · showing the last values</output>
+      }
+    </div>
+
+    @if (valuationLoading()) {
+      <output class="dashboard__status">
+        <mat-progress-spinner mode="indeterminate" diameter="20" />
+        Loading your positions…
+      </output>
+    } @else if (positionsError(); as error) {
+      <div class="dashboard__error" role="alert">
+        <span>{{ error }}</span>
+        <button mat-button type="button" (click)="loadPositions()">Try again</button>
+      </div>
+    } @else if (holdings().length === 0) {
+      <div class="dashboard__empty">
+        <p>You don't hold anything yet.</p>
+        <a mat-flat-button routerLink="/orders" [queryParams]="{ new: true }">Place your first order</a>
+      </div>
+    } @else {
+      @if (pricesError(); as error) {
+        <div class="dashboard__error" role="alert">
+          <span>{{ error }} Market value and P&amp;L are hidden until prices load.</span>
+          <button mat-button type="button" (click)="loadPrices()">Try again</button>
+        </div>
+      }
+
+      <div class="dashboard__table-scroll">
+        <table mat-table [dataSource]="rows()" matSort (matSortChange)="sort.set($event)">
+          <ng-container matColumnDef="symbol">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Symbol</th>
+            <td mat-cell *matCellDef="let h">
+              <a class="dashboard__symbol" [routerLink]="['/instruments', h.symbol]">{{ h.symbol }}</a>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+            <td mat-cell *matCellDef="let h" class="dashboard__name">{{ h.name || '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Quantity</th>
+            <td mat-cell *matCellDef="let h" class="num">{{ h.quantity | number }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="averageCost">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Avg paid</th>
+            <td mat-cell *matCellDef="let h" class="num">{{ h.averageCost | currency: 'USD' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Price</th>
+            <td mat-cell *matCellDef="let h" class="num">
+              {{ h.price === null ? '—' : (h.price | currency: 'USD') }}
+              @if (h.priceSource) {
+                <span class="price-tag" [class.price-tag--live]="h.priceSource === 'live'">
+                  {{ h.priceSource === 'live' ? 'Live' : 'Close' }}
+                </span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="marketValue">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">
+              Market value
+            </th>
+            <td mat-cell *matCellDef="let h" class="num">
+              {{ h.marketValue === null ? '—' : (h.marketValue | currency: 'USD') }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="unrealisedPnl">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">
+              P&amp;L
+            </th>
+            <td
+              mat-cell
+              *matCellDef="let h"
+              class="num"
+              [class.gain]="h.unrealisedPnl > 0"
+              [class.loss]="h.unrealisedPnl < 0"
+            >
+              @if (h.unrealisedPnl === null) {
+                —
+              } @else {
+                {{ h.unrealisedPnl > 0 ? '▲' : h.unrealisedPnl < 0 ? '▼' : '' }}
+                {{ h.unrealisedPnl | currency: 'USD' }}
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="pnlPercent">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">P&amp;L %</th>
+            <td
+              mat-cell
+              *matCellDef="let h"
+              class="num"
+              [class.gain]="h.pnlPercent > 0"
+              [class.loss]="h.pnlPercent < 0"
+            >
+              {{ h.pnlPercent === null ? '—' : (h.pnlPercent | number: '1.2-2') + '%' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="weight">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header arrowPosition="before" class="num">Weight</th>
+            <td mat-cell *matCellDef="let h" class="num">
+              {{ h.weight === null ? '—' : (h.weight | number: '1.1-1') + '%' }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Trade</span></th>
+            <td mat-cell *matCellDef="let h" class="dashboard__row-actions">
+              <a
+                mat-stroked-button
+                class="buy"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: h.symbol, side: 'BUY' }"
+                [attr.aria-label]="'Buy ' + h.symbol"
+                >Buy</a
+              >
+              <a
+                mat-stroked-button
+                class="sell"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: h.symbol, side: 'SELL' }"
+                [attr.aria-label]="'Sell ' + h.symbol"
+                >Sell</a
+              >
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+      </div>
+    }
+
+    <div class="dashboard__actions dashboard__orders-footer">
+      <a mat-stroked-button routerLink="/orders">Order history</a>
+    </div>
+  </section>
+</div>

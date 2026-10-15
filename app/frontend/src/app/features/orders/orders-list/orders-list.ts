@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -9,23 +10,9 @@ import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
 import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
-import { OrderDialog } from '../order-dialog/order-dialog';
+import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { forkJoin } from 'rxjs';
-
-type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
-type OrderSide = 'BUY' | 'SELL';
-type OrderFilter = 'ALL' | OrderStatus;
-
-interface OrderRow {
-  id: string;
-  placed: string;
-  symbol: string;
-  side: OrderSide;
-  quantity: number;
-  price: string;
-  status: OrderStatus;
-  canCancel: boolean;
-}
+import { OrderFilter, OrderRow, OrderStatus, OrderSide } from './orders-list.interfaces';
 
 @Component({
   imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],
@@ -35,6 +22,7 @@ interface OrderRow {
 })
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
@@ -52,7 +40,7 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['id', 'placed', 'symbol', 'side', 'quantity', 'price', 'status', 'action'];
+  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'price', 'status'];
 
   readonly visibleOrders = computed(() => {
     const filter = this.activeFilter();
@@ -70,6 +58,13 @@ export class OrdersList implements OnInit {
 
   ngOnInit(): void {
     this.loadOrders();
+    if (this.route?.snapshot.queryParams['new'] === 'true') {
+      const { symbol, side } = this.route.snapshot.queryParams;
+      this.openOrderDialog({
+        symbol: typeof symbol === 'string' ? symbol : undefined,
+        side: side === 'BUY' || side === 'SELL' ? side : undefined,
+      });
+    }
   }
 
   setFilter(filter: OrderFilter): void {
@@ -90,11 +85,12 @@ export class OrdersList implements OnInit {
     return orders.filter((order) => order.status === filter).length;
   }
 
-  openOrderDialog(): void {
+  openOrderDialog(data?: OrderDialogData): void {
     this.dialog.open(OrderDialog, {
       width: '920px',
       maxWidth: '95vw',
       panelClass: 'order-dialog-panel',
+      ...(data ? { data } : {}),
     }).afterClosed().subscribe(() => {
       this.loadOrders();
     });
@@ -132,14 +128,12 @@ export class OrdersList implements OnInit {
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
-      id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,
       quantity: order.quantity,
       price: this.formatPrice(marketPrices.get(order.symbol)),
       status: order.orderStatus,
-      canCancel: order.orderStatus === 'NEW',
     };
   }
 

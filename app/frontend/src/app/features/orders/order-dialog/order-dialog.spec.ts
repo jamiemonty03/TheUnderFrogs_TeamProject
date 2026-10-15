@@ -114,7 +114,7 @@ describe('OrderDialog', () => {
 
   it('loads instruments and available cash on initialization', () => {
     expect(instruments.getAllTradableInstruments).toHaveBeenCalledTimes(1);
-    expect(accounts.getAccount).toHaveBeenCalledWith(ACCOUNT);
+    expect(accounts.getAccount).toHaveBeenCalled();
     expect(component.instruments()).toEqual([AAPL, TSLA]);
     expect(component.availableCash()).toBe(1000);
   });
@@ -164,9 +164,9 @@ describe('OrderDialog', () => {
 
   it('clears invalid instrument selections on input and blur', () => {
     component.selectBuyInstrument(optionEvent('AAPL') as never);
+    component.buyInstrumentStep.controls.instrumentInput.setValue('unknown');
     component.onBuyInput();
     expect(component.selectedBuyInstrument()).toBeNull();
-    component.buyInstrumentStep.controls.instrumentInput.setValue('unknown');
     component.onBuyBlur();
     expect(component.buyInstrumentStep.controls.instrumentInput.value).toBe('');
 
