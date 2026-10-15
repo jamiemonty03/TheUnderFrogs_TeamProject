@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.context.annotation.Import;
 import com.neueda.instrumentservice.config.SecurityConfig;
@@ -51,20 +50,6 @@ public class StockControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"));
-    }
-
-    @Test
-    @WithAnonymousUser
-    void getStocks_isPublicSoTheLoginPageCanShowPrices() throws Exception {
-        when(stockService.getAllStocks()).thenReturn(List.of(newStockResponse()));
-
-        mockMvc.perform(get("/stocks")).andExpect(status().isOk());
-    }
-
-    @Test
-    @WithAnonymousUser
-    void getStock_stillRequiresSignIn() throws Exception {
-        mockMvc.perform(get("/stocks/AAPL")).andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -2,13 +2,12 @@ import { Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
-import { Instruments, LatestPrice, LivePrice } from '../../../services/instruments';
+import { Instruments, LatestPrice, LivePrice, dayChange } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
-import { toMarketRows } from '../../instruments/market-overview/market';
 
 export type AuthTab = 'login' | 'register';
 
-export const TICKER_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'AMZN', 'GOOGL'];
+const TICKER = ['AAPL', 'MSFT', 'TSLA', 'SPY', 'NVDA', 'BND'];
 
 @Component({
   imports: [RouterLink],
@@ -21,26 +20,30 @@ export class AuthLayout {
   readonly subheading = input.required<string>();
   readonly activeTab = input.required<AuthTab>();
 
-  private readonly closes = toSignal(
+  private readonly prices = toSignal(
     inject(Instruments)
       .getLatestPrices()
       .pipe(catchError(() => of(new Map<string, LatestPrice>()))),
     { initialValue: new Map<string, LatestPrice>() },
   );
+  // While the market is open a live quote replaces the close; the move is still from the previous close.
   private readonly live = toSignal(
     inject(LivePrices)
-      .watch(TICKER_SYMBOLS)
+      .watch(TICKER)
       .pipe(map(({ prices }) => prices)),
     { initialValue: new Map<string, LivePrice>() },
   );
 
-  readonly tickerQuotes = computed(() => {
-    const rows = new Map(toMarketRows(this.closes(), this.live()).map((row) => [row.symbol, row]));
-    return TICKER_SYMBOLS.flatMap((symbol) => {
-      const change = rows.get(symbol)?.change;
+  readonly tickerQuotes = computed(() =>
+    TICKER.flatMap((symbol) => {
+      const price = this.prices().get(symbol);
+      const quote = this.live().get(symbol);
+      const change = price
+        ? dayChange({ price: quote?.price ?? price.price, previousClose: price.previousClose })
+        : null;
       return change
         ? [{ symbol, up: change.percent >= 0, percent: Math.abs(change.percent).toFixed(2) }]
         : [];
-    });
-  });
+    }),
+  );
 }

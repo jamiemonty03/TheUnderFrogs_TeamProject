@@ -4,21 +4,8 @@ import { provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { Instruments, LatestPrice, LivePriceFeed } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
-import { AuthLayout, AuthTab } from './auth-layout';
 
-const close = (symbol: string, price: number, previousClose: number): LatestPrice => ({
-  symbol,
-  name: symbol,
-  assetClass: 'Equity',
-  price,
-  previousClose,
-  tradeDate: '2026-10-14T00:00:00',
-});
-const CLOSES = new Map(
-  [close('SPY', 571.2, 568.86), close('AAPL', 189.84, 187.51), close('NVDA', 131.2, 133.97), close('KO', 90, 89)].map(
-    (p) => [p.symbol, p],
-  ),
-);
+import { AuthLayout, AuthTab } from './auth-layout';
 
 @Component({
   imports: [AuthLayout],
@@ -36,29 +23,58 @@ class Host {
   readonly tab = signal<AuthTab>('register');
 }
 
+// Each moves by a round percentage from a previous close of 100
+const quote = (symbol: string, price: number | null): [string, LatestPrice] => [
+  symbol,
+  {
+    symbol,
+    name: symbol,
+    assetClass: 'Equity',
+    price,
+    previousClose: 100,
+    tradeDate: '2026-10-14',
+  },
+];
+const PRICES = new Map([
+  quote('AAPL', 101.24),
+  quote('MSFT', 100.88),
+  quote('TSLA', 97.9),
+  quote('SPY', 100.41),
+  quote('NVDA', 103.02),
+  quote('BND', 99.88),
+]);
+
 describe('AuthLayout', () => {
   let fixture: ComponentFixture<Host>;
   let page: HTMLElement;
+  let prices: Observable<Map<string, LatestPrice>>;
 
   let liveFeed: Subject<LivePriceFeed>;
 
-  async function setUp(closes: Observable<Map<string, LatestPrice>> = of(CLOSES)) {
-    TestBed.resetTestingModule();
+  const create = async () => {
     liveFeed = new Subject<LivePriceFeed>();
     await TestBed.configureTestingModule({
       imports: [Host],
       providers: [
         provideRouter([]),
-        { provide: Instruments, useValue: { getLatestPrices: () => closes } },
+        { provide: Instruments, useValue: { getLatestPrices: () => prices } },
         { provide: LivePrices, useValue: { watch: () => liveFeed.asObservable() } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Host);
     page = fixture.nativeElement;
     fixture.detectChanges();
-  }
+  };
 
-  beforeEach(() => setUp());
+  beforeEach(async () => {
+    prices = of(PRICES);
+    await create();
+  });
+
+  const tickerSymbols = () =>
+    Array.from(page.querySelectorAll('.auth__quote')).map(
+      (q) => q.textContent?.trim().split(/\s/)[0],
+    );
 
   const tabs = () => Array.from(page.querySelectorAll<HTMLAnchorElement>('.auth__tab'));
 
@@ -108,24 +124,40 @@ describe('AuthLayout', () => {
       quote.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
-  it("shows the ticker symbols' real moves from the previous close, in ticker order, marking falls", () => {
-    // KO isn't a ticker symbol; QQQ, AMZN and GOOGL have no prices here.
-    expect(quotes()).toEqual(['SPY ▲ 0.41%', 'AAPL ▲ 1.24%', 'NVDA ▼ 2.07%']);
-    expect(page.querySelectorAll('.auth__quote-change--down')).toHaveLength(1);
+  it('shows each move since the previous close with two decimals, marking falls', () => {
+    expect(quotes()).toEqual([
+      'AAPL ▲ 1.24%',
+      'MSFT ▲ 0.88%',
+      'TSLA ▼ 2.10%',
+      'SPY ▲ 0.41%',
+      'NVDA ▲ 3.02%',
+      'BND ▼ 0.12%',
+    ]);
+    expect(page.querySelectorAll('.auth__quote-change--down')).toHaveLength(2);
   });
 
   it('moves with live prices while the market is open', () => {
     liveFeed.next({
-      prices: new Map([['NVDA', { symbol: 'NVDA', price: 137.99, bid: null, ask: null, quoteTime: '2026-10-15T14:30:00Z' }]]),
+      prices: new Map([['NVDA', { symbol: 'NVDA', price: 95, bid: null, ask: null, quoteTime: '2026-10-15T14:30:00Z' }]]),
       stale: false,
     });
     fixture.detectChanges();
 
-    expect(quotes()).toContain('NVDA ▲ 3.00%');
+    expect(quotes()).toContain('NVDA ▼ 5.00%');
   });
 
-  it('hides the ticker when prices cannot be loaded', async () => {
-    await setUp(throwError(() => new Error('down')));
+  it('leaves out a symbol that has no price', async () => {
+    TestBed.resetTestingModule();
+    prices = of(new Map([...PRICES, quote('NVDA', null)]));
+    await create();
+
+    expect(tickerSymbols()).toEqual(['AAPL', 'MSFT', 'TSLA', 'SPY', 'BND']);
+  });
+
+  it('hides the ticker if prices cannot be loaded', async () => {
+    TestBed.resetTestingModule();
+    prices = throwError(() => new Error('down'));
+    await create();
 
     expect(page.querySelector('.auth__ticker')).toBeNull();
   });

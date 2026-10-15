@@ -184,9 +184,20 @@ export class OrderDialog implements OnInit {
     return qty * (instrument?.marketPrice || 0);
   });
 
+  readonly insufficientCash = computed(() => {
+    const cash = this.availableCash();
+    return cash !== null && this.buyOrderValid() && this.buyEstimate() > cash;
+  });
+
   readonly buyDetailsInvalid = computed(() => {
     const cash = this.availableCash();
     return !this.buyOrderValid() || cash === null || this.buyEstimate() > cash;
+  });
+
+  readonly insufficientQuantity = computed(() => {
+    const position = this.heldPosition();
+    const quantity = Number(this.sellQuantityInput() || 0);
+    return position !== null && this.sellOrderValid() && quantity > position.quantity;
   });
 
   readonly sellDetailsInvalid = computed(() => {

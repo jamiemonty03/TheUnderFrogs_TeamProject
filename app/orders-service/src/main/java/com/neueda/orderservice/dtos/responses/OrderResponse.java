@@ -14,6 +14,7 @@ public record OrderResponse(
     int quantity,
     BigDecimal priceLimit,
     OrderStatus orderStatus,
+    String rejectionReason,
     int version,
     LocalDateTime createdAt,
     LocalDateTime lastUpdated,

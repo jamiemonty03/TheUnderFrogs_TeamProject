@@ -24,10 +24,10 @@ describe('Login', () => {
     await TestBed.configureTestingModule({
       imports: [Login],
       providers: [
-        { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },
         { provide: LivePrices, useValue: { watch: () => EMPTY } },
         provideRouter([]),
         { provide: Auth, useValue: { login } },
+        { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },
         {
           provide: ActivatedRoute,
           useValue: {

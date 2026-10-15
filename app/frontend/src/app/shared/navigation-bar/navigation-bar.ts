@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../../services/auth';
@@ -13,6 +14,7 @@ import { Auth } from '../../services/auth';
 export class NavigationBar {
   private readonly auth = inject(Auth);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
 
   isMenuOpen = false;
 
@@ -28,6 +30,17 @@ export class NavigationBar {
 
   closeMenu(): void {
     this.isMenuOpen = false;
+  }
+
+  openWallet(): void {
+    this.closeMenu();
+    void import('../../features/wallet/wallet-dialog/wallet-dialog').then(({ WalletDialog }) =>
+      this.dialog.open(WalletDialog, {
+        width: '440px',
+        maxWidth: '95vw',
+        panelClass: 'wallet-dialog-panel',
+      }),
+    );
   }
 
   logout(): void {
