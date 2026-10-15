@@ -79,11 +79,24 @@
         <button
           mat-menu-item
           type="button"
+          class="nav-bar__wallet"
+          (click)="openWallet()"
+          data-testid="wallet"
+        >
+          <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 7a2 2 0 0 1 2-2h13v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2Z" />
+            <path d="M16 14.5h.01" />
+          </svg>
+          <span>Wallet</span>
+        </button>
+        <button
+          mat-menu-item
+          type="button"
           class="nav-bar__logout"
           (click)="logout()"
           data-testid="logout"
         >
-          <svg class="nav-bar__logout-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
           </svg>
           <span>Log out</span>

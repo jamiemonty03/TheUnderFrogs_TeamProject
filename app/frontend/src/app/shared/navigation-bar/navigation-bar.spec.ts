@@ -2,9 +2,11 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { NavigationBar } from './navigation-bar';
+import { WalletDialog } from '../../features/wallet/wallet-dialog/wallet-dialog';
 import { Auth, SESSION_KEY, authGuard, authInterceptor, guestGuard } from '../../services/auth';
 import { CurrentUser } from '../../services/interfaces/auth.interfaces';
 
@@ -174,6 +176,34 @@ describe('NavigationBar', () => {
 
       expect(router.url).toBe('/login');
       expect(auth.isAuthenticated()).toBe(false);
+    });
+  });
+
+  describe('wallet', () => {
+    const walletItem = () =>
+      document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');
+
+    it('has a Wallet item above Log out in the account menu', async () => {
+      await setUp();
+
+      await openMenu();
+
+      const items = Array.from(
+        document.querySelectorAll('.cdk-overlay-container [mat-menu-item]'),
+      ).map((item) => item.textContent?.trim());
+      expect(items).toEqual(['Wallet', 'Log out']);
+    });
+
+    it('opens the wallet dialog', async () => {
+      await setUp();
+      const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({} as never);
+
+      await openMenu();
+      walletItem()!.click();
+
+      await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
+      expect(open.mock.calls[0][0]).toBe(WalletDialog);
+      expect(open.mock.calls[0][1]).toMatchObject({ width: '440px', maxWidth: '95vw' });
     });
   });
 });
