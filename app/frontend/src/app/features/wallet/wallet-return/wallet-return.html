@@ -1,0 +1,34 @@
+<section class="wallet-return">
+  @if (failure(); as failed) {
+    <div class="wallet-return__card">
+      <h1 class="wallet-return__title">We couldn't add your funds</h1>
+      <p class="wallet-return__error" role="alert" data-testid="wallet-return-error">
+        {{ failed.message }}
+      </p>
+      <p class="wallet-return__text">
+        Trying again is safe: a payment is only ever added to your balance once.
+      </p>
+      <div class="wallet-return__actions">
+        @if (failed.canRetry) {
+          <button
+            mat-flat-button
+            type="button"
+            data-testid="wallet-return-retry"
+            (click)="confirm()"
+          >
+            Try again
+          </button>
+        }
+        <button mat-stroked-button type="button" data-testid="wallet-return-back" (click)="back()">
+          Go back
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="wallet-return__card" role="status" data-testid="wallet-return-confirming">
+      <mat-progress-spinner mode="indeterminate" diameter="40" aria-hidden="true" />
+      <h1 class="wallet-return__title">Confirming your payment…</h1>
+      <p class="wallet-return__text">This only takes a moment.</p>
+    </div>
+  }
+</section>

@@ -1,8 +1,5 @@
 package com.neueda.accountservice.config;
 
-import static org.springframework.security.authorization.AuthenticatedAuthorizationManager.authenticated;
-import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
-import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/accounts").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.POST, "/accounts/*/debit", "/accounts/*/credit", "/accounts/*/reversal")
-                                .access(anyOf(hasRole("SERVICE"), authenticated()))
+                                .hasRole("SERVICE")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();

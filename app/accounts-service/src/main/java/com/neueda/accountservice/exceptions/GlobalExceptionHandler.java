@@ -2,6 +2,8 @@ package com.neueda.accountservice.exceptions;
 
 import com.neueda.accountservice.dtos.ErrorMessage;
 import com.neueda.accountservice.dtos.responses.ErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -11,6 +13,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(AccountNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleAccountNotFound(AccountNotFoundException ex) {
@@ -34,6 +38,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleInsufficientFunds(InsufficientFundsException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("ORD-400", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PaymentsUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentsUnavailable(PaymentsUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse("PAY-503", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("PAY-404", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TopUpNotPaidException.class)
+    public ResponseEntity<ErrorResponse> handleTopUpNotPaid(TopUpNotPaidException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("PAY-409", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PaymentGatewayException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentGateway(PaymentGatewayException ex) {
+        log.warn("{}: {}", ex.getMessage(), ex.getCause() == null ? "no cause" : ex.getCause().getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new ErrorResponse("PAY-502", ex.getMessage() + ". Please try again."));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
