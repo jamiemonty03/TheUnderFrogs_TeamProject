@@ -6,6 +6,8 @@ export const LOGIN_ERRORS = {
   ...AUTH_ERRORS,
 } as const;
 
+export const SESSION_EXPIRED_NOTICE = 'Your session has expired. Please log in again.';
+
 export function loginErrorMessage(error: unknown): string {
   if (!(error instanceof HttpErrorResponse)) {
     return LOGIN_ERRORS.unexpected;

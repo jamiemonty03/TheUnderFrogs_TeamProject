@@ -8,7 +8,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Auth } from '../../../services/auth';
 import { AuthLayout } from '../auth-layout/auth-layout';
-import { loginErrorMessage } from './login-error';
+import { SESSION_EXPIRED_NOTICE, loginErrorMessage } from './login-error';
 import { safeReturnUrl } from './return-url';
 import { SubmittedErrorStateMatcher } from '../shared/submitted-error-state';
 
@@ -27,6 +27,9 @@ export class Login {
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly showPassword = signal(false);
+  readonly sessionExpired = signal(this.route.snapshot.queryParamMap.get('expired') === '1');
+  readonly sessionExpiredNotice = SESSION_EXPIRED_NOTICE;
 
   readonly form = this.fb.group({
     username: ['', Validators.required],
@@ -38,6 +41,7 @@ export class Login {
       return;
     }
     this.submitting.set(true);
+    this.sessionExpired.set(false);
     this.errorMessage.set(null);
     const { username, password } = this.form.getRawValue();
 

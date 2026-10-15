@@ -10,6 +10,7 @@ import { TokensModule } from './modules/tokens/tokens.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { databaseConfig } from './config/database.config';
 import { validationSchema } from './config/validation';
+import { throttleConfig } from './config/throttle.config';
 
 @Module({
   imports: [
@@ -21,12 +22,7 @@ import { validationSchema } from './config/validation';
       inject: [ConfigService],
       useFactory: () => databaseConfig(),
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 5,
-      },
-    ]),
+    ThrottlerModule.forRoot(throttleConfig),
     AuthModule,
     UsersModule,
     TokensModule,
