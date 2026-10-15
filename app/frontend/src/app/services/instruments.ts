@@ -6,6 +6,7 @@ import {
 	BaseInstrumentResponse,
 	BondResponse,
 	EtfResponse,
+	InstrumentSummary,
 	InstrumentType,
   LivePrice,
   LivePriceFeed,
@@ -46,6 +47,22 @@ export class Instruments {
 
 	getBonds(): Observable<BondResponse[]> {
 		return this.http.get<BondResponse[]>('/api/bonds');
+	}
+
+	getInstrument(symbol: string): Observable<InstrumentSummary> {
+		return this.http.get<InstrumentSummary>(`/api/instruments/${encodeURIComponent(symbol)}`);
+	}
+
+	getStock(symbol: string): Observable<StockResponse> {
+		return this.http.get<StockResponse>(`/api/stocks/${encodeURIComponent(symbol)}`);
+	}
+
+	getEtf(symbol: string): Observable<EtfResponse> {
+		return this.http.get<EtfResponse>(`/api/etfs/${encodeURIComponent(symbol)}`);
+	}
+
+	getBond(symbol: string): Observable<BondResponse> {
+		return this.http.get<BondResponse>(`/api/bonds/${encodeURIComponent(symbol)}`);
 	}
 
 	getNews(limit = 5): Observable<NewsArticle[]> {

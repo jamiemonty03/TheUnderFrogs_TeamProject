@@ -100,3 +100,12 @@ export interface LivePriceFeed {
 	prices: ReadonlyMap<string, LivePrice>;
 	stale: boolean;
 }
+
+export interface InstrumentSummary {
+	symbol: string;
+	name: string;
+	assetClass: AssetClass;
+	currency: string;
+	exchange: string;
+	tradable: boolean;
+}
