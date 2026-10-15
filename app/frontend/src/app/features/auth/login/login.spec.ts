@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Login } from './login';
 import { LOGIN_ERRORS, SESSION_EXPIRED_NOTICE } from './login-error';
 import { Auth, CurrentUser } from '../../../services/auth';
+import { Instruments } from '../../../services/instruments';
 
 const demo: CurrentUser = { userId: 11, username: 'demo', roles: ['TRADER'], accountId: 'ACC0011' };
 
@@ -24,6 +25,7 @@ describe('Login', () => {
       providers: [
         provideRouter([]),
         { provide: Auth, useValue: { login } },
+        { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },
         {
           provide: ActivatedRoute,
           useValue: {
