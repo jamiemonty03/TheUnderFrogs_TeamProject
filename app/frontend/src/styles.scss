@@ -1,6 +1,7 @@
 @use '@angular/material' as mat;
 
 :root {
+  --ts-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --ts-frog: #3dfa8c;
   --ts-frog-light: #8cffb9;
   --ts-frog-tint: #1b3a27;
@@ -82,6 +83,7 @@ body {
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  font-family: var(--ts-font-family);
 
   background-color: var(--ts-bg);
 }
@@ -95,8 +97,8 @@ html {
         primary: mat.$spring-green-palette,
       ),
       typography: (
-        plain-family: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-        brand-family: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+        plain-family: var(--ts-font-family),
+        brand-family: var(--ts-font-family),
       ),
       density: 0,
     )

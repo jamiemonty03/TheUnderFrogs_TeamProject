@@ -1,7 +1,5 @@
 @use '@angular/material' as mat;
 
-$mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
 :host {
   display: block;
   color: var(--ts-text);
@@ -67,7 +65,7 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .dashboard__mono {
-  font-family: $mono;
+  font-variant-numeric: tabular-nums;
 }
 
 .dashboard__overview {
@@ -194,7 +192,7 @@ table {
 }
 
 .num {
-  font-family: $mono;
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
@@ -276,7 +274,6 @@ th.num ::ng-deep .mat-sort-header-container {
   display: inline-block;
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
-  font-family: $mono;
   font-size: 0.75rem;
   font-weight: 700;
 }
