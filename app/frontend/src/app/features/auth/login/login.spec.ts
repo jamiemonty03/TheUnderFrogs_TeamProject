@@ -285,4 +285,56 @@ describe('Login', () => {
       expect(navigateByUrl).toHaveBeenCalledWith('/orders');
     });
   });
+
+  describe('showing the password', () => {
+    const toggle = () =>
+      page.querySelector<HTMLButtonElement>('[data-testid="login-toggle-password"]')!;
+    const clickToggle = () => {
+      toggle().click();
+      fixture.detectChanges();
+    };
+
+    beforeEach(() => setUp());
+
+    it('starts hidden, with a button that says it will show the password', () => {
+      expect(input('password').type).toBe('password');
+      expect(toggle().getAttribute('aria-label')).toBe('Show password');
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('shows the password, then hides it again', () => {
+      clickToggle();
+
+      expect(input('password').type).toBe('text');
+      expect(toggle().getAttribute('aria-label')).toBe('Hide password');
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+
+      clickToggle();
+
+      expect(input('password').type).toBe('password');
+      expect(toggle().getAttribute('aria-label')).toBe('Show password');
+    });
+
+    it('keeps what was typed and does not submit the form', () => {
+      type('password', 'Demo123!');
+
+      clickToggle();
+
+      expect(input('password').value).toBe('Demo123!');
+      expect(toggle().type).toBe('button');
+      expect(login).not.toHaveBeenCalled();
+    });
+
+    it('is still there and still works after a wrong password', async () => {
+      login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+      await fillAndSubmit();
+      expect(alert()?.textContent?.trim()).toBe(LOGIN_ERRORS.invalidCredentials);
+
+      clickToggle();
+
+      expect(toggle()).not.toBeNull();
+      expect(input('password').type).toBe('text');
+      expect(input('password').value).toBe('Demo123!');
+    });
+  });
 });

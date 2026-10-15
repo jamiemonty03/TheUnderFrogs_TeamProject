@@ -27,6 +27,7 @@ export class Login {
 
   readonly submitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly showPassword = signal(false);
   readonly sessionExpired = signal(this.route.snapshot.queryParamMap.get('expired') === '1');
   readonly sessionExpiredNotice = SESSION_EXPIRED_NOTICE;
 
