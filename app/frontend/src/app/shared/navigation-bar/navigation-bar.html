@@ -60,10 +60,27 @@
           class="nav-bar__search"
           type="search"
           placeholder="Search AAPL, SPY, BND..."
-          (keydown.enter)="search($event)"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+          (focus)="loadInstruments()"
+          (keydown.enter)="search()"
+          [matAutocomplete]="searchSuggestions"
           data-testid="nav-search"
         />
       </label>
+      <mat-autocomplete
+        #searchSuggestions="matAutocomplete"
+        (optionSelected)="selectSuggestion($event)"
+      >
+        @for (instrument of suggestions(); track instrument.symbol) {
+          <mat-option
+            [value]="instrument.symbol"
+            [attr.data-testid]="'search-option-' + instrument.symbol"
+          >
+            <strong>{{ instrument.symbol }}</strong> - {{ instrument.name }} ({{ instrument.type }})
+          </mat-option>
+        }
+      </mat-autocomplete>
       <button
         type="button"
         class="nav-bar__avatar"

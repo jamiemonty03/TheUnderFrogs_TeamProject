@@ -177,24 +177,67 @@ describe('NavigationBar', () => {
     });
   });
 
-  it('searching for a ticker opens its instrument page', async () => {
+  const searchBox = () => page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+  const type = async (text: string) => {
+    searchBox().value = text;
+    searchBox().dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+  const pressEnter = () =>
+    searchBox().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const loadInstruments = () => {
+    searchBox().focus();
+    http.expectOne('/api/stocks').flush([
+      { symbol: 'AAPL', name: 'Apple Inc.', price: 346.19 },
+      { symbol: 'AMZN', name: 'Amazon.com, Inc.', price: 260.32 },
+    ]);
+    http.expectOne('/api/etfs').flush([{ symbol: 'SPY', name: 'SPDR S&P 500', price: 773.5 }]);
+    http.expectOne('/api/bonds').flush([]);
+  };
+
+  it('suggests matching tickers as you type', async () => {
     await setUp();
-    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const search = page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+    loadInstruments();
 
-    search.value = ' aapl ';
-    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await type('a');
 
-    expect(navigate).toHaveBeenCalledWith(['/instruments', 'AAPL']);
-    expect(search.value).toBe('');
+    const options = [...document.querySelectorAll('.cdk-overlay-container mat-option')].map((o) =>
+      o.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(options).toEqual(['AAPL - Apple Inc. (Stock)', 'AMZN - Amazon.com, Inc. (Stock)']);
   });
 
-  it('an empty search does nothing', async () => {
+  it('picking a suggestion opens its instrument page', async () => {
     await setUp();
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const search = page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+    loadInstruments();
+    await type('spdr');
 
-    search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    (document.querySelector('[data-testid="search-option-SPY"]') as HTMLElement).click();
+
+    expect(navigate).toHaveBeenCalledWith(['/instruments', 'SPY']);
+  });
+
+  it('Enter opens the typed ticker, or the top suggestion', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    loadInstruments();
+
+    await type(' aapl ');
+    pressEnter();
+    expect(navigate).toHaveBeenLastCalledWith(['/instruments', 'AAPL']);
+
+    await type('amaz');
+    pressEnter();
+    expect(navigate).toHaveBeenLastCalledWith(['/instruments', 'AMZN']);
+  });
+
+  it('Enter on an empty search does nothing', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    pressEnter();
 
     expect(navigate).not.toHaveBeenCalled();
   });
