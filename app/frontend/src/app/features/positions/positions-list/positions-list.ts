@@ -12,6 +12,7 @@ import { RouterLink } from '@angular/router';
 import { Subscription, interval } from 'rxjs';
 import { Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice, LivePrice } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
@@ -47,6 +48,7 @@ export class PositionsList implements OnInit {
   protected readonly portfoliosService = inject(Portfolios);
   protected readonly positionsService = inject(Positions);
   private readonly instruments = inject(Instruments);
+  private readonly liveFeed = inject(LivePrices);
   private readonly accounts = inject(Accounts);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
@@ -59,7 +61,7 @@ export class PositionsList implements OnInit {
   protected readonly prices = signal<Map<string, LatestPrice>>(new Map());
   protected readonly pricesFailed = signal(false);
   private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
-  private livePolling?: Subscription;
+  private liveWatch?: Subscription;
   private watchedSymbols = '';
   protected readonly cash = signal<number | null>(null);
   protected readonly sort = signal<Sort>({ active: 'marketValue', direction: 'desc' });
@@ -316,9 +318,9 @@ export class PositionsList implements OnInit {
       return;
     }
     this.watchedSymbols = key;
-    this.livePolling?.unsubscribe();
-    this.livePolling = this.instruments
-      .watchLivePrices(key ? key.split(',') : [])
+    this.liveWatch?.unsubscribe();
+    this.liveWatch = this.liveFeed
+      .watch(key ? key.split(',') : [])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(({ prices }) => this.livePrices.set(prices));
   }

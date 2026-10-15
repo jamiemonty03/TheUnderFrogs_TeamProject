@@ -23,6 +23,20 @@ describe('toMarketRows', () => {
   it('leaves the change empty when a close is missing', () => {
     expect(toMarketRows(prices(latest('AGG', null, null, 'Bond')))[0].change).toBeNull();
   });
+
+  it('uses a live quote over the close and measures the change from the previous close', () => {
+    const live = new Map([['AAPL', { symbol: 'AAPL', price: 105, bid: null, ask: null, quoteTime: '2026-10-13T14:30:00Z' }]]);
+    const [aapl, tsla] = toMarketRows(prices(latest('AAPL', 110, 100), latest('TSLA', 95, 100)), live);
+
+    expect(aapl.price).toBe(105);
+    expect(aapl.priceSource).toBe('live');
+    expect(aapl.change?.amount).toBeCloseTo(5);
+    expect(tsla.priceSource).toBe('close');
+  });
+
+  it('marks a row with no price as having no source', () => {
+    expect(toMarketRows(prices(latest('AGG', null, null, 'Bond')))[0].priceSource).toBeNull();
+  });
 });
 
 describe('filterRows', () => {

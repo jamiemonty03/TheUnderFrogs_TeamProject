@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { catchError, map, of, switchMap, timer } from 'rxjs';
-import { AssetClass, Instruments, LIVE_POLL_MS, LatestPrice } from '../../../services/instruments';
+import { AssetClass, Instruments, LIVE_POLL_MS, LatestPrice, LivePrice } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { MarketRow, filterRows, indexTiles, latestTradeDate, movers, toMarketRows } from './market';
 
 const TABS: { assetClass: AssetClass; label: string }[] = [
@@ -22,16 +23,18 @@ const TABS: { assetClass: AssetClass; label: string }[] = [
 })
 export class MarketOverview {
   private readonly instruments = inject(Instruments);
+  private readonly liveFeed = inject(LivePrices);
 
   protected readonly tabs = TABS;
   protected readonly assetClass = signal<AssetClass>('Equity');
   protected readonly query = signal('');
 
   private readonly prices = signal<ReadonlyMap<string, LatestPrice> | null>(null);
+  private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
   protected readonly failed = signal(false);
 
   protected readonly loading = computed(() => this.prices() === null && !this.failed());
-  protected readonly allRows = computed(() => toMarketRows(this.prices() ?? new Map()));
+  protected readonly allRows = computed(() => toMarketRows(this.prices() ?? new Map(), this.livePrices()));
   protected readonly rows = computed(() => filterRows(this.allRows(), this.assetClass(), this.query()));
   protected readonly indices = computed(() => indexTiles(this.allRows()));
   protected readonly movers = computed(() => movers(this.allRows()));
@@ -54,6 +57,11 @@ export class MarketOverview {
           this.prices.set(prices);
         }
       });
+
+    this.liveFeed
+      .watch()
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ prices }) => this.livePrices.set(prices));
   }
 
   protected trend(row: MarketRow | null): 'gain' | 'loss' | null {
