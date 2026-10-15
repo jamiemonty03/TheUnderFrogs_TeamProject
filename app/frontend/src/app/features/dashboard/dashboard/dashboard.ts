@@ -14,6 +14,7 @@ import { Instruments, LatestPrice, LivePrice } from '../../../services/instrumen
 import { Position, Positions } from '../../../services/positions';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
+import { MarketOverview } from '../../instruments/market-overview/market-overview';
 import { sortHoldings, summarise, toHoldings } from '../portfolio';
 
 const PRICES_FAILED = "Couldn't load the latest prices. Try again in a moment.";
@@ -29,6 +30,7 @@ const PRICES_FAILED = "Couldn't load the latest prices. Try again in a moment.";
     MatSelectModule,
     MatSortModule,
     MatTableModule,
+    MarketOverview,
   ],
   selector: 'app-dashboard',
   styleUrl: './dashboard.scss',

@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
@@ -10,7 +10,12 @@ import { Instruments, LIVE_POLL_MS, LatestPrice, LivePrice } from '../../../serv
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position, Positions } from '../../../services/positions';
 import { Portfolios } from '../../../services/portfolios';
+import { MarketOverview } from '../../instruments/market-overview/market-overview';
 import { Dashboard } from './dashboard';
+
+// The market overview has its own tests; a stub keeps its price polling out of these.
+@Component({ selector: 'app-market-overview', template: '' })
+class MarketOverviewStub {}
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
@@ -112,7 +117,12 @@ describe('Dashboard', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(Dashboard, {
+        remove: { imports: [MarketOverview] },
+        add: { imports: [MarketOverviewStub] },
+      })
+      .compileComponents();
     const instruments = TestBed.inject(Instruments);
     vi.spyOn(instruments, 'getLatestPrices').mockImplementation(() => calls.prices ?? of(PRICES));
     getLivePrices = vi
