@@ -11,6 +11,7 @@ import { RouterLink } from '@angular/router';
 import { Subscription, finalize } from 'rxjs';
 import { Account, Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice, LivePrice } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { Position, Positions } from '../../../services/positions';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
@@ -39,6 +40,7 @@ export class Dashboard {
   private readonly positionsService = inject(Positions);
   private readonly portfoliosService = inject(Portfolios);
   private readonly instruments = inject(Instruments);
+  private readonly liveFeed = inject(LivePrices);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly columns = [
@@ -69,7 +71,7 @@ export class Dashboard {
   private readonly prices = signal<ReadonlyMap<string, LatestPrice>>(new Map());
   private readonly livePrices = signal<ReadonlyMap<string, LivePrice>>(new Map());
   protected readonly liveStale = signal(false);
-  private livePolling?: Subscription;
+  private liveWatch?: Subscription;
 
   protected readonly firstName = computed(() => this.account()?.holderName.trim().split(/\s+/)[0] ?? '');
 
@@ -167,9 +169,9 @@ export class Dashboard {
   }
 
   private watchLivePrices(symbols: string[]): void {
-    this.livePolling?.unsubscribe();
-    this.livePolling = this.instruments
-      .watchLivePrices(symbols)
+    this.liveWatch?.unsubscribe();
+    this.liveWatch = this.liveFeed
+      .watch(symbols)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(({ prices, stale }) => {
         this.livePrices.set(prices);

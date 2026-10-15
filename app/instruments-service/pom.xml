@@ -57,6 +57,12 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Pushes live prices to the browser -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
         <!-- JWT bearer authentication -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

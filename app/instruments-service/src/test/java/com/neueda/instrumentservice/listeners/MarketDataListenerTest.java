@@ -1,22 +1,22 @@
 package com.neueda.instrumentservice.listeners;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.instrumentservice.dtos.responses.LivePriceResponse;
-import com.neueda.instrumentservice.services.LivePriceCache;
+import com.neueda.instrumentservice.websockets.LivePriceSocketHandler;
 
 public class MarketDataListenerTest {
 
-    private final LivePriceCache cache = new LivePriceCache();
+    private final LivePriceSocketHandler socket = mock(LivePriceSocketHandler.class);
     private final MarketDataListener listener =
-            new MarketDataListener(cache, new ObjectMapper().findAndRegisterModules());
+            new MarketDataListener(socket, new ObjectMapper().findAndRegisterModules());
 
     private static String event(String eventType, String payload) {
         return """
@@ -28,30 +28,28 @@ public class MarketDataListenerTest {
             {"symbol":"AAPL","price":189.85,"bid":189.80,"ask":189.90,"currency":"USD","quoteTime":"2026-10-13T14:30:00Z"}
             """;
 
+    private static final LivePriceResponse AAPL_QUOTE = new LivePriceResponse("AAPL", new BigDecimal("189.85"),
+            new BigDecimal("189.80"), new BigDecimal("189.90"), Instant.parse("2026-10-13T14:30:00Z"));
+
     @Test
-    void cachesAPriceUpdatedEvent() {
+    void pushesAPriceUpdatedEventToConnectedBrowsers() {
         listener.onMessage(event("PRICE_UPDATED", AAPL_PAYLOAD));
 
-        List<LivePriceResponse> quotes = cache.get(List.of("AAPL"));
-        assertEquals(1, quotes.size());
-        assertEquals(new BigDecimal("189.85"), quotes.get(0).price());
-        assertEquals(new BigDecimal("189.80"), quotes.get(0).bid());
-        assertEquals(new BigDecimal("189.90"), quotes.get(0).ask());
-        assertEquals(Instant.parse("2026-10-13T14:30:00Z"), quotes.get(0).quoteTime());
+        verify(socket).broadcast(AAPL_QUOTE);
     }
 
     @Test
     void ignoresOtherEventTypes() {
         listener.onMessage(event("ORDER_PLACED", AAPL_PAYLOAD));
 
-        assertTrue(cache.get(List.of("AAPL")).isEmpty());
+        verifyNoInteractions(socket);
     }
 
     @Test
     void skipsEventsMissingAPriceOrQuoteTime() {
         listener.onMessage(event("PRICE_UPDATED", "{\"symbol\":\"AAPL\",\"bid\":189.80}"));
 
-        assertTrue(cache.get(List.of("AAPL")).isEmpty());
+        verifyNoInteractions(socket);
     }
 
     @Test
@@ -59,6 +57,6 @@ public class MarketDataListenerTest {
         listener.onMessage("not json");
         listener.onMessage(event("PRICE_UPDATED", AAPL_PAYLOAD));
 
-        assertEquals(1, cache.get(List.of("AAPL")).size());
+        verify(socket).broadcast(AAPL_QUOTE);
     }
 }
