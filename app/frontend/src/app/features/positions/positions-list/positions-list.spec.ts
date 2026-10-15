@@ -80,7 +80,10 @@ describe('PositionsList (Portfolios page)', () => {
     error: ReturnType<typeof signal<string | null>>;
     getPositions: ReturnType<typeof vi.fn>;
   };
-  let instruments: { getLatestPrices: ReturnType<typeof vi.fn> };
+  let instruments: {
+    getLatestPrices: ReturnType<typeof vi.fn>;
+    watchLivePrices: ReturnType<typeof vi.fn>;
+  };
   let accounts: { getAccount: ReturnType<typeof vi.fn> };
 
   const el = (testId: string): HTMLElement | null =>
@@ -97,7 +100,7 @@ describe('PositionsList (Portfolios page)', () => {
       fixture.nativeElement.querySelectorAll(
         `td.mat-column-${name}.mat-mdc-cell`,
       ) as NodeListOf<HTMLElement>,
-    ).map((td) => td.textContent?.trim() ?? '');
+    ).map((td) => td.textContent?.replace(/\s+/g, ' ').trim() ?? '');
   const reload = async () => {
     fixture.componentInstance.refresh();
     fixture.detectChanges();
@@ -124,7 +127,10 @@ describe('PositionsList (Portfolios page)', () => {
       error: signal<string | null>(null),
       getPositions: vi.fn((portfolioId?: string) => of(portfolioId === 'PF0012' ? IN_GROWTH : ALL)),
     };
-    instruments = { getLatestPrices: vi.fn(() => of(PRICES)) };
+    instruments = {
+      getLatestPrices: vi.fn(() => of(PRICES)),
+      watchLivePrices: vi.fn(() => of({ prices: new Map(), stale: false })),
+    };
     accounts = {
       getAccount: vi.fn(() =>
         of({
@@ -170,12 +176,26 @@ describe('PositionsList (Portfolios page)', () => {
     expect(column('symbol')).toEqual(['AAPL', 'NVDA', 'AAPL']);
     expect(column('name')).toEqual(['Apple Inc.', 'NVIDIA Corp.', 'Apple Inc.']);
     expect(column('assetClass')).toEqual(['Equity', 'Equity', 'Equity']);
-    expect(column('price')).toEqual(['$120.00', '$450.00', '$120.00']);
+    expect(column('price')).toEqual(['$120.00 Close', '$450.00 Close', '$120.00 Close']);
     expect(column('marketValue')).toEqual(['$1,200.00', '$900.00', '$480.00']);
     expect(column('pnl')).toEqual(['$200.00', '-$100.00', '-$120.00']);
-    expect(column('pnlPercent')).toEqual(['20.0%', '-10.0%', '-20.0%']);
+    expect(column('pnlPercent')).toEqual(['20.00%', '-10.00%', '-20.00%']);
     expect(column('dayChange')).toEqual(['20.00%', '-10.00%', '20.00%']);
     expect(column('weight')).toEqual(['46.5%', '34.9%', '18.6%']);
+  });
+
+  it('uses the live price when there is one, as the dashboard does', async () => {
+    const live = new Map([
+      ['AAPL', { symbol: 'AAPL', price: 130, bid: null, ask: null, quoteTime: '' }],
+    ]);
+    instruments.watchLivePrices.mockReturnValue(of({ prices: live, stale: false }));
+    positions.getPositions.mockReturnValue(of([position('PF0011', 'AAPL', 10, 100)]));
+
+    await click('portfolio-PF0011');
+
+    expect(column('price')).toEqual(['$130.00 Live']);
+    expect(column('pnl')).toEqual(['$300.00']);
+    expect(instruments.watchLivePrices).toHaveBeenLastCalledWith(['AAPL']);
   });
 
   it('colours gains green and losses red', () => {
@@ -210,7 +230,7 @@ describe('PositionsList (Portfolios page)', () => {
 
     await reload();
 
-    expect(text('cash')).toBe('–');
+    expect(text('cash')).toBe('-');
   });
 
   it('shows a dash where a holding has no price, and leaves it out of the totals', async () => {
@@ -219,8 +239,8 @@ describe('PositionsList (Portfolios page)', () => {
     await reload();
 
     expect(column('symbol')).toEqual(['AAPL', 'AAPL', 'NVDA']);
-    expect(column('marketValue')).toEqual(['$1,200.00', '$480.00', '–']);
-    expect(column('name')[2]).toBe('–');
+    expect(column('marketValue')).toEqual(['$1,200.00', '$480.00', '-']);
+    expect(column('name')[2]).toBe('-');
     expect(text('market-value')).toBe('$1,680.00');
   });
 

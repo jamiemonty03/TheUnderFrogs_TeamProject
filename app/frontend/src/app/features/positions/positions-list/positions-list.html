@@ -199,7 +199,7 @@
           pnl() | currency: 'USD'
         }}</span>
         <span class="tile__hint"
-          >{{ pnlPercent() === null ? '–' : (pnlPercent() | percent: '1.2-2') }} on cost</span
+          >{{ pnlPercent() === null ? '-' : (pnlPercent() | number: '1.2-2') + '%' }} on cost</span
         >
       </div>
       <div class="tile">
@@ -208,8 +208,8 @@
           dayChange() | currency: 'USD'
         }}</span>
         <span class="tile__hint"
-          >{{ dayPercent() === null ? '–' : (dayPercent() | percent: '1.2-2') }} since the previous
-          close</span
+          >{{ dayPercent() === null ? '-' : (dayPercent() | number: '1.2-2') + '%' }} since the
+          previous close</span
         >
       </div>
       <div class="tile">
@@ -222,7 +222,7 @@
       <div class="tile">
         <span class="tile__label">Cash</span>
         <span class="tile__value" data-testid="cash">{{
-          cash() === null ? '–' : (cash() | currency: 'USD')
+          cash() === null ? '-' : (cash() | currency: 'USD')
         }}</span>
         <span class="tile__hint">Shared by all your portfolios</span>
       </div>
@@ -271,13 +271,13 @@
 
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
-              <td mat-cell *matCellDef="let row">{{ row.name || '–' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.name || '-' }}</td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
 
             <ng-container matColumnDef="assetClass">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
-              <td mat-cell *matCellDef="let row">{{ row.assetClass || '–' }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.assetClass || '-' }}</td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
 
@@ -330,7 +330,12 @@
                 Price
               </th>
               <td mat-cell *matCellDef="let row" class="num">
-                {{ row.price === null ? '–' : (row.price | currency: 'USD') }}
+                {{ row.price === null ? '-' : (row.price | currency: 'USD') }}
+                @if (row.priceSource) {
+                  <span class="price-tag" [class.price-tag--live]="row.priceSource === 'live'">
+                    {{ row.priceSource === 'live' ? 'Live' : 'Close' }}
+                  </span>
+                }
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
@@ -346,7 +351,7 @@
                 Market value
               </th>
               <td mat-cell *matCellDef="let row" class="num">
-                {{ row.marketValue === null ? '–' : (row.marketValue | currency: 'USD') }}
+                {{ row.marketValue === null ? '-' : (row.marketValue | currency: 'USD') }}
               </td>
               <td mat-footer-cell *matFooterCellDef class="num">
                 {{ marketValue() | currency: 'USD' }}
@@ -364,7 +369,7 @@
                 Unrealised P&amp;L
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.pnl)">
-                {{ row.pnl === null ? '–' : (row.pnl | currency: 'USD') }}
+                {{ row.pnl === null ? '-' : (row.pnl | currency: 'USD') }}
               </td>
               <td mat-footer-cell *matFooterCellDef [class]="'num ' + tone(pnl())">
                 {{ pnl() | currency: 'USD' }}
@@ -382,7 +387,7 @@
                 P&amp;L %
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.pnlPercent)">
-                {{ row.pnlPercent === null ? '–' : (row.pnlPercent | percent: '1.1-1') }}
+                {{ row.pnlPercent === null ? '-' : (row.pnlPercent | number: '1.2-2') + '%' }}
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
@@ -398,10 +403,10 @@
                 Day
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.dayPercent)">
-                {{ row.dayPercent === null ? '–' : (row.dayPercent | percent: '1.2-2') }}
+                {{ row.dayPercent === null ? '-' : (row.dayPercent | number: '1.2-2') + '%' }}
               </td>
               <td mat-footer-cell *matFooterCellDef [class]="'num ' + tone(dayPercent())">
-                {{ dayPercent() === null ? '' : (dayPercent() | percent: '1.2-2') }}
+                {{ dayPercent() === null ? '' : (dayPercent() | number: '1.2-2') + '%' }}
               </td>
             </ng-container>
 
@@ -416,7 +421,7 @@
                 Weight
               </th>
               <td mat-cell *matCellDef="let row" class="num">
-                {{ row.weight === null ? '–' : (row.weight | percent: '1.1-1') }}
+                {{ row.weight === null ? '-' : (row.weight | number: '1.1-1') + '%' }}
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
