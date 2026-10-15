@@ -219,15 +219,19 @@
 		text-transform: uppercase;
 	}
 
+	&__wallet,
 	&__logout {
-		--mat-menu-item-label-text-color: var(--ts-danger-text);
-		--mat-menu-item-icon-color: var(--ts-danger-text);
 		--mat-menu-item-label-text-weight: 600;
-		--mat-menu-item-hover-state-layer-color: rgb(255 138 110 / 0.12);
-		--mat-menu-item-focus-state-layer-color: rgb(255 138 110 / 0.16);
 		width: calc(100% - 0.8rem);
 		margin: 0 0.4rem 0.2rem;
 		border-radius: 8px;
+	}
+
+	&__logout {
+		--mat-menu-item-label-text-color: var(--ts-danger-text);
+		--mat-menu-item-icon-color: var(--ts-danger-text);
+		--mat-menu-item-hover-state-layer-color: rgb(255 138 110 / 0.12);
+		--mat-menu-item-focus-state-layer-color: rgb(255 138 110 / 0.16);
 	}
 
 	&__menu-icon {
