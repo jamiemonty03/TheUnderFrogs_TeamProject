@@ -84,8 +84,21 @@ body {
   margin: 0;
   box-sizing: border-box;
   font-family: var(--ts-font-family);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 
   background-color: var(--ts-bg);
+}
+
+app-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
 }
 
 html {
@@ -194,3 +207,4 @@ html {
   margin-top: 0.5rem;
   border: 1px solid var(--ts-border);
 }
+

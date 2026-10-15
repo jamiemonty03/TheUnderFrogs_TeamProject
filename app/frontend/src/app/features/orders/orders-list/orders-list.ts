@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
@@ -11,17 +12,19 @@ import { Instruments } from '../../../services/instruments';
 import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
+import { OrderSnackbar } from '../order-snackbar/order-snackbar';
 import { forkJoin } from 'rxjs';
 import { OrderFilter, OrderRow } from './orders-list.interfaces';
 
 @Component({
-  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatTableModule],
+  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatSnackBarModule, MatTableModule],
   selector: 'app-orders-list',
   styleUrl: './orders-list.scss',
   templateUrl: './orders-list.html',
 })
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
@@ -91,12 +94,12 @@ export class OrdersList implements OnInit {
       maxWidth: '95vw',
       panelClass: 'order-dialog-panel',
       ...(data ? { data } : {}),
-    }).afterClosed().subscribe(() => {
-      this.loadOrders();
+    }).afterClosed().subscribe((order: OrderResponse | undefined) => {
+      this.loadOrders(order?.orderId);
     });
   }
 
-  private loadOrders(): void {
+  private loadOrders(orderIdToNotify?: string, attempt = 0): void {
     const accountId = this.accountId();
     if (!accountId) {
       this.orders.set([]);
@@ -117,6 +120,7 @@ export class OrdersList implements OnInit {
         this.orders.set(newestFirst.map((row) => this.toOrderRow(row, marketPrices)));
         this.pageIndex.set(0);
         this.isLoading.set(false);
+        this.notifyForOrder(orders.find((order) => order.orderId === orderIdToNotify), orderIdToNotify, attempt);
       },
       error: () => {
         this.orders.set([]);
@@ -124,6 +128,33 @@ export class OrdersList implements OnInit {
         this.isLoading.set(false);
       },
     });
+  }
+
+  private notifyForOrder(order: OrderResponse | undefined, orderId: string | undefined, attempt: number): void {
+    if (!order || !orderId) {
+      return;
+    }
+    if (order.orderStatus === 'NEW' && attempt < 10) {
+      window.setTimeout(() => this.loadOrders(orderId, attempt + 1), 500);
+      return;
+    }
+    if (order.orderStatus === 'FILLED') {
+      this.snackBar.openFromComponent(OrderSnackbar, {
+        data: { orderId: order.orderId, status: 'FILLED' },
+        duration: 5000,
+        panelClass: ['order-snackbar-panel'],
+      });
+    } else if (order.orderStatus === 'REJECTED') {
+      this.snackBar.openFromComponent(OrderSnackbar, {
+        data: {
+          orderId: order.orderId,
+          status: 'REJECTED',
+          reason: order.rejectionReason,
+        },
+        duration: 7000,
+        panelClass: ['order-snackbar-panel'],
+      });
+    }
   }
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {

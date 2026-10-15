@@ -252,6 +252,7 @@ public class OrderController {
             order.getQuantity(),
             order.getPriceLimit(),
             order.getOrderStatus(),
+            order.getRejectionReason(),
             order.getVersion(),
             order.getCreatedAt(),
             order.getLastUpdated(),

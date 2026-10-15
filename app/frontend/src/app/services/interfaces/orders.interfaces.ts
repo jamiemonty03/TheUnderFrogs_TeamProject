@@ -19,6 +19,7 @@ export interface OrderResponse {
   quantity: number;
   priceLimit: number;
   orderStatus: ApiOrderStatus;
+  rejectionReason?: string | null;
   version: number;
   createdAt: string;
   lastUpdated: string | null;

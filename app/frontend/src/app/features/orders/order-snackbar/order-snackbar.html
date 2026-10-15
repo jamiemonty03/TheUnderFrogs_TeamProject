@@ -1,0 +1,14 @@
+<div
+  class="order-snackbar"
+  [class.order-snackbar--success]="data.status === 'FILLED'"
+  [class.order-snackbar--error]="data.status === 'REJECTED'"
+  role="status"
+>
+  <span class="order-snackbar__message">
+    Order {{ data.orderId }} {{ data.status === 'FILLED' ? 'filled' : 'rejected' }}
+    @if (data.reason) {
+      <span>: {{ data.reason }}</span>
+    }
+  </span>
+  <button mat-button type="button" (click)="dismiss()">Dismiss</button>
+</div>
