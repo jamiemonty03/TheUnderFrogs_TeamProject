@@ -1,0 +1,116 @@
+.news-footer {
+	margin-top: 2rem;
+	border-top: 1px solid var(--ts-divider);
+	background: var(--ts-bg-raised);
+
+	&__inner {
+		display: grid;
+		grid-template-columns: minmax(10rem, 0.7fr) minmax(0, 2fr);
+		gap: 1.5rem;
+		max-width: 90rem;
+		margin: 0 auto;
+		padding: 1.25rem 1.5rem;
+	}
+
+	&__eyebrow {
+		color: var(--ts-frog);
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+	}
+
+	h2 {
+		margin: 0.25rem 0 0;
+		color: var(--ts-text);
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	&__list {
+		display: grid;
+		grid-template-columns: repeat(5, minmax(0, 1fr));
+		gap: 0.75rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	&__item {
+		min-width: 0;
+	}
+
+	&__link {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		height: 100%;
+		padding: 0.65rem 0.75rem;
+		border: 1px solid var(--ts-border);
+		border-radius: 0.5rem;
+		color: var(--ts-text-secondary);
+		text-decoration: none;
+		font-size: 0.82rem;
+		line-height: 1.35;
+		transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+
+		&:hover,
+		&:focus-visible {
+			border-color: var(--ts-frog);
+			background: var(--ts-surface-hover);
+			color: var(--ts-text);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--ts-frog);
+			outline-offset: 2px;
+		}
+
+		time {
+			color: var(--ts-text-muted);
+			font-size: 0.72rem;
+		}
+
+		.news-footer__symbols {
+			color: var(--ts-frog-light);
+			font-size: 0.72rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+		}
+	}
+
+	&__status {
+		align-self: center;
+		margin: 0;
+		color: var(--ts-text-muted);
+		font-size: 0.85rem;
+	}
+	&__copyright {
+		grid-column: 1 / -1;
+		margin: 0.25rem 0 0;
+		padding-top: 0.9rem;
+		color: var(--ts-text-muted);
+		font-size: 0.72rem;
+		text-align: center;
+	}
+}
+
+@media (max-width: 900px) {
+	.news-footer {
+		&__inner {
+			grid-template-columns: 1fr;
+			gap: 0.9rem;
+			padding: 1.1rem 1rem;
+		}
+
+		&__list {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+}
+
+@media (max-width: 420px) {
+	.news-footer__list {
+		grid-template-columns: 1fr;
+	}
+}

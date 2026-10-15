@@ -64,6 +64,17 @@ describe('Instruments', () => {
 
     expect(error).toBeTruthy();
   });
+
+  it('getNews requests the configured number of recent headlines', () => {
+    let result: unknown;
+    service.getNews().subscribe((news) => (result = news));
+
+    const request = http.expectOne((req) => req.url === '/api/news');
+    expect(request.request.params.get('limit')).toBe('5');
+    request.flush([]);
+
+    expect(result).toEqual([]);
+  });
 });
 
 describe('dayChange', () => {

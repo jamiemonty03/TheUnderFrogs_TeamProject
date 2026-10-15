@@ -29,6 +29,11 @@
     "secure": false,
     "changeOrigin": true
   },
+  "/api/news": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/api/orders": {
     "target": "http://localhost:8083",
     "secure": false,

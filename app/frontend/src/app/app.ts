@@ -3,11 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { NavigationBar } from './shared/navigation-bar/navigation-bar';
+import { NewsFooter } from './shared/news-footer/news-footer';
 
 const FULL_SCREEN_PAGES = /^\/(login|register)(?:[/?#]|$)/;
 
 @Component({
-  imports: [NavigationBar, RouterOutlet],
+  imports: [NavigationBar, NewsFooter, RouterOutlet],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',

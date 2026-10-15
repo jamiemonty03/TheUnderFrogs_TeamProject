@@ -1,0 +1,38 @@
+<footer class="news-footer" aria-labelledby="news-footer-title">
+  <div class="news-footer__inner">
+    <div class="news-footer__heading">
+      <span class="news-footer__eyebrow">Market pulse</span>
+      <h2 id="news-footer-title">Recent headlines</h2>
+    </div>
+
+    @if (loading()) {
+      <p class="news-footer__status" role="status">Loading latest headlines...</p>
+    } @else if (hasError()) {
+      <p class="news-footer__status">Headlines are temporarily unavailable.</p>
+    } @else if (articles().length === 0) {
+      <p class="news-footer__status">No recent headlines available.</p>
+    } @else {
+      <ul class="news-footer__list">
+        @for (article of articles(); track article.articleUrl) {
+          <li class="news-footer__item">
+            <a
+              class="news-footer__link"
+              [href]="article.articleUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>{{ article.headline }}</span>
+              @if (article.symbols.length > 0) {
+                <span class="news-footer__symbols">{{ article.symbols.join(' · ') }}</span>
+              }
+              @if (article.publishedAt) {
+                <time [attr.datetime]="article.publishedAt">{{ article.publishedAt | date: 'MMM d' }}</time>
+              }
+            </a>
+          </li>
+        }
+      </ul>
+    }
+    <p class="news-footer__copyright">© 2026 The Underfrogs. All rights reserved.</p>
+  </div>
+</footer>

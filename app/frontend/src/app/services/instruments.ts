@@ -14,6 +14,14 @@ import type { LatestPrice, AssetClass, DayChange } from './interfaces/instrument
 export type { LatestPrice } from './interfaces/instruments.interfaces';
 export type PricedAsset = Pick<LatestPrice, 'symbol' | 'name' | 'price' | 'previousClose' | 'tradeDate'>;
 
+export interface NewsArticle {
+	headline: string;
+	articleUrl: string;
+	publishedAt: string;
+	updatedAt: string;
+	symbols: string[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class Instruments {
 	private readonly http = inject(HttpClient);
@@ -28,6 +36,10 @@ export class Instruments {
 
 	getBonds(): Observable<BondResponse[]> {
 		return this.http.get<BondResponse[]>('/api/bonds');
+	}
+
+	getNews(limit = 5): Observable<NewsArticle[]> {
+		return this.http.get<NewsArticle[]>('/api/news', { params: { limit } });
 	}
 
 	getAllTradableInstruments(): Observable<TradingInstrument[]> {

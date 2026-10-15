@@ -41,4 +41,19 @@ class AlpacaNewsClientTest {
         assertEquals(List.of("AAPL"), news.get(0).symbols());
         alpaca.verify();
     }
+
+    @Test
+    void filtersNewsByTrackedSymbols() {
+        MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
+        AlpacaNewsClient client = new AlpacaNewsClient(new RestTemplateBuilder(customizer),
+                "PKTESTKEY", "test-secret", AlpacaNewsClient.DEFAULT_NEWS_URL);
+        MockRestServiceServer alpaca = customizer.getServer();
+
+        alpaca.expect(requestTo(AlpacaNewsClient.DEFAULT_NEWS_URL
+                + "?limit=5&sort=desc&symbols=AAPL,SPY"))
+                .andRespond(withSuccess("{\"news\":[]}", MediaType.APPLICATION_JSON));
+
+        assertEquals(List.of(), client.getNews(5, List.of("AAPL", "SPY")));
+        alpaca.verify();
+    }
 }
