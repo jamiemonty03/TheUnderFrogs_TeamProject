@@ -4,6 +4,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpStatus;
@@ -41,15 +42,21 @@ public class AlpacaNewsClient {
     }
 
     public List<NewsResponse> getNews(int limit) {
+        return getNews(limit, List.of());
+    }
+
+    public List<NewsResponse> getNews(int limit, List<String> symbols) {
         if (!configured) {
             throw unavailable("NEWS-503", "News provider is not configured");
         }
 
-        URI uri = UriComponentsBuilder.fromUriString(newsUrl)
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(newsUrl)
                 .queryParam("limit", limit)
-                .queryParam("sort", "desc")
-                .build()
-                .toUri();
+                .queryParam("sort", "desc");
+        if (!symbols.isEmpty()) {
+            uriBuilder.queryParam("symbols", symbols.stream().collect(Collectors.joining(",")));
+        }
+        URI uri = uriBuilder.build().toUri();
         try {
             AlpacaNewsResponse response = restTemplate.getForObject(uri, AlpacaNewsResponse.class);
             if (response == null || response.news() == null) {
