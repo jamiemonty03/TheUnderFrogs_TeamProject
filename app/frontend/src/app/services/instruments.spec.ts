@@ -187,6 +187,14 @@ describe('Instruments', () => {
     http.expectOne('/api/bonds/AGG').flush({});
   });
 
+  it('getHistory asks for about a year of daily closes by default', () => {
+    service.getHistory('AAPL').subscribe();
+    service.getHistory('AAPL', 21).subscribe();
+
+    http.expectOne('/api/instruments/AAPL/history?days=252').flush([]);
+    http.expectOne('/api/instruments/AAPL/history?days=21').flush([]);
+  });
+
   it('encodes the symbol in the URL', () => {
     service.getStock('BRK/B').subscribe();
 

@@ -8,6 +8,7 @@ import {
 	EtfResponse,
 	InstrumentSummary,
 	InstrumentType,
+	PricePoint,
   LivePrice,
   LivePriceFeed,
 	StockResponse,
@@ -51,6 +52,12 @@ export class Instruments {
 
 	getInstrument(symbol: string): Observable<InstrumentSummary> {
 		return this.http.get<InstrumentSummary>(`/api/instruments/${encodeURIComponent(symbol)}`);
+	}
+
+	getHistory(symbol: string, days = 252): Observable<PricePoint[]> {
+		return this.http.get<PricePoint[]>(`/api/instruments/${encodeURIComponent(symbol)}/history`, {
+			params: { days },
+		});
 	}
 
 	getStock(symbol: string): Observable<StockResponse> {

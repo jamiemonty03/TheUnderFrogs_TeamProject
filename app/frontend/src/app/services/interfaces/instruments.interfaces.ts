@@ -109,3 +109,10 @@ export interface InstrumentSummary {
 	exchange: string;
 	tradable: boolean;
 }
+
+export interface PricePoint {
+	date: string;
+	close: number;
+	movingAvg20: number | null;
+	movingAvg50: number | null;
+}
