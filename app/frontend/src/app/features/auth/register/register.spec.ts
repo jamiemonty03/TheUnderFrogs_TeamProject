@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { Register } from './register';
 import { REGISTER_ERRORS } from './register-error';
 import { Auth, CurrentUser, RegisterDetails } from '../../../services/auth';
+import { Instruments } from '../../../services/instruments';
 
 const kermit: CurrentUser = {
   userId: 42,
@@ -24,7 +25,11 @@ describe('Register', () => {
     register = vi.fn(() => of(kermit));
     await TestBed.configureTestingModule({
       imports: [Register],
-      providers: [provideRouter([]), { provide: Auth, useValue: { register } }],
+      providers: [
+        provideRouter([]),
+        { provide: Auth, useValue: { register } },
+        { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },
+      ],
     }).compileComponents();
     navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture = TestBed.createComponent(Register);

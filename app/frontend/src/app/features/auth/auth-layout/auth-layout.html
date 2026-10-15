@@ -16,16 +16,18 @@
       </p>
     </div>
 
-    <ul class="auth__ticker" aria-hidden="true">
-      @for (quote of tickerQuotes; track quote.symbol) {
-        <li class="auth__quote">
-          <span>{{ quote.symbol }}</span>
-          <span class="auth__quote-change" [class.auth__quote-change--down]="!quote.up">
-            {{ quote.up ? '▲' : '▼' }} {{ quote.percent }}%
-          </span>
-        </li>
-      }
-    </ul>
+    @if (tickerQuotes().length) {
+      <ul class="auth__ticker" aria-hidden="true">
+        @for (quote of tickerQuotes(); track quote.symbol) {
+          <li class="auth__quote">
+            <span>{{ quote.symbol }}</span>
+            <span class="auth__quote-change" [class.auth__quote-change--down]="!quote.up">
+              {{ quote.up ? '▲' : '▼' }} {{ quote.percent }}%
+            </span>
+          </li>
+        }
+      </ul>
+    }
   </section>
 
   <section class="auth__panel">
