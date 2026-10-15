@@ -281,6 +281,10 @@ describe('PositionsList (Portfolios page)', () => {
     }
   });
 
+  it("each ticker links to that instrument's page", () => {
+    expect(el('symbol-NVDA')!.getAttribute('href')).toBe('/instruments/NVDA');
+  });
+
   it('lists every portfolio in the sidebar, marking Main', () => {
     expect(text('portfolio-PF0011')).toContain('Main');
     expect(text('portfolio-PF0012')).toContain('Growth');

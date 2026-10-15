@@ -28,7 +28,7 @@ class AlpacaNewsClientTest {
                 .andExpect(header("APCA-API-SECRET-KEY", "test-secret"))
                 .andRespond(withSuccess("""
                         {"news":[{"headline":"Markets rally","url":"https://example.com/article",
-                        "published_at":"2026-10-14T08:00:00Z","updated_at":"2026-10-14T08:05:00Z",
+                        "created_at":"2026-10-14T08:00:00Z","updated_at":"2026-10-14T08:05:00Z",
                         "symbols":["AAPL"]}]}
                         """, MediaType.APPLICATION_JSON));
 
@@ -40,6 +40,22 @@ class AlpacaNewsClientTest {
         assertEquals(Instant.parse("2026-10-14T08:00:00Z"), news.get(0).publishedAt());
         assertEquals(List.of("AAPL"), news.get(0).symbols());
         alpaca.verify();
+    }
+
+    @Test
+    void decodesHtmlInHeadlines() {
+        MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
+        AlpacaNewsClient client = new AlpacaNewsClient(new RestTemplateBuilder(customizer),
+                "PKTESTKEY", "test-secret", AlpacaNewsClient.DEFAULT_NEWS_URL);
+        MockRestServiceServer alpaca = customizer.getServer();
+
+        alpaca.expect(requestTo(AlpacaNewsClient.DEFAULT_NEWS_URL + "?limit=5&sort=desc"))
+                .andRespond(withSuccess("""
+                        {"news":[{"headline":"Storage &amp; Peripherals: what&#39;s next","url":"https://example.com/a",
+                        "created_at":"2026-10-14T08:00:00Z","updated_at":"2026-10-14T08:05:00Z","symbols":[]}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertEquals("Storage & Peripherals: what's next", client.getNews(5).get(0).headline());
     }
 
     @Test

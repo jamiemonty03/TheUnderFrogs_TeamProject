@@ -179,6 +179,71 @@ describe('NavigationBar', () => {
     });
   });
 
+  const searchBox = () => page.querySelector('[data-testid="nav-search"]') as HTMLInputElement;
+  const type = async (text: string) => {
+    searchBox().value = text;
+    searchBox().dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+  const pressEnter = () =>
+    searchBox().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const loadInstruments = () => {
+    searchBox().focus();
+    http.expectOne('/api/stocks').flush([
+      { symbol: 'AAPL', name: 'Apple Inc.', price: 346.19 },
+      { symbol: 'AMZN', name: 'Amazon.com, Inc.', price: 260.32 },
+    ]);
+    http.expectOne('/api/etfs').flush([{ symbol: 'SPY', name: 'SPDR S&P 500', price: 773.5 }]);
+    http.expectOne('/api/bonds').flush([]);
+  };
+
+  it('suggests matching tickers as you type', async () => {
+    await setUp();
+    loadInstruments();
+
+    await type('a');
+
+    const options = [...document.querySelectorAll('.cdk-overlay-container mat-option')].map((o) =>
+      o.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(options).toEqual(['AAPL - Apple Inc. (Stock)', 'AMZN - Amazon.com, Inc. (Stock)']);
+  });
+
+  it('picking a suggestion opens its instrument page', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    loadInstruments();
+    await type('spdr');
+
+    (document.querySelector('[data-testid="search-option-SPY"]') as HTMLElement).click();
+
+    expect(navigate).toHaveBeenCalledWith(['/instruments', 'SPY']);
+  });
+
+  it('Enter opens the typed ticker, or the top suggestion', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    loadInstruments();
+
+    await type(' aapl ');
+    pressEnter();
+    expect(navigate).toHaveBeenLastCalledWith(['/instruments', 'AAPL']);
+
+    await type('amaz');
+    pressEnter();
+    expect(navigate).toHaveBeenLastCalledWith(['/instruments', 'AMZN']);
+  });
+
+  it('Enter on an empty search does nothing', async () => {
+    await setUp();
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    pressEnter();
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   describe('wallet', () => {
     const walletItem = () =>
       document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');

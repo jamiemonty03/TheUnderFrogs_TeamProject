@@ -264,7 +264,11 @@
             <ng-container matColumnDef="symbol">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Symbol</th>
               <td mat-cell *matCellDef="let row" class="holdings-table__symbol">
-                {{ row.symbol }}
+                <a
+                  [routerLink]="['/instruments', row.symbol]"
+                  [attr.data-testid]="'symbol-' + row.symbol"
+                  >{{ row.symbol }}</a
+                >
               </td>
               <td mat-footer-cell *matFooterCellDef>Total</td>
             </ng-container>
