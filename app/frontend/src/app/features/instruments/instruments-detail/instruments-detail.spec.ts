@@ -96,6 +96,17 @@ describe('InstrumentsDetail', () => {
       getEtf: vi.fn(() => of(DIA)),
       getBond: vi.fn(() => of(AGG)),
       watchLivePrices: vi.fn(() => live),
+      getNews: vi.fn(() =>
+        of([
+          {
+            headline: 'Apple beats on earnings',
+            articleUrl: 'https://example.com/apple',
+            publishedAt: '2026-10-14T13:05:00Z',
+            updatedAt: '2026-10-14T13:05:00Z',
+            symbols: ['AAPL'],
+          },
+        ]),
+      ),
       getHistory: vi.fn(() =>
         of([
           { date: '2026-10-13', close: 341.27, movingAvg20: 336.28, movingAvg50: 323.77 },
@@ -236,6 +247,28 @@ describe('InstrumentsDetail', () => {
     await render();
 
     expect(text('history-error')).toBe("Price history couldn't be loaded.");
+    expect(text('fact-Sector')).toBe('Technology');
+  });
+
+  it('shows the latest news for this instrument, opening each article in a new tab', () => {
+    expect(instruments['getNews']).toHaveBeenCalledWith(5, 'AAPL');
+    const link = el('instrument-news')!.querySelector('a')!;
+    expect(link.textContent?.trim()).toBe('Apple beats on earnings');
+    expect(link.getAttribute('href')).toBe('https://example.com/apple');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+  });
+
+  it('says when there is no recent news, or it cannot be loaded, and the rest of the page still works', async () => {
+    instruments['getNews'].mockReturnValue(of([]));
+    params.next(convertToParamMap({ id: 'DIA' }));
+    await render();
+    expect(text('news-empty')).toBe('No recent news for DIA.');
+
+    instruments['getNews'].mockReturnValue(throwError(() => new Error('down')));
+    params.next(convertToParamMap({ id: 'AAPL' }));
+    await render();
+    expect(text('news-error')).toBe("News couldn't be loaded.");
     expect(text('fact-Sector')).toBe('Technology');
   });
 

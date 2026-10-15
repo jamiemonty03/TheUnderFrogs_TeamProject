@@ -30,8 +30,8 @@ export const LIVE_POLL_MS = 30_000;
 export interface NewsArticle {
 	headline: string;
 	articleUrl: string;
-	publishedAt: string;
-	updatedAt: string;
+	publishedAt: string | null;
+	updatedAt: string | null;
 	symbols: string[];
 }
 
@@ -73,8 +73,9 @@ export class Instruments {
 		return this.http.get<BondResponse>(`/api/bonds/${encodeURIComponent(symbol)}`);
 	}
 
-	getNews(limit = 5): Observable<NewsArticle[]> {
-		return this.http.get<NewsArticle[]>('/api/news', { params: { limit } });
+	getNews(limit = 5, symbol?: string): Observable<NewsArticle[]> {
+		const params: Record<string, string | number> = symbol ? { limit, symbol } : { limit };
+		return this.http.get<NewsArticle[]>('/api/news', { params });
 	}
 	
 	getLivePrices(symbols?: string[]): Observable<LivePrice[]> {

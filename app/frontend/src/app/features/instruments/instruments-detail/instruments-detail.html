@@ -162,6 +162,40 @@
             }
           </section>
         </div>
+
+        <section class="instrument__card" aria-labelledby="news-title">
+          <h2 class="instrument__card-title" id="news-title">Latest {{ i.symbol }} news</h2>
+          @switch (newsStatus()) {
+            @case ('loading') {
+              <p class="instrument__muted">Loading news…</p>
+            }
+            @case ('error') {
+              <p class="instrument__muted" data-testid="news-error">News couldn't be loaded.</p>
+            }
+            @case ('ready') {
+              @if (news().length) {
+                <ul class="instrument__news" data-testid="instrument-news">
+                  @for (article of news(); track article.articleUrl) {
+                    <li class="instrument__article">
+                      <a [href]="article.articleUrl" target="_blank" rel="noopener noreferrer">{{
+                        article.headline
+                      }}</a>
+                      <time
+                        class="instrument__muted"
+                        [attr.datetime]="article.publishedAt ?? article.updatedAt"
+                        >{{ article.publishedAt ?? article.updatedAt | date: 'd MMM, HH:mm' }}</time
+                      >
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="instrument__muted" data-testid="news-empty">
+                  No recent news for {{ i.symbol }}.
+                </p>
+              }
+            }
+          }
+        </section>
       }
     }
   }

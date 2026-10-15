@@ -195,6 +195,12 @@ describe('Instruments', () => {
     http.expectOne('/api/instruments/AAPL/history?days=21').flush([]);
   });
 
+  it('getNews can ask for one symbol only', () => {
+    service.getNews(5, 'AAPL').subscribe();
+
+    http.expectOne('/api/news?limit=5&symbol=AAPL').flush([]);
+  });
+
   it('encodes the symbol in the URL', () => {
     service.getStock('BRK/B').subscribe();
 

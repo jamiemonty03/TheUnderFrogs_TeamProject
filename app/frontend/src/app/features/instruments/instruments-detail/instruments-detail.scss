@@ -155,3 +155,40 @@
 .sell {
   --mat-button-outlined-label-text-color: var(--ts-sell);
 }
+
+.instrument__news {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.instrument__article {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--ts-divider);
+
+  &:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  a {
+    color: var(--ts-text);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--ts-frog);
+      text-decoration: underline;
+    }
+  }
+
+  time {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+}
