@@ -233,7 +233,7 @@ describe('PositionsList (Portfolios page)', () => {
 
     await reload();
 
-    expect(text('cash')).toBe('–');
+    expect(text('cash')).toBe('-');
   });
 
   it('shows a dash where a holding has no price, and leaves it out of the totals', async () => {
@@ -242,8 +242,8 @@ describe('PositionsList (Portfolios page)', () => {
     await reload();
 
     expect(column('symbol')).toEqual(['AAPL', 'AAPL', 'NVDA']);
-    expect(column('marketValue')).toEqual(['$1,200.00', '$480.00', '–']);
-    expect(column('name')[2]).toBe('–');
+    expect(column('marketValue')).toEqual(['$1,200.00', '$480.00', '-']);
+    expect(column('name')[2]).toBe('-');
     expect(text('market-value')).toBe('$1,680.00');
   });
 
@@ -284,6 +284,10 @@ describe('PositionsList (Portfolios page)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("each ticker links to that instrument's page", () => {
+    expect(el('symbol-NVDA')!.getAttribute('href')).toBe('/instruments/NVDA');
   });
 
   it('lists every portfolio in the sidebar, marking Main', () => {
