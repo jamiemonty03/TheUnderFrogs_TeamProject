@@ -17,7 +17,7 @@ const axiosError = (status?: number) =>
   );
 
 describe('AccountsServiceClient', () => {
-  const httpService = { post: jest.fn<any>() };
+  const httpService = { post: jest.fn<any>(), patch: jest.fn<(url: string, body: object, options: object) => unknown>() };
   const tokenService = { issueServiceToken: jest.fn<any>().mockReturnValue('secret.service.token') };
   const config = (url?: string) =>
     ({ get: (name: string, fallback: unknown) => (name === 'ACCOUNTS_SERVICE_URL' && url ? url : fallback) }) as unknown as ConfigService;
@@ -96,5 +96,56 @@ describe('AccountsServiceClient', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('user 12'));
       expect(JSON.stringify(warn.mock.calls)).not.toContain('secret.service.token');
     });
+  });
+
+  describe('updateHolderName', () => {
+    it('asks accounts-service to rename just the holder, with a fresh service token', async () => {
+      httpService.patch.mockReturnValue(of({ data: {} }));
+
+      await client.updateHolderName('ACC0011', 'Kermit T. Frog');
+
+      expect(httpService.patch).toHaveBeenCalledWith(
+        'http://accounts-service:8081/api/accounts/ACC0011/holder-name',
+        { holderName: 'Kermit T. Frog' },
+        expect.objectContaining({
+          headers: { Authorization: 'Bearer secret.service.token' },
+          timeout: 5000,
+        }),
+      );
+      expect(tokenService.issueServiceToken).toHaveBeenCalledWith(
+        'auth-service',
+      );
+    });
+
+    it('encodes the account ID so it cannot change the path', async () => {
+      httpService.patch.mockReturnValue(of({ data: {} }));
+
+      await client.updateHolderName('ACC0011/../credit', 'x');
+
+      expect(httpService.patch.mock.calls[0][0]).toBe(
+        'http://accounts-service:8081/api/accounts/ACC0011%2F..%2Fcredit/holder-name',
+      );
+    });
+
+    it.each([
+      ['accounts-service answers with an error', 403],
+      ['accounts-service cannot be reached', undefined],
+    ])(
+      'throws 503 and logs a warning without the token when %s',
+      async (_label, status) => {
+        httpService.patch.mockReturnValue(throwError(() => axiosError(status)));
+        const warn = jest
+          .spyOn(Logger.prototype, 'warn')
+          .mockImplementation(() => undefined);
+
+        await expect(
+          client.updateHolderName('ACC0011', 'Kermit'),
+        ).rejects.toBeInstanceOf(ServiceUnavailableException);
+        expect(JSON.stringify(warn.mock.calls)).toContain('ACC0011');
+        expect(JSON.stringify(warn.mock.calls)).not.toContain(
+          'secret.service.token',
+        );
+      },
+    );
   });
 });

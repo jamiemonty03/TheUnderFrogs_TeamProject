@@ -13,6 +13,7 @@ import {
   WRONG_CURRENT_PASSWORD,
 } from './profile.service';
 import { RefreshTokensService } from '../../tokens/services/refresh-tokens.service';
+import { AccountsServiceClient } from './accounts-service-client';
 import { PasswordHasher } from '../../users/services/password-hasher.service';
 import { User } from '../../users/entities/user.entity';
 import { UsersRepository } from '../../users/repositories/users.repository';
@@ -48,11 +49,16 @@ describe('ProfileService', () => {
     revokeOtherSessions:
       jest.fn<(userId: number, presented?: string) => Promise<number>>(),
   };
+  const accountsServiceClient = {
+    updateHolderName:
+      jest.fn<(accountId: string, holderName: string) => Promise<void>>(),
+  };
   const service = new ProfileService(
     usersService as unknown as UsersService,
     usersRepository as unknown as UsersRepository,
     passwordHasher as unknown as PasswordHasher,
     refreshTokensService as unknown as RefreshTokensService,
+    accountsServiceClient as unknown as AccountsServiceClient,
   );
 
   beforeEach(() => {
@@ -66,6 +72,7 @@ describe('ProfileService', () => {
     passwordHasher.verify.mockResolvedValue(true);
     passwordHasher.hash.mockResolvedValue('$argon2id$new');
     refreshTokensService.revokeOtherSessions.mockResolvedValue(2);
+    accountsServiceClient.updateHolderName.mockResolvedValue(undefined);
   });
 
   it('returns the username, email and full name, and nothing else', async () => {
@@ -165,6 +172,59 @@ describe('ProfileService', () => {
       service.updateProfile(11, { fullName: 'x' }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(usersRepository.update).not.toHaveBeenCalled();
+  });
+
+  describe('keeping the trading account holder name in sync', () => {
+    it('renames the account holder when the full name changes', async () => {
+      await service.updateProfile(11, { fullName: 'Kermit T. Frog' });
+
+      expect(accountsServiceClient.updateHolderName).toHaveBeenCalledWith(
+        'ACC0011',
+        'Kermit T. Frog',
+      );
+    });
+
+    it('leaves the account alone when only the email changes', async () => {
+      await service.updateProfile(11, { email: 'kermit@pond.io' });
+
+      expect(accountsServiceClient.updateHolderName).not.toHaveBeenCalled();
+    });
+
+    it('leaves the account alone when the name is unchanged', async () => {
+      await service.updateProfile(11, { fullName: 'Demo Trader' });
+
+      expect(accountsServiceClient.updateHolderName).not.toHaveBeenCalled();
+    });
+
+    it('skips the sync for a user without a trading account', async () => {
+      usersService.getUserById.mockResolvedValue({
+        ...demo,
+        account_id: null,
+      } as User);
+      usersRepository.update.mockImplementation(
+        async (_id, changes) =>
+          ({ ...demo, account_id: null, ...changes }) as User,
+      );
+
+      await service.updateProfile(11, { fullName: 'Kermit' });
+
+      expect(accountsServiceClient.updateHolderName).not.toHaveBeenCalled();
+    });
+
+    it('still saves the profile when accounts-service is down, and logs a warning', async () => {
+      accountsServiceClient.updateHolderName.mockRejectedValue(
+        new Error('down'),
+      );
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      const profile = await service.updateProfile(11, { fullName: 'Kermit' });
+
+      expect(profile.fullName).toBe('Kermit');
+      expect(JSON.stringify(warn.mock.calls)).toContain('ACC0011');
+      warn.mockRestore();
+    });
   });
 
   describe('changePassword', () => {

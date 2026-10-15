@@ -51,4 +51,29 @@ export class AccountsServiceClient {
       throw new ServiceUnavailableException('Account service is unavailable, please try again');
     }
   }
+
+  async updateHolderName(accountId: string, holderName: string): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.httpService.patch(
+          `${this.accountsUrl}/${encodeURIComponent(accountId)}/holder-name`,
+          { holderName },
+          {
+            headers: {
+              Authorization: `Bearer ${this.tokenService.issueServiceToken(SERVICE_NAME)}`,
+            },
+            timeout: ACCOUNTS_REQUEST_TIMEOUT_MS,
+          },
+        ),
+      );
+    } catch (error) {
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      this.logger.warn(
+        `Updating the holder name of account ${accountId} failed: ${status ?? 'no response'} ${(error as Error).message}`,
+      );
+      throw new ServiceUnavailableException(
+        'Account service is unavailable, please try again',
+      );
+    }
+  }
 }

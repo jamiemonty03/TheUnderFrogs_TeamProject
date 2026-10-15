@@ -63,6 +63,18 @@ public class AccountService {
                 .orElseThrow(() -> new AccountNotFoundException("Account not found: " + accountId));
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public Account updateHolderName(String accountId, String holderName) throws AccountNotFoundException {
+        if (holderName == null || holderName.isBlank()) {
+            throw new IllegalArgumentException("Holder name cannot be null or blank");
+        }
+        Account account = getAccountById(accountId);
+        account.setHolderName(holderName.trim());
+        account.setLastUpdated(LocalDateTime.now());
+        account.setVersion(account.getVersion() + 1);
+        return accountRepository.save(account);
+    }
+
     public Account updateAccount(String accountId, Account updatedAccount) throws AccountNotFoundException {
         Account existing = getAccountById(accountId);
         

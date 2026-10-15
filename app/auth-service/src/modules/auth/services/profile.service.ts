@@ -12,6 +12,7 @@ import {
 } from '../dtos';
 import { ValidationException } from '../../../common/exceptions/custom.exceptions';
 import { RefreshTokensService } from '../../tokens/services/refresh-tokens.service';
+import { AccountsServiceClient } from './accounts-service-client';
 import { User } from '../../users/entities/user.entity';
 import { UsersRepository } from '../../users/repositories/users.repository';
 import { PasswordHasher } from '../../users/services/password-hasher.service';
@@ -41,6 +42,7 @@ export class ProfileService {
     private readonly usersRepository: UsersRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly refreshTokensService: RefreshTokensService,
+    private readonly accountsServiceClient: AccountsServiceClient,
   ) {}
 
   async getProfile(userId: number): Promise<ProfileResponseDto> {
@@ -72,7 +74,24 @@ export class ProfileService {
     if (!updated) {
       throw new NotFoundException('User not found');
     }
+    if (changes.full_name && updated.account_id) {
+      await this.syncHolderName(userId, updated.account_id, changes.full_name);
+    }
     return toProfile(updated);
+  }
+
+  private async syncHolderName(
+    userId: number,
+    accountId: string,
+    fullName: string,
+  ): Promise<void> {
+    try {
+      await this.accountsServiceClient.updateHolderName(accountId, fullName);
+    } catch {
+      this.logger.warn(
+        `Profile saved for user ID ${userId}, but account ${accountId} still has the old holder name`,
+      );
+    }
   }
 
   async changePassword(userId: number, dto: ChangePasswordDto): Promise<void> {

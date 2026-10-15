@@ -361,4 +361,47 @@ public class AccountServiceTest {
             accountService.debit("INVALID", new BigDecimal("1000"));
         });
     }
+
+    // ==================== UPDATE HOLDER NAME TESTS ====================
+
+    @Test
+    @DisplayName("updateHolderName: Changes only the holder name, trimmed, and bumps the version")
+    public void testUpdateHolderNameChangesOnlyTheName() throws Exception {
+        when(accountRepository.findById("ACC001")).thenReturn(java.util.Optional.of(account));
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Account result = accountService.updateHolderName("ACC001", "  Kermit T. Frog  ");
+
+        assertEquals("Kermit T. Frog", result.getHolderName());
+        assertEquals(0, new BigDecimal("5000").compareTo(result.getCashBalance()));
+        assertEquals(AccountStatus.ACTIVE, result.getStatus());
+        assertEquals(2, result.getVersion());
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    @DisplayName("updateHolderName: Keeps a suspended account suspended")
+    public void testUpdateHolderNameKeepsStatus() throws Exception {
+        account.setStatus(AccountStatus.SUSPENDED);
+        when(accountRepository.findById("ACC001")).thenReturn(java.util.Optional.of(account));
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertEquals(AccountStatus.SUSPENDED, accountService.updateHolderName("ACC001", "Kermit").getStatus());
+    }
+
+    @Test
+    @DisplayName("updateHolderName: Rejects a blank name without saving")
+    public void testUpdateHolderNameRejectsBlank() {
+        assertThrows(IllegalArgumentException.class, () -> accountService.updateHolderName("ACC001", "   "));
+        verify(accountRepository, never()).save(any(Account.class));
+    }
+
+    @Test
+    @DisplayName("updateHolderName: Throws AccountNotFoundException for an unknown account")
+    public void testUpdateHolderNameUnknownAccount() {
+        when(accountRepository.findById("INVALID")).thenReturn(java.util.Optional.empty());
+
+        assertThrows(AccountNotFoundException.class, () -> accountService.updateHolderName("INVALID", "Kermit"));
+        verify(accountRepository, never()).save(any(Account.class));
+    }
 }
