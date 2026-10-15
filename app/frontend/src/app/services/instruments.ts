@@ -9,7 +9,6 @@ import {
 	InstrumentType,
   LivePrice,
   LivePriceFeed,
-  PricedAsset,
 	StockResponse,
 	TradingInstrument,
 } from './interfaces/instruments.interfaces';
