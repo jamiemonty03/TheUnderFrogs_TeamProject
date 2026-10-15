@@ -59,10 +59,11 @@ export class OrdersList implements OnInit {
   ngOnInit(): void {
     this.loadOrders();
     if (this.route?.snapshot.queryParams['new'] === 'true') {
-      const { symbol, side } = this.route.snapshot.queryParams;
+      const { symbol, side, portfolioId } = this.route.snapshot.queryParams;
       this.openOrderDialog({
         symbol: typeof symbol === 'string' ? symbol : undefined,
         side: side === 'BUY' || side === 'SELL' ? side : undefined,
+        portfolioId: typeof portfolioId === 'string' ? portfolioId : undefined,
       });
     }
   }
