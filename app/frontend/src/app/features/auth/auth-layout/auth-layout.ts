@@ -1,16 +1,12 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
+import { Instruments, LatestPrice, dayChange } from '../../../services/instruments';
 
 export type AuthTab = 'login' | 'register';
 
-const TICKER = [
-  { symbol: 'AAPL', change: 1.24 },
-  { symbol: 'MSFT', change: 0.88 },
-  { symbol: 'TSLA', change: -2.1 },
-  { symbol: 'SPY', change: 0.41 },
-  { symbol: 'NVDA', change: 3.02 },
-  { symbol: 'BND', change: -0.12 },
-];
+const TICKER = ['AAPL', 'MSFT', 'TSLA', 'SPY', 'NVDA', 'BND'];
 
 @Component({
   imports: [RouterLink],
@@ -23,9 +19,20 @@ export class AuthLayout {
   readonly subheading = input.required<string>();
   readonly activeTab = input.required<AuthTab>();
 
-  readonly tickerQuotes = TICKER.map(({ symbol, change }) => ({
-    symbol,
-    up: change >= 0,
-    percent: Math.abs(change).toFixed(2),
-  }));
+  private readonly prices = toSignal(
+    inject(Instruments)
+      .getLatestPrices()
+      .pipe(catchError(() => of(new Map<string, LatestPrice>()))),
+    { initialValue: new Map<string, LatestPrice>() },
+  );
+
+  readonly tickerQuotes = computed(() =>
+    TICKER.flatMap((symbol) => {
+      const price = this.prices().get(symbol);
+      const change = price ? dayChange(price) : null;
+      return change
+        ? [{ symbol, up: change.percent >= 0, percent: Math.abs(change.percent).toFixed(2) }]
+        : [];
+    }),
+  );
 }

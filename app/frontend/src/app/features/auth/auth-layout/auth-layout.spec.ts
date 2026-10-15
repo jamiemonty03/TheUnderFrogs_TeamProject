@@ -1,6 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Observable, of, throwError } from 'rxjs';
+import { Instruments, LatestPrice } from '../../../services/instruments';
 import { AuthLayout, AuthTab } from './auth-layout';
 
 @Component({
@@ -19,19 +21,54 @@ class Host {
   readonly tab = signal<AuthTab>('register');
 }
 
+// Each moves by a round percentage from a previous close of 100
+const quote = (symbol: string, price: number | null): [string, LatestPrice] => [
+  symbol,
+  {
+    symbol,
+    name: symbol,
+    assetClass: 'Equity',
+    price,
+    previousClose: 100,
+    tradeDate: '2026-10-14',
+  },
+];
+const PRICES = new Map([
+  quote('AAPL', 101.24),
+  quote('MSFT', 100.88),
+  quote('TSLA', 97.9),
+  quote('SPY', 100.41),
+  quote('NVDA', 103.02),
+  quote('BND', 99.88),
+]);
+
 describe('AuthLayout', () => {
   let fixture: ComponentFixture<Host>;
   let page: HTMLElement;
+  let prices: Observable<Map<string, LatestPrice>>;
 
-  beforeEach(async () => {
+  const create = async () => {
     await TestBed.configureTestingModule({
       imports: [Host],
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        { provide: Instruments, useValue: { getLatestPrices: () => prices } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(Host);
     page = fixture.nativeElement;
     fixture.detectChanges();
+  };
+
+  beforeEach(async () => {
+    prices = of(PRICES);
+    await create();
   });
+
+  const tickerSymbols = () =>
+    Array.from(page.querySelectorAll('.auth__quote')).map(
+      (q) => q.textContent?.trim().split(/\s/)[0],
+    );
 
   const tabs = () => Array.from(page.querySelectorAll<HTMLAnchorElement>('.auth__tab'));
 
@@ -83,5 +120,21 @@ describe('AuthLayout', () => {
     expect(quotes).toContain('TSLA ▼ 2.10%');
     expect(quotes).toContain('AAPL ▲ 1.24%');
     expect(page.querySelectorAll('.auth__quote-change--down')).toHaveLength(2);
+  });
+
+  it('leaves out a symbol that has no price', async () => {
+    TestBed.resetTestingModule();
+    prices = of(new Map([...PRICES, quote('NVDA', null)]));
+    await create();
+
+    expect(tickerSymbols()).toEqual(['AAPL', 'MSFT', 'TSLA', 'SPY', 'BND']);
+  });
+
+  it('hides the ticker if prices cannot be loaded', async () => {
+    TestBed.resetTestingModule();
+    prices = throwError(() => new Error('down'));
+    await create();
+
+    expect(page.querySelector('.auth__ticker')).toBeNull();
   });
 });
