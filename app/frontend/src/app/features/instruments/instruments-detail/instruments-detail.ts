@@ -4,7 +4,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { EMPTY, Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { Instruments, LivePrice, dayChange } from '../../../services/instruments';
 import {
   BaseInstrumentResponse,
@@ -26,7 +26,7 @@ export interface Fact {
   value: string;
 }
 
-export const MISSING = '–';
+export const MISSING = '-';
 
 @Component({
   imports: [CurrencyPipe, DecimalPipe, MatButtonModule, RouterLink],
@@ -162,6 +162,8 @@ export class InstrumentsDetail {
         return this.instruments.getEtf(instrument.symbol);
       case 'Bond':
         return this.instruments.getBond(instrument.symbol);
+      default:
+        return throwError(() => new Error(`No details for type ${instrument.assetClass}`));
     }
   }
 }

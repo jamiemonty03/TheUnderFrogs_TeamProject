@@ -243,6 +243,17 @@ describe('InstrumentsDetail', () => {
     expect(text('instrument-symbol')).toBe('AAPL');
   });
 
+  it('shows the key facts error, not a crash, for a type it does not know', async () => {
+    instruments['getInstrument'].mockReturnValue(
+      of({ ...summary('XYZ', 'Equity'), assetClass: 'Crypto' as never }),
+    );
+    params.next(convertToParamMap({ id: 'XYZ' }));
+    await render();
+
+    expect(text('facts-error')).toContain("Key facts couldn't be loaded");
+    expect(text('instrument-symbol')).toBe('XYZ');
+  });
+
   it('still lets you trade when the key facts fail to load', async () => {
     instruments['getStock'].mockReturnValue(throwError(() => new Error('down')));
     params.next(convertToParamMap({ id: 'AAPL' }));
@@ -257,6 +268,6 @@ describe('factsFor', () => {
   it('shows a dash for every missing value', () => {
     const facts = factsFor('Equity', { symbol: 'X', name: 'X' } as unknown as StockResponse);
 
-    expect(facts.map((f) => f.value)).toEqual(['–', '–', '–', '–', '–']);
+    expect(facts.map((f) => f.value)).toEqual(['-', '-', '-', '-', '-']);
   });
 });

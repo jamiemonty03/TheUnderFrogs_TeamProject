@@ -29,7 +29,7 @@
             </h1>
             <p class="instrument__price">
               <span data-testid="instrument-price">{{
-                price() === null ? '–' : (price() | currency: 'USD')
+                price() === null ? '-' : (price() | currency: 'USD')
               }}</span>
               @if (priceSource()) {
                 <span class="price-tag" [class.price-tag--live]="priceSource() === 'live'">
@@ -118,7 +118,7 @@
                       {{ h.averageCost | currency: 'USD' }}</span
                     >
                     <span>{{
-                      h.marketValue === null ? '–' : (h.marketValue | currency: 'USD')
+                      h.marketValue === null ? '-' : (h.marketValue | currency: 'USD')
                     }}</span>
                     @if (i.tradable) {
                       <a
