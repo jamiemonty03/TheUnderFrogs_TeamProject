@@ -1,0 +1,96 @@
+<section class="wallet" data-testid="wallet-dialog">
+  <header class="wallet__header">
+    <h2 mat-dialog-title class="wallet__title">Wallet</h2>
+    <button
+      mat-icon-button
+      type="button"
+      class="wallet__close"
+      aria-label="Close wallet"
+      data-testid="wallet-close"
+      (click)="close()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+    </button>
+  </header>
+
+  <mat-dialog-content class="wallet__content">
+    <div class="wallet__balance">
+      <span class="wallet__caption">Cash balance</span>
+      <span class="wallet__balance-value" data-testid="wallet-balance">
+        @if (balance() !== null) {
+          {{ balance() | currency: 'USD' }}
+        } @else if (balanceLoading()) {
+          Loading…
+        } @else {
+          —
+        }
+      </span>
+    </div>
+
+    <form class="wallet__form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <h3 class="wallet__section">Add funds</h3>
+
+      <div class="wallet__quick" role="group" aria-label="Quick amounts">
+        @for (quick of quickAmounts; track quick) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="wallet__quick-button"
+            [class.wallet__quick-button--active]="form.controls.amount.value === quick"
+            [attr.aria-pressed]="form.controls.amount.value === quick"
+            [attr.data-testid]="'wallet-quick-' + quick"
+            (click)="pick(quick)"
+          >
+            {{ quick | currency: 'USD' : 'symbol' : '1.0-0' }}
+          </button>
+        }
+      </div>
+
+      <label class="wallet__caption" for="wallet-amount">Amount (USD)</label>
+      <mat-form-field appearance="outline" class="wallet__field">
+        <span matTextPrefix>$&nbsp;</span>
+        <input
+          matInput
+          id="wallet-amount"
+          type="number"
+          inputmode="decimal"
+          min="10"
+          max="10000"
+          step="0.01"
+          placeholder="250.00"
+          formControlName="amount"
+          data-testid="wallet-amount"
+        />
+        <mat-hint>Between $10 and $10,000</mat-hint>
+        @if (form.controls.amount.hasError('required')) {
+          <mat-error>Enter an amount.</mat-error>
+        } @else if (form.controls.amount.hasError('min')) {
+          <mat-error>The minimum top-up is $10.00.</mat-error>
+        } @else if (form.controls.amount.hasError('max')) {
+          <mat-error>The maximum top-up is $10,000.00.</mat-error>
+        } @else if (form.controls.amount.hasError('decimals')) {
+          <mat-error>Use at most 2 decimal places.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (errorMessage(); as message) {
+        <p class="wallet__error" role="alert" data-testid="wallet-error">{{ message }}</p>
+      }
+
+      <button
+        mat-flat-button
+        type="submit"
+        class="wallet__submit"
+        [disabled]="submitting() || unavailable()"
+        data-testid="wallet-submit"
+      >
+        @if (submitting()) {
+          Opening secure payment…
+        } @else {
+          Continue to secure payment
+        }
+      </button>
+      <p class="wallet__note">You'll pay on Stripe's secure page, then come straight back here.</p>
+    </form>
+  </mat-dialog-content>
+</section>

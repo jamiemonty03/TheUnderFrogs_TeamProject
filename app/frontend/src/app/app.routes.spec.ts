@@ -95,6 +95,12 @@ describe('app routes', () => {
       },
     );
 
+    it('keeps the Stripe session in returnUrl, so the payment is confirmed after logging in again', async () => {
+      const url = '/wallet/return?session_id=cs_test_a1B2c3&returnTo=%2Fpositions';
+
+      expect(await open(url)).toBe(`/login?returnUrl=${encodeURIComponent(url)}`);
+    });
+
     it('guards /dashboard and goes to plain /login', async () => {
       expect(await open('/dashboard')).toBe('/login');
     });
@@ -114,8 +120,12 @@ describe('app routes', () => {
       expect(await open('/')).toBe('/dashboard');
     });
 
-    it.each(protectedUrls)('can open %s', async (url) => {
+    it.each(protectedUrls.filter((url) => url !== '/wallet/return'))('can open %s', async (url) => {
       expect(await open(url)).toBe(url);
+    });
+
+    it('lets the wallet return page through, which then moves on by itself', async () => {
+      expect(await open('/wallet/return')).toBe('/dashboard');
     });
 
     it.each(['/login', '/register'])('is sent from %s to the dashboard', async (url) => {
