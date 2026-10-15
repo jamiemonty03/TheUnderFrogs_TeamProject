@@ -1,6 +1,7 @@
 package com.neueda.accountservice.controllers;
 
 import com.neueda.accountservice.dtos.requests.TopUpRequest;
+import com.neueda.accountservice.dtos.responses.TopUpConfirmResponse;
 import com.neueda.accountservice.dtos.responses.TopUpStartResponse;
 import com.neueda.accountservice.exceptions.AccountAuthorizationException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
@@ -33,5 +34,14 @@ public class TopUpController {
         AuthorizationUtils.verifyAccountAccess(accountId);
         String checkoutUrl = topUpService.startTopUp(accountId, request.amount(), request.returnTo());
         return ResponseEntity.ok(new TopUpStartResponse(checkoutUrl));
+    }
+
+    @PostMapping("/{sessionId}/confirm")
+    public ResponseEntity<TopUpConfirmResponse> confirmTopUp(
+            @PathVariable String accountId,
+            @PathVariable String sessionId)
+            throws AccountAuthorizationException, AccountNotFoundException, AccountNotActiveException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        return ResponseEntity.ok(topUpService.confirmTopUp(accountId, sessionId));
     }
 }

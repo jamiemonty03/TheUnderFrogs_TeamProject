@@ -3,7 +3,10 @@ package com.neueda.accountservice.clients;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.neueda.accountservice.exceptions.PaymentGatewayException;
+import com.neueda.accountservice.exceptions.PaymentNotFoundException;
 import com.neueda.accountservice.exceptions.PaymentsUnavailableException;
+import com.stripe.exception.InvalidRequestException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.util.Map;
@@ -98,5 +101,25 @@ class StripePaymentGatewayTest {
         assertThat(mapped.isPaid()).isFalse();
         assertThat(mapped.accountId()).isNull();
         assertThat(mapped.paymentIntentId()).isNull();
+    }
+
+    @Test
+    @DisplayName("A session Stripe does not know about becomes 'payment not found'")
+    void unknownSessionIsNotFound() {
+        InvalidRequestException missing = new InvalidRequestException(
+            "No such checkout.session: cs_test_x", "session", "req_1", "resource_missing", 404, null);
+
+        assertThat(StripePaymentGateway.retrieveFailure(missing)).isInstanceOf(PaymentNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Any other Stripe error becomes a gateway error")
+    void otherErrorsAreGatewayErrors() {
+        InvalidRequestException badKey = new InvalidRequestException(
+            "Invalid API Key provided", null, "req_2", null, 401, null);
+
+        assertThat(StripePaymentGateway.retrieveFailure(badKey))
+            .isInstanceOf(PaymentGatewayException.class)
+            .hasMessage("Could not check the payment");
     }
 }

@@ -13,7 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.neueda.accountservice.config.TestSecurityConfig;
+import com.neueda.accountservice.dtos.responses.TopUpConfirmResponse;
 import com.neueda.accountservice.exceptions.AccountAuthorizationException;
+import com.neueda.accountservice.exceptions.PaymentNotFoundException;
+import com.neueda.accountservice.exceptions.TopUpNotPaidException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.PaymentGatewayException;
 import com.neueda.accountservice.exceptions.PaymentsUnavailableException;
@@ -157,5 +160,75 @@ class TopUpControllerTest {
         startTopUp("{\"amount\": 99.99, \"returnTo\": \"/orders?status=NEW\"}").andExpect(status().isOk());
 
         verify(topUpService).startTopUp("ACC0011", new BigDecimal("99.99"), "/orders?status=NEW");
+    }
+
+    private static final String CONFIRM_URL = "/accounts/ACC0011/top-ups/cs_test_a1B2c3/confirm";
+
+    private ResultActions confirm() throws Exception {
+        return mockMvc.perform(post(CONFIRM_URL));
+    }
+
+    @Test
+    @DisplayName("Confirm: returns the amount added and the new cash balance")
+    void confirms() throws Exception {
+        when(topUpService.confirmTopUp("ACC0011", "cs_test_a1B2c3"))
+            .thenReturn(new TopUpConfirmResponse(new BigDecimal("250.00"), new BigDecimal("750.00")));
+
+        confirm()
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.amount", equalTo(250.00)))
+            .andExpect(jsonPath("$.cashBalance", equalTo(750.00)));
+    }
+
+    @Test
+    @DisplayName("Confirm: refuses someone else's account with 403 before asking Stripe")
+    void confirmOtherAccount() throws Exception {
+        authorization.when(() -> AuthorizationUtils.verifyAccountAccess("ACC0011"))
+            .thenThrow(new AccountAuthorizationException("User is not authorized to access account: ACC0011"));
+
+        confirm().andExpect(status().isForbidden()).andExpect(jsonPath("$.errorCode", equalTo("AUTH-403")));
+
+        verifyNoInteractions(topUpService);
+    }
+
+    @Test
+    @DisplayName("Confirm: a payment for a different account is 403")
+    void confirmPaymentForOtherAccount() throws Exception {
+        when(topUpService.confirmTopUp(any(), any()))
+            .thenThrow(new AccountAuthorizationException("This payment belongs to a different account"));
+
+        confirm()
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.message", equalTo("This payment belongs to a different account")));
+    }
+
+    @Test
+    @DisplayName("Confirm: an unpaid payment is 409 PAY-409")
+    void confirmUnpaid() throws Exception {
+        when(topUpService.confirmTopUp(any(), any())).thenThrow(new TopUpNotPaidException("This payment hasn't been completed"));
+
+        confirm()
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.errorCode", equalTo("PAY-409")))
+            .andExpect(jsonPath("$.message", equalTo("This payment hasn't been completed")));
+    }
+
+    @Test
+    @DisplayName("Confirm: an unknown payment is 404 PAY-404")
+    void confirmUnknown() throws Exception {
+        when(topUpService.confirmTopUp(any(), any())).thenThrow(new PaymentNotFoundException());
+
+        confirm()
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.errorCode", equalTo("PAY-404")))
+            .andExpect(jsonPath("$.message", equalTo("We couldn't find that payment")));
+    }
+
+    @Test
+    @DisplayName("Confirm: answers 503 when Stripe is not configured")
+    void confirmUnavailable() throws Exception {
+        when(topUpService.confirmTopUp(any(), any())).thenThrow(new PaymentsUnavailableException());
+
+        confirm().andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.errorCode", equalTo("PAY-503")));
     }
 }

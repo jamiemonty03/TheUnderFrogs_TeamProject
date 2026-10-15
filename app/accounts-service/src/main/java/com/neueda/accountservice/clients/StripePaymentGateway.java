@@ -1,6 +1,7 @@
 package com.neueda.accountservice.clients;
 
 import com.neueda.accountservice.exceptions.PaymentGatewayException;
+import com.neueda.accountservice.exceptions.PaymentNotFoundException;
 import com.neueda.accountservice.exceptions.PaymentsUnavailableException;
 import com.stripe.StripeClient;
 import com.stripe.exception.StripeException;
@@ -42,8 +43,15 @@ public class StripePaymentGateway implements PaymentGateway {
         try {
             return toCheckoutSession(requireClient().v1().checkout().sessions().retrieve(sessionId));
         } catch (StripeException e) {
-            throw new PaymentGatewayException("Could not check the payment", e);
+            throw retrieveFailure(e);
         }
+    }
+
+    static RuntimeException retrieveFailure(StripeException e) {
+        if (Integer.valueOf(404).equals(e.getStatusCode())) {
+            return new PaymentNotFoundException();
+        }
+        return new PaymentGatewayException("Could not check the payment", e);
     }
 
     static SessionCreateParams checkoutParams(CheckoutRequest request) {

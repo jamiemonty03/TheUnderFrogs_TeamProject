@@ -46,6 +46,18 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("PAY-503", ex.getMessage()));
     }
 
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentNotFound(PaymentNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("PAY-404", ex.getMessage()));
+    }
+
+    @ExceptionHandler(TopUpNotPaidException.class)
+    public ResponseEntity<ErrorResponse> handleTopUpNotPaid(TopUpNotPaidException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("PAY-409", ex.getMessage()));
+    }
+
     @ExceptionHandler(PaymentGatewayException.class)
     public ResponseEntity<ErrorResponse> handlePaymentGateway(PaymentGatewayException ex) {
         log.warn("{}: {}", ex.getMessage(), ex.getCause() == null ? "no cause" : ex.getCause().getMessage());

@@ -3,6 +3,8 @@ package com.neueda.accountservice.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -12,6 +14,10 @@ import static org.mockito.Mockito.when;
 import com.neueda.accountservice.clients.CheckoutRequest;
 import com.neueda.accountservice.clients.CheckoutSession;
 import com.neueda.accountservice.clients.PaymentGateway;
+import com.neueda.accountservice.dtos.responses.TopUpConfirmResponse;
+import com.neueda.accountservice.exceptions.AccountAuthorizationException;
+import com.neueda.accountservice.exceptions.PaymentNotFoundException;
+import com.neueda.accountservice.exceptions.TopUpNotPaidException;
 import com.neueda.accountservice.enums.AccountStatus;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
@@ -133,5 +139,101 @@ class TopUpServiceTest {
         assertThatThrownBy(() -> topUpService.startTopUp("ACC0011", new BigDecimal("50"), "/dashboard"))
             .isInstanceOf(AccountNotActiveException.class);
         verify(paymentGateway, never()).createCheckout(any());
+    }
+
+    private static final String SESSION_ID = "cs_test_a1B2c3";
+
+    private CheckoutSession session(String paymentStatus, Long cents, String currency, String paymentIntent, String accountId) {
+        return new CheckoutSession(SESSION_ID, null, paymentStatus, paymentIntent, cents, currency, accountId);
+    }
+
+    private void stripeReturns(CheckoutSession session) {
+        when(paymentGateway.retrieveCheckout(SESSION_ID)).thenReturn(session);
+    }
+
+    @Test
+    @DisplayName("Confirm: credits the amount Stripe charged, keyed by the payment so it can only apply once")
+    void confirmCreditsPaidSession() throws Exception {
+        stripeReturns(session("paid", 25000L, "usd", "pi_123", "ACC0011"));
+        when(accountService.credit("ACC0011", new BigDecimal("250.00"), "stripe:pi_123"))
+            .thenReturn(new Account("ACC0011", 11L, "Demo Trader", new BigDecimal("750.00"), AccountStatus.ACTIVE));
+
+        TopUpConfirmResponse response = topUpService.confirmTopUp("ACC0011", SESSION_ID);
+
+        assertThat(response.amount()).isEqualByComparingTo("250.00");
+        assertThat(response.cashBalance()).isEqualByComparingTo("750.00");
+        verify(accountService).credit("ACC0011", new BigDecimal("250.00"), "stripe:pi_123");
+    }
+
+    @Test
+    @DisplayName("Confirm: confirming the same payment twice uses the same key both times")
+    void confirmTwiceUsesSameKey() throws Exception {
+        stripeReturns(session("paid", 1000L, "usd", "pi_123", "ACC0011"));
+        when(accountService.credit(any(), any(), any()))
+            .thenReturn(new Account("ACC0011", 11L, "Demo Trader", new BigDecimal("510.00"), AccountStatus.ACTIVE));
+
+        topUpService.confirmTopUp("ACC0011", SESSION_ID);
+        topUpService.confirmTopUp("ACC0011", SESSION_ID);
+
+        verify(accountService, times(2)).credit("ACC0011", new BigDecimal("10.00"), "stripe:pi_123");
+    }
+
+    @Test
+    @DisplayName("Confirm: refuses a payment made for a different account")
+    void confirmRejectsOtherAccount() throws Exception {
+        stripeReturns(session("paid", 25000L, "usd", "pi_123", "ACC0099"));
+
+        assertThatThrownBy(() -> topUpService.confirmTopUp("ACC0011", SESSION_ID))
+            .isInstanceOf(AccountAuthorizationException.class);
+        verify(accountService, never()).credit(anyString(), any(), anyString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"unpaid", "no_payment_required"})
+    @DisplayName("Confirm: does not credit a payment that has not been completed")
+    void confirmRejectsUnpaid(String status) throws Exception {
+        stripeReturns(session(status, 25000L, "usd", null, "ACC0011"));
+
+        assertThatThrownBy(() -> topUpService.confirmTopUp("ACC0011", SESSION_ID))
+            .isInstanceOf(TopUpNotPaidException.class)
+            .hasMessage("This payment hasn't been completed");
+        verify(accountService, never()).credit(anyString(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("Confirm: does not credit a payment in another currency, with no amount, or without a payment ID")
+    void confirmRejectsUnexpectedPayments() throws Exception {
+        for (CheckoutSession odd : java.util.List.of(
+                session("paid", 25000L, "eur", "pi_123", "ACC0011"),
+                session("paid", null, "usd", "pi_123", "ACC0011"),
+                session("paid", 0L, "usd", "pi_123", "ACC0011"),
+                session("paid", 25000L, "usd", null, "ACC0011"))) {
+            stripeReturns(odd);
+
+            assertThatThrownBy(() -> topUpService.confirmTopUp("ACC0011", SESSION_ID))
+                .isInstanceOf(TopUpNotPaidException.class)
+                .hasMessage("This payment can't be added to your account");
+        }
+        verify(accountService, never()).credit(anyString(), any(), anyString());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"pi_123", "cs_test_", "cs_test_abc/../x", "cs_prod_abc", "cs_test_abc?x=1"})
+    @DisplayName("Confirm: a malformed session ID is 'not found' without asking Stripe")
+    void confirmRejectsMalformedIds(String sessionId) {
+        assertThatThrownBy(() -> topUpService.confirmTopUp("ACC0011", sessionId))
+            .isInstanceOf(PaymentNotFoundException.class);
+        verify(paymentGateway, never()).retrieveCheckout(any());
+    }
+
+    @Test
+    @DisplayName("Confirm: without Stripe configured, refuses without asking Stripe")
+    void confirmUnavailable() {
+        when(paymentGateway.isAvailable()).thenReturn(false);
+
+        assertThatThrownBy(() -> topUpService.confirmTopUp("ACC0011", SESSION_ID))
+            .isInstanceOf(PaymentsUnavailableException.class);
+        verify(paymentGateway, never()).retrieveCheckout(any());
     }
 }
