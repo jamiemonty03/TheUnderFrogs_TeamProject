@@ -3,9 +3,11 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from '../services/users.service';
 import { CreateUserDto, UpdateUserDto, UserResponseDto, toUserResponse } from '../dtos';
 import { ErrorResponseDto } from '../../../common/dtos/error-response.dto';
+import { Roles } from '../../../common/decorators';
 
 @Controller('users')
 @ApiTags('Users')
+@Roles('ADMIN')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
