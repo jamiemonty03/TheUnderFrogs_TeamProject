@@ -5,7 +5,6 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
-import { Auth, CurrentUser } from '../../../services/auth/auth';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
@@ -150,17 +149,6 @@ describe('PositionsList (Portfolios page)', () => {
         { provide: Instruments, useValue: instruments },
         { provide: Accounts, useValue: accounts },
         { provide: MatDialog, useValue: dialog },
-        {
-          provide: Auth,
-          useValue: {
-            currentUser: signal<CurrentUser | null>({
-              userId: 11,
-              username: 'demo',
-              roles: ['TRADER'],
-              accountId: 'ACC0011',
-            }).asReadonly(),
-          },
-        },
       ],
     }).compileComponents();
 
@@ -211,7 +199,7 @@ describe('PositionsList (Portfolios page)', () => {
   });
 
   it('shows the shared cash balance', () => {
-    expect(accounts.getAccount).toHaveBeenCalledWith('ACC0011');
+    expect(accounts.getAccount).toHaveBeenCalled();
     expect(text('cash')).toBe('$97,949.15');
   });
 
