@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/webjars/**").permitAll()
+                        .requestMatchers(WebSocketConfig.LIVE_PRICES_PATH).permitAll()
+                        // Read-only market prices, so the login page's ticker can show them before sign-in.
                         .requestMatchers(HttpMethod.GET, "/stocks", "/etfs", "/bonds").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

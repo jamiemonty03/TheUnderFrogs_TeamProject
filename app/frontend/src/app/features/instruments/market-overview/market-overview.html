@@ -89,6 +89,7 @@
             <tr>
               <th scope="col">Symbol</th>
               <th scope="col">Name</th>
+              <th scope="col" class="market__source"><span class="visually-hidden">Price source</span></th>
               <th scope="col" class="num">Price</th>
               <th scope="col" class="num">Change</th>
               <th scope="col" class="num">Change %</th>
@@ -102,6 +103,13 @@
                   <a class="market__symbol" [routerLink]="['/instruments', row.symbol]">{{ row.symbol }}</a>
                 </td>
                 <td class="market__name">{{ row.name }}</td>
+                <td class="market__source">
+                  @if (row.priceSource) {
+                    <span class="price-tag" [class.price-tag--live]="row.priceSource === 'live'">
+                      {{ row.priceSource === 'live' ? 'Live' : 'Close' }}
+                    </span>
+                  }
+                </td>
                 <td class="num">{{ row.price === null ? '—' : (row.price | currency: 'USD') }}</td>
                 <td class="num" [class]="trend(row)">
                   @if (row.change; as change) {
@@ -127,7 +135,7 @@
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="market__empty">
+                <td colspan="7" class="market__empty">
                   {{ query() ? 'No lily pads match "' + query() + '".' : 'No prices yet.' }}
                 </td>
               </tr>
@@ -137,8 +145,8 @@
       </div>
 
       <p class="market__note">
-        Prices are the latest daily close{{ asOf() ? ' (' + (asOf() | date: 'mediumDate') + ')' : '' }}, refreshed
-        every 30 seconds.
+        Prices are live while the market is open. Otherwise they show the latest daily
+        close{{ asOf() ? ' (' + (asOf() | date: 'mediumDate') + ')' : '' }}.
       </p>
     </div>
   }

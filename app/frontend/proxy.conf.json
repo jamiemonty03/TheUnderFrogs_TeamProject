@@ -12,7 +12,8 @@
   "/api/instruments": {
     "target": "http://localhost:8082",
     "secure": false,
-    "changeOrigin": true
+    "changeOrigin": true,
+    "ws": true
   },
   "/api/stocks": {
     "target": "http://localhost:8082",

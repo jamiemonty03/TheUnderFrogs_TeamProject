@@ -5,6 +5,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
@@ -80,10 +81,8 @@ describe('PositionsList (Portfolios page)', () => {
     error: ReturnType<typeof signal<string | null>>;
     getPositions: ReturnType<typeof vi.fn>;
   };
-  let instruments: {
-    getLatestPrices: ReturnType<typeof vi.fn>;
-    watchLivePrices: ReturnType<typeof vi.fn>;
-  };
+  let instruments: { getLatestPrices: ReturnType<typeof vi.fn> };
+  let liveFeed: { watch: ReturnType<typeof vi.fn> };
   let accounts: { getAccount: ReturnType<typeof vi.fn> };
 
   const el = (testId: string): HTMLElement | null =>
@@ -127,10 +126,8 @@ describe('PositionsList (Portfolios page)', () => {
       error: signal<string | null>(null),
       getPositions: vi.fn((portfolioId?: string) => of(portfolioId === 'PF0012' ? IN_GROWTH : ALL)),
     };
-    instruments = {
-      getLatestPrices: vi.fn(() => of(PRICES)),
-      watchLivePrices: vi.fn(() => of({ prices: new Map(), stale: false })),
-    };
+    instruments = { getLatestPrices: vi.fn(() => of(PRICES)) };
+    liveFeed = { watch: vi.fn(() => of({ prices: new Map(), stale: false })) };
     accounts = {
       getAccount: vi.fn(() =>
         of({
@@ -149,6 +146,7 @@ describe('PositionsList (Portfolios page)', () => {
         { provide: Portfolios, useValue: portfolios },
         { provide: Positions, useValue: positions },
         { provide: Instruments, useValue: instruments },
+        { provide: LivePrices, useValue: liveFeed },
         { provide: Accounts, useValue: accounts },
       ],
     }).compileComponents();
@@ -188,14 +186,14 @@ describe('PositionsList (Portfolios page)', () => {
     const live = new Map([
       ['AAPL', { symbol: 'AAPL', price: 130, bid: null, ask: null, quoteTime: '' }],
     ]);
-    instruments.watchLivePrices.mockReturnValue(of({ prices: live, stale: false }));
+    liveFeed.watch.mockReturnValue(of({ prices: live, stale: false }));
     positions.getPositions.mockReturnValue(of([position('PF0011', 'AAPL', 10, 100)]));
 
     await click('portfolio-PF0011');
 
     expect(column('price')).toEqual(['$130.00 Live']);
     expect(column('pnl')).toEqual(['$300.00']);
-    expect(instruments.watchLivePrices).toHaveBeenLastCalledWith(['AAPL']);
+    expect(liveFeed.watch).toHaveBeenLastCalledWith(['AAPL']);
   });
 
   it('colours gains green and losses red', () => {

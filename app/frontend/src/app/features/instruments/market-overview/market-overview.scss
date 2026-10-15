@@ -208,6 +208,28 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--ts-text-muted);
 }
 
+.market__source {
+  text-align: center !important;
+}
+
+.price-tag {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-neutral);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.price-tag--live {
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+}
+
 .market__actions {
   text-align: right !important;
 

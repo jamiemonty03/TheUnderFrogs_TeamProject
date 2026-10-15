@@ -1,12 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Login } from './login';
 import { LOGIN_ERRORS, SESSION_EXPIRED_NOTICE } from './login-error';
 import { Auth, CurrentUser } from '../../../services/auth';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 
 const demo: CurrentUser = { userId: 11, username: 'demo', roles: ['TRADER'], accountId: 'ACC0011' };
 
@@ -23,6 +24,7 @@ describe('Login', () => {
     await TestBed.configureTestingModule({
       imports: [Login],
       providers: [
+        { provide: LivePrices, useValue: { watch: () => EMPTY } },
         provideRouter([]),
         { provide: Auth, useValue: { login } },
         { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },

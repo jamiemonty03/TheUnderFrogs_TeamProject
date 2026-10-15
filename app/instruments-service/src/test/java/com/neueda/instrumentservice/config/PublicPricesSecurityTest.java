@@ -24,7 +24,6 @@ import com.neueda.instrumentservice.controllers.StockController;
 import com.neueda.instrumentservice.services.BondService;
 import com.neueda.instrumentservice.services.EtfService;
 import com.neueda.instrumentservice.services.InstrumentService;
-import com.neueda.instrumentservice.services.LivePriceCache;
 import com.neueda.instrumentservice.services.StockService;
 
 @WebMvcTest({StockController.class, EtfController.class, BondController.class, InstrumentController.class})
@@ -50,9 +49,6 @@ class PublicPricesSecurityTest {
 
     @MockBean
     private InstrumentService instrumentService;
-
-    @MockBean
-    private LivePriceCache livePriceCache;
 
     @Test
     @DisplayName("The stock, ETF and bond price lists can be read without a token")

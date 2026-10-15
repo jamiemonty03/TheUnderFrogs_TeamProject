@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EMPTY, Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { Instruments, LivePrice, NewsArticle, dayChange } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import {
   BaseInstrumentResponse,
   BondResponse,
@@ -39,6 +40,7 @@ export const MISSING = '-';
 export class InstrumentsDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly instruments = inject(Instruments);
+  private readonly liveFeed = inject(LivePrices);
   private readonly positionsService = inject(Positions);
   private readonly portfoliosService = inject(Portfolios);
   private readonly destroyRef = inject(DestroyRef);
@@ -134,7 +136,7 @@ export class InstrumentsDetail {
     this.route.paramMap
       .pipe(
         map((params) => (params.get('id') ?? '').trim().toUpperCase()),
-        switchMap((symbol) => this.instruments.watchLivePrices([symbol])),
+        switchMap((symbol) => this.liveFeed.watch([symbol])),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(({ prices }) => this.live.set(prices.get(this.symbol()) ?? null));

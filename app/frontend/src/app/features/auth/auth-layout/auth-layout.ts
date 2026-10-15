@@ -1,8 +1,9 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, of } from 'rxjs';
-import { Instruments, LatestPrice, dayChange } from '../../../services/instruments';
+import { catchError, map, of } from 'rxjs';
+import { Instruments, LatestPrice, LivePrice, dayChange } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 
 export type AuthTab = 'login' | 'register';
 
@@ -25,11 +26,21 @@ export class AuthLayout {
       .pipe(catchError(() => of(new Map<string, LatestPrice>()))),
     { initialValue: new Map<string, LatestPrice>() },
   );
+  // While the market is open a live quote replaces the close; the move is still from the previous close.
+  private readonly live = toSignal(
+    inject(LivePrices)
+      .watch(TICKER)
+      .pipe(map(({ prices }) => prices)),
+    { initialValue: new Map<string, LivePrice>() },
+  );
 
   readonly tickerQuotes = computed(() =>
     TICKER.flatMap((symbol) => {
       const price = this.prices().get(symbol);
-      const change = price ? dayChange(price) : null;
+      const quote = this.live().get(symbol);
+      const change = price
+        ? dayChange({ price: quote?.price ?? price.price, previousClose: price.previousClose })
+        : null;
       return change
         ? [{ symbol, up: change.percent >= 0, percent: Math.abs(change.percent).toFixed(2) }]
         : [];

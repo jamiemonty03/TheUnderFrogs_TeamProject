@@ -1,8 +1,10 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
-import { Instruments, LatestPrice } from '../../../services/instruments';
+import { Observable, Subject, of, throwError } from 'rxjs';
+import { Instruments, LatestPrice, LivePriceFeed } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
+
 import { AuthLayout, AuthTab } from './auth-layout';
 
 @Component({
@@ -47,12 +49,16 @@ describe('AuthLayout', () => {
   let page: HTMLElement;
   let prices: Observable<Map<string, LatestPrice>>;
 
+  let liveFeed: Subject<LivePriceFeed>;
+
   const create = async () => {
+    liveFeed = new Subject<LivePriceFeed>();
     await TestBed.configureTestingModule({
       imports: [Host],
       providers: [
         provideRouter([]),
         { provide: Instruments, useValue: { getLatestPrices: () => prices } },
+        { provide: LivePrices, useValue: { watch: () => liveFeed.asObservable() } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Host);
@@ -113,13 +119,31 @@ describe('AuthLayout', () => {
     expect(page.querySelector('.auth__ticker')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('shows ticker moves with two decimals and marks falls', () => {
-    const quotes = Array.from(page.querySelectorAll('.auth__quote')).map((quote) =>
+  const quotes = () =>
+    Array.from(page.querySelectorAll('.auth__quote')).map((quote) =>
       quote.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(quotes).toContain('TSLA ▼ 2.10%');
-    expect(quotes).toContain('AAPL ▲ 1.24%');
+
+  it('shows each move since the previous close with two decimals, marking falls', () => {
+    expect(quotes()).toEqual([
+      'AAPL ▲ 1.24%',
+      'MSFT ▲ 0.88%',
+      'TSLA ▼ 2.10%',
+      'SPY ▲ 0.41%',
+      'NVDA ▲ 3.02%',
+      'BND ▼ 0.12%',
+    ]);
     expect(page.querySelectorAll('.auth__quote-change--down')).toHaveLength(2);
+  });
+
+  it('moves with live prices while the market is open', () => {
+    liveFeed.next({
+      prices: new Map([['NVDA', { symbol: 'NVDA', price: 95, bid: null, ask: null, quoteTime: '2026-10-15T14:30:00Z' }]]),
+      stale: false,
+    });
+    fixture.detectChanges();
+
+    expect(quotes()).toContain('NVDA ▼ 5.00%');
   });
 
   it('leaves out a symbol that has no price', async () => {

@@ -1,12 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Register } from './register';
 import { REGISTER_ERRORS } from './register-error';
 import { Auth, CurrentUser, RegisterDetails } from '../../../services/auth';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 
 const kermit: CurrentUser = {
   userId: 42,
@@ -29,6 +30,7 @@ describe('Register', () => {
         provideRouter([]),
         { provide: Auth, useValue: { register } },
         { provide: Instruments, useValue: { getLatestPrices: () => of(new Map()) } },
+        { provide: LivePrices, useValue: { watch: () => EMPTY } },
       ],
     }).compileComponents();
     navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);

@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.RequestBuilder;
 
 import com.neueda.instrumentservice.controllers.InstrumentController;
 import com.neueda.instrumentservice.services.InstrumentService;
-import com.neueda.instrumentservice.services.LivePriceCache;
 
 @WebMvcTest(InstrumentController.class)
 @Import(SecurityConfig.class)
@@ -46,9 +45,6 @@ class ServiceTokenSecurityTest {
 
     @MockBean
     private InstrumentService instrumentService;
-
-    @MockBean
-    private LivePriceCache livePriceCache;
 
     @Test
     @DisplayName("Service token from auth-service is accepted")

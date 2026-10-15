@@ -1,10 +1,11 @@
-import { AssetClass, DayChange, LatestPrice, dayChange } from '../../../services/instruments';
+import { AssetClass, DayChange, LatestPrice, LivePrice, dayChange } from '../../../services/instruments';
 
 export interface MarketRow {
   symbol: string;
   name: string;
   assetClass: AssetClass;
   price: number | null;
+  priceSource: 'live' | 'close' | null;
   change: DayChange | null;
   tradeDate: string | null;
 }
@@ -19,16 +20,25 @@ export const INDEX_PROXIES = [
   { label: 'NASDAQ', symbol: 'QQQ' },
 ] as const;
 
-export function toMarketRows(prices: ReadonlyMap<string, LatestPrice>): MarketRow[] {
+/** A live quote, when there is one, replaces the daily close; the change is still from the previous close. */
+export function toMarketRows(
+  prices: ReadonlyMap<string, LatestPrice>,
+  live: ReadonlyMap<string, LivePrice> = new Map(),
+): MarketRow[] {
   return [...prices.values()]
-    .map((latest) => ({
-      symbol: latest.symbol,
-      name: latest.name,
-      assetClass: latest.assetClass,
-      price: latest.price,
-      change: dayChange(latest),
-      tradeDate: latest.tradeDate,
-    }))
+    .map((latest) => {
+      const quote = live.get(latest.symbol);
+      const price = quote ? quote.price : latest.price;
+      return {
+        symbol: latest.symbol,
+        name: latest.name,
+        assetClass: latest.assetClass,
+        price,
+        priceSource: quote ? 'live' : price === null ? null : 'close',
+        change: dayChange({ price, previousClose: latest.previousClose }),
+        tradeDate: latest.tradeDate,
+      } satisfies MarketRow;
+    })
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 

@@ -4,6 +4,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import {
   BondResponse,
   EtfResponse,
@@ -95,7 +96,6 @@ describe('InstrumentsDetail', () => {
       getStock: vi.fn(() => of(AAPL)),
       getEtf: vi.fn(() => of(DIA)),
       getBond: vi.fn(() => of(AGG)),
-      watchLivePrices: vi.fn(() => live),
       getNews: vi.fn(() =>
         of([
           {
@@ -121,6 +121,7 @@ describe('InstrumentsDetail', () => {
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { paramMap: params } },
         { provide: Instruments, useValue: instruments },
+        { provide: LivePrices, useValue: { watch: vi.fn(() => live) } },
         {
           provide: Positions,
           useValue: {

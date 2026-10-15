@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
-import { Instruments, LIVE_POLL_MS, LatestPrice } from '../../../services/instruments';
+import { Instruments, LIVE_POLL_MS, LatestPrice, LivePriceFeed } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { MarketOverview } from './market-overview';
 
 const latest = (
@@ -27,15 +28,21 @@ describe('MarketOverview', () => {
   let fixture: ComponentFixture<MarketOverview>;
   let page: HTMLElement;
   let getLatestPrices: ReturnType<typeof vi.fn<() => Observable<Map<string, LatestPrice>>>>;
+  let liveFeed: Subject<LivePriceFeed>;
 
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
   async function setUp(...responses: Observable<Map<string, LatestPrice>>[]) {
     getLatestPrices = vi.fn(() => responses.shift() ?? of(PRICES));
+    liveFeed = new Subject<LivePriceFeed>();
     await TestBed.configureTestingModule({
       imports: [MarketOverview],
-      providers: [provideRouter([]), { provide: Instruments, useValue: { getLatestPrices } }],
+      providers: [
+        provideRouter([]),
+        { provide: Instruments, useValue: { getLatestPrices } },
+        { provide: LivePrices, useValue: { watch: () => liveFeed.asObservable() } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(MarketOverview);
     page = fixture.nativeElement;
@@ -60,10 +67,10 @@ describe('MarketOverview', () => {
     await setUp();
 
     expect(rows().map((r) => cells(r)[0])).toEqual(['AAPL', 'NVDA', 'TSLA']);
-    const [symbol, name, price, change, percent] = cells(rows()[0]);
-    expect([symbol, name, price, change, percent]).toEqual(['AAPL', 'Apple Inc.', '$189.84', '▲ $2.33', '1.24%']);
+    const [symbol, name, source, price, change, percent] = cells(rows()[0]);
+    expect([symbol, name, source, price, change, percent]).toEqual(['AAPL', 'Apple Inc.', 'Close', '$189.84', '▲ $2.33', '1.24%']);
     expect(rows()[0].querySelectorAll('td.gain')).toHaveLength(2);
-    expect(cells(rows()[2])[3]).toBe('▼ -$5.14');
+    expect(cells(rows()[2])[4]).toBe('▼ -$5.14');
     expect(rows()[2].querySelectorAll('td.loss')).toHaveLength(2);
   });
 
@@ -77,7 +84,7 @@ describe('MarketOverview', () => {
 
     tab('Bonds').click();
     fixture.detectChanges();
-    expect(cells(rows()[0])).toEqual(['AGG', 'iShares Core U.S. Aggregate Bond', '—', '—', '—', 'Buy']);
+    expect(cells(rows()[0])).toEqual(['AGG', 'iShares Core U.S. Aggregate Bond', '', '—', '—', '—', 'Buy']);
   });
 
   it('filters by symbol or name', async () => {
@@ -114,10 +121,26 @@ describe('MarketOverview', () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({ new: 'true', symbol: 'NVDA', side: 'BUY' });
   });
 
-  it('notes that prices are the latest daily close', async () => {
+  it('notes that prices are live while the market is open, otherwise the latest daily close', async () => {
     await setUp();
 
-    expect(text('.market__note')).toBe('Prices are the latest daily close (Oct 9, 2026), refreshed every 30 seconds.');
+    expect(text('.market__note')).toBe(
+      'Prices are live while the market is open. Otherwise they show the latest daily close (Oct 9, 2026).',
+    );
+  });
+
+  it('shows a live quote over the close, tagged Live, with the change from the previous close', async () => {
+    await setUp();
+
+    liveFeed.next({
+      prices: new Map([['AAPL', { symbol: 'AAPL', price: 190.51, bid: 190.5, ask: 190.52, quoteTime: '2026-10-13T14:30:00Z' }]]),
+      stale: false,
+    });
+    fixture.detectChanges();
+
+    expect(cells(rows()[0]).slice(2, 5)).toEqual(['Live', '$190.51', '▲ $3.00']);
+    expect(rows()[0].querySelector('.price-tag--live')).toBeTruthy();
+    expect(cells(rows()[1])[2]).toBe('Close');
   });
 
   it('refreshes every 30 seconds', async () => {
@@ -129,7 +152,7 @@ describe('MarketOverview', () => {
     expect(getLatestPrices).toHaveBeenCalledTimes(1);
     tick(1);
     expect(getLatestPrices).toHaveBeenCalledTimes(2);
-    expect(cells(rows()[0])[2]).toBe('$200.00');
+    expect(cells(rows()[0])[3]).toBe('$200.00');
   });
 
   it('stops refreshing when the user leaves the page', async () => {
