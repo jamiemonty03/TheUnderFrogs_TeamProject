@@ -212,16 +212,14 @@ describe('Dashboard', () => {
     expect(sell.getAttribute('href')).toBe('/orders?new=true&symbol=AAPL&side=SELL');
   });
 
-  it('links Place order and Order history', async () => {
+  it('links Place order, with no Order history button', async () => {
     await setUp();
 
     const topActions = Array.from(page.querySelectorAll<HTMLAnchorElement>('.dashboard__welcome .dashboard__actions a'));
     expect(topActions.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Place order', '/orders?new=true'],
     ]);
-    const history = page.querySelector<HTMLAnchorElement>('.dashboard__orders-footer a');
-    expect(history?.textContent?.trim()).toBe('Order history');
-    expect(history?.getAttribute('href')).toBe('/orders');
+    expect(page.textContent).not.toContain('Order history');
   });
 
   it('sorts the table when a column header is clicked', async () => {
