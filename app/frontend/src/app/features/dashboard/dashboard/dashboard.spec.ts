@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -12,10 +12,21 @@ import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position, Positions } from '../../../services/positions';
 import { Portfolios } from '../../../services/portfolios';
 import { MarketOverview } from '../../instruments/market-overview/market-overview';
+import { Performance } from '../performance/performance';
+import { RecentOrders } from '../recent-orders/recent-orders';
 import { Dashboard } from './dashboard';
 
 @Component({ selector: 'app-market-overview', template: '' })
 class MarketOverviewStub {}
+
+@Component({ selector: 'app-performance', template: '' })
+class PerformanceStub {
+  readonly positions = input<Position[]>();
+  readonly positionsLoading = input<boolean>();
+}
+
+@Component({ selector: 'app-recent-orders', template: '' })
+class RecentOrdersStub {}
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
@@ -123,8 +134,8 @@ describe('Dashboard', () => {
       ],
     })
       .overrideComponent(Dashboard, {
-        remove: { imports: [MarketOverview] },
-        add: { imports: [MarketOverviewStub] },
+        remove: { imports: [MarketOverview, Performance, RecentOrders] },
+        add: { imports: [MarketOverviewStub, PerformanceStub, RecentOrdersStub] },
       })
       .compileComponents();
     const instruments = TestBed.inject(Instruments);
