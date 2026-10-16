@@ -37,7 +37,7 @@ erDiagram
         int date_key FK "→ DIM_DATE"
         string side "BUY or SELL"
         int quantity "Order quantity"
-        numeric price "Order price"
+        numeric price "Order price limit (orders.price_limit)"
         string order_status "NEW, FILLED, REJECTED, CANCELLED"
         timestamp last_updated "When fact row was created or updated"
     }

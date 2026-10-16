@@ -19,8 +19,56 @@ servers:
 tags:
   - name: Instruments
     description: Base instrument reference data operations
+  - name: News
+    description: Recent market news from Alpaca
 
 paths:
+  /news:
+    get:
+      tags:
+        - News
+      summary: List recent market news
+      description: Returns recent news mapped from Alpaca for active symbols in tracked_tickers without exposing provider credentials or response details
+      operationId: getNews
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Number of headlines to return; must be between 1 and 25
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 5
+            example: 5
+      responses:
+        '200':
+          description: Recent news retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NewsResponse'
+        '422':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: News provider rate limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: News provider unavailable or not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /instruments:
     get:
       tags:
@@ -53,6 +101,43 @@ paths:
                       currency: "USD"
                       exchange: "NYSEArca"
                       tradable: true
+
+  /instruments/live-prices:
+    get:
+      tags:
+        - Instruments
+      summary: Latest live quotes, for some symbols or all of them
+      description: >-
+        Returns the latest live quote held for each requested symbol, read from the market-data Kafka topic
+        (PRICE_UPDATED events from trade-executor). Symbols with no live quote yet, for example outside market
+        hours, are left out, so callers should fall back to the daily close.
+      operationId: getLivePrices
+      parameters:
+        - name: symbols
+          in: query
+          required: false
+          description: Comma-separated ticker symbols. Leave out to get every tracked symbol's quote.
+          schema:
+            type: string
+            example: "AAPL,SPY"
+      responses:
+        '200':
+          description: Live quotes for the symbols that have one
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LivePriceResponse'
+              examples:
+                success:
+                  summary: One symbol quoted, one without a quote
+                  value:
+                    - symbol: "AAPL"
+                      price: 189.85
+                      bid: 189.80
+                      ask: 189.90
+                      quoteTime: "2026-10-13T14:30:00Z"
 
   /instruments/{symbol}:
     get:
@@ -136,6 +221,35 @@ paths:
 
 components:
   schemas:
+    NewsResponse:
+      type: object
+      description: Public news fields returned by the instruments service
+      properties:
+        headline:
+          type: string
+          example: "Markets rally after earnings"
+        articleUrl:
+          type: string
+          format: uri
+          example: "https://example.com/article"
+        publishedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        symbols:
+          type: array
+          items:
+            type: string
+          example: ["AAPL", "MSFT"]
+      required:
+        - headline
+        - articleUrl
+        - publishedAt
+        - symbols
+
     InstrumentResponse:
       type: object
       description: Base instrument reference data
@@ -172,6 +286,27 @@ components:
         - currency
         - exchange
         - tradable
+
+    LivePriceResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: "AAPL"
+        price:
+          type: number
+          description: Mid of bid and ask
+          example: 189.85
+        bid:
+          type: number
+          example: 189.80
+        ask:
+          type: number
+          example: 189.90
+        quoteTime:
+          type: string
+          format: date-time
+          example: "2026-10-13T14:30:00Z"
 
     ErrorResponse:
       type: object

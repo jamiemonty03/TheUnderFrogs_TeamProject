@@ -37,15 +37,30 @@ public class OrderProcessor {
             Instrument instrument,
             OrderSide side,
             BigDecimal quantity,
-            BigDecimal price,
+            BigDecimal priceLimit,
             String idempotencyKey)
+            throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
+                   InsufficientFundsException, InsufficientHoldingsException, DuplicateOrderException {
+        return processOrder(account, instrument, side, quantity, priceLimit, idempotencyKey, null);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public OrderResult processOrder(
+            Account account,
+            Instrument instrument,
+            OrderSide side,
+            BigDecimal quantity,
+            BigDecimal priceLimit,
+            String idempotencyKey,
+            String portfolioId)
             throws AccountNotActiveException, InstrumentNotFoundException, TradingException,
                    InsufficientFundsException, InsufficientHoldingsException, DuplicateOrderException {
         if (side == null) {
             throw new InvalidOrderException("Order side cannot be null");
         }
 
-        Order order = orderService.placeOrder(account, instrument, side, quantity, price, idempotencyKey);
+        Order order = orderService.placeOrder(account, instrument, side, quantity, priceLimit, idempotencyKey,
+                portfolioId);
         eventPublisher.publishEvent(new OrderPlacedApplicationEvent(
                 this,
                 new OrderPlacedPayload(
@@ -54,8 +69,9 @@ public class OrderProcessor {
                         order.getSymbol(),
                         order.getSide(),
                         order.getQuantity(),
-                        order.getPrice(),
-                        order.getIdempotencyKey())));
+                        order.getPriceLimit(),
+                        order.getIdempotencyKey(),
+                        order.getPortfolioId())));
 
         return new OrderResult(true, "Order accepted", null, order);
     }

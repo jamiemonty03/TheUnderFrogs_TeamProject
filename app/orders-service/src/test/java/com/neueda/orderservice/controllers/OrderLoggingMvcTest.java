@@ -25,6 +25,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.client.RestTemplate;
@@ -57,7 +58,7 @@ class OrderLoggingMvcTest {
 
     private static final String ORDER_BODY = """
             {"accountId": "ACC0001", "symbol": "AAPL", "side": "BUY",
-             "quantity": 10, "price": 150.00, "idempotencyKey": "key-1"}
+             "quantity": 10, "priceLimit": 150.00, "idempotencyKey": "key-1"}
             """;
 
     @Autowired
@@ -99,7 +100,7 @@ class OrderLoggingMvcTest {
     void placedOrderLogsShareCorrelationId() throws Exception {
         stubSuccessfulPlacement();
 
-        mockMvc.perform(post("/orders").with(jwt())
+        mockMvc.perform(post("/orders").with(owner())
                         .header(CorrelationIdFilter.HEADER, "review-demo-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ORDER_BODY))
@@ -117,7 +118,7 @@ class OrderLoggingMvcTest {
     void placedOrderJsonLogHasStructuredFields() throws Exception {
         stubSuccessfulPlacement();
 
-        mockMvc.perform(post("/orders").with(jwt())
+        mockMvc.perform(post("/orders").with(owner())
                         .header(CorrelationIdFilter.HEADER, "review-demo-123")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ORDER_BODY))
@@ -136,7 +137,7 @@ class OrderLoggingMvcTest {
     void generatedCorrelationIdIsReturnedAndLogged() throws Exception {
         stubSuccessfulPlacement();
 
-        MvcResult result = mockMvc.perform(post("/orders").with(jwt())
+        MvcResult result = mockMvc.perform(post("/orders").with(owner())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ORDER_BODY))
                 .andExpect(status().isCreated())
@@ -150,7 +151,7 @@ class OrderLoggingMvcTest {
     @Test
     @DisplayName("A rejected request is logged with its correlation id and error code")
     void rejectedRequestIsLoggedWithCorrelationId() throws Exception {
-        mockMvc.perform(post("/orders").with(jwt())
+        mockMvc.perform(post("/orders").with(owner())
                         .header(CorrelationIdFilter.HEADER, "bad-request-456")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"accountId\": \"ACC0001\","))
@@ -169,7 +170,7 @@ class OrderLoggingMvcTest {
     void logsDoNotContainToken() throws Exception {
         stubSuccessfulPlacement();
 
-        mockMvc.perform(post("/orders").with(jwt())
+        mockMvc.perform(post("/orders").with(owner())
                         .header("Authorization", "Bearer secret-token-value")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(ORDER_BODY));
@@ -184,7 +185,7 @@ class OrderLoggingMvcTest {
         Order order = new Order("order-1", "ACC0001", "AAPL", OrderSide.BUY, 10, new BigDecimal("150.00"), "key-1");
         when(restTemplate.getForObject(anyString(), eq(Account.class), eq("ACC0001"))).thenReturn(account);
         when(restTemplate.getForObject(anyString(), eq(Instrument.class), eq("AAPL"))).thenReturn(instrument);
-        when(orderProcessor.processOrder(any(), any(), any(), any(), any(), any()))
+        when(orderProcessor.processOrder(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new OrderResult(true, "Order accepted", null, order));
     }
 
@@ -219,5 +220,10 @@ class OrderLoggingMvcTest {
             event.prepareForDeferredProcessing();
             events.add(event);
         }
+    }
+
+    /** A user token for ACC0001, the account every request in this class places orders for. */
+    private static JwtRequestPostProcessor owner() {
+        return jwt().jwt(token -> token.claim("accountId", "ACC0001"));
     }
 }

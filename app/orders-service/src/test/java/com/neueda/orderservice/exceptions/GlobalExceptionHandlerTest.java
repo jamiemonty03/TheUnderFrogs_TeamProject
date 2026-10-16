@@ -79,7 +79,7 @@ class GlobalExceptionHandlerTest {
     void handleValidationUsesFirstFieldError() {
         MethodArgumentNotValidException ex = validationException(List.of(
             new FieldError("placeOrderRequest", "quantity", "Quantity is required"),
-            new FieldError("placeOrderRequest", "price", "Price is required")));
+            new FieldError("placeOrderRequest", "priceLimit", "Price limit is required")));
 
         assertError(handler.handleValidation(ex), 422, "VAL-422", "Quantity is required");
     }

@@ -12,6 +12,7 @@ import com.neueda.positionservice.dtos.requests.ReplacePositionRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.models.Portfolio;
 import com.neueda.positionservice.models.Position;
 import com.neueda.positionservice.models.PositionId;
 import com.neueda.positionservice.repositories.PositionRepository;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.neueda.positionservice.enums.MovementType;
 import com.neueda.positionservice.models.PositionMovement;
 import com.neueda.positionservice.repositories.PositionMovementRepository;
+
 
 @Service
 public class PositionService {
@@ -28,61 +30,78 @@ public class PositionService {
 
     private final PositionRepository positionRepository;
     private final PositionMovementRepository positionMovementRepository;
+    private final PortfolioService portfolioService;
 
-    public PositionService(PositionRepository positionRepository, PositionMovementRepository positionMovementRepository) {
+    public PositionService(PositionRepository positionRepository, PositionMovementRepository positionMovementRepository,
+                           PortfolioService portfolioService) {
         this.positionRepository = positionRepository;
         this.positionMovementRepository = positionMovementRepository;
+        this.portfolioService = portfolioService;
     }
 
     public List<Position> getPositionsByAccountId(String accountId) {
-        return positionRepository.findByAccountIdOrderBySymbol(accountId);
+        return positionRepository.findByAccountIdOrderBySymbolAscPortfolioIdAsc(accountId);
     }
 
-    public Optional<Position> getPosition(String accountId, String symbol) {
-        return positionRepository.findById(new PositionId(accountId, symbol));
+    @Transactional
+    public List<Position> getPositionsByAccountId(String accountId, String portfolioId) {
+        if (portfolioId == null || portfolioId.isBlank()) {
+            return getPositionsByAccountId(accountId);
+        }
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        return positionRepository.findByPortfolioIdOrderBySymbol(portfolio.getPortfolioId());
     }
 
+    @Transactional
+    public Optional<Position> getPosition(String accountId, String portfolioId, String symbol) {
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        return positionRepository.findById(new PositionId(portfolio.getPortfolioId(), symbol));
+    }
+
+    @Transactional
     public Position createPosition(CreatePositionRequest request) {
-        Optional<Position> existing = getPosition(request.accountId(), request.symbol());
+        Portfolio portfolio = portfolioService.resolve(request.accountId(), request.portfolioId());
+        Optional<Position> existing = positionRepository.findById(
+            new PositionId(portfolio.getPortfolioId(), request.symbol()));
         if (existing.isPresent()) {
             return applyUpdate(existing.get(), request.quantity(), request.averageCost());
         }
         return positionRepository.save(new Position(
-            request.accountId(), request.symbol(), request.quantity(), request.averageCost()));
+            request.accountId(), portfolio.getPortfolioId(), request.symbol(), request.quantity(), request.averageCost()));
     }
 
-    public void deletePosition(String accountId, String symbol) {
-        PositionId id = new PositionId(accountId, symbol);
+    @Transactional
+    public void deletePosition(String accountId, String portfolioId, String symbol) {
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        PositionId id = new PositionId(portfolio.getPortfolioId(), symbol);
         if (!positionRepository.existsById(id)) {
             throw new PositionNotFoundException(accountId, symbol);
         }
         positionRepository.deleteById(id);
     }
 
-    public Position updatePosition(String accountId, String symbol, ReplacePositionRequest request) {
-        return applyUpdate(findExisting(accountId, symbol), request.quantity(), request.averageCost());
+    @Transactional
+    public Position updatePosition(String accountId, String portfolioId, String symbol, ReplacePositionRequest request) {
+        return applyUpdate(findExisting(accountId, portfolioId, symbol), request.quantity(), request.averageCost());
     }
 
-    public Position patchPosition(String accountId, String symbol, UpdatePositionRequest request) {
-        return applyUpdate(findExisting(accountId, symbol), request.quantity(), request.averageCost());
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price) {
-        return updatePositionAfterBuy(accountId, symbol, quantity, price, null);
+    @Transactional
+    public Position patchPosition(String accountId, String portfolioId, String symbol, UpdatePositionRequest request) {
+        return applyUpdate(findExisting(accountId, portfolioId, symbol), request.quantity(), request.averageCost());
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Position updatePositionAfterBuy(String accountId, String symbol, int quantity, BigDecimal price,
-                                           String orderId) {
+    public Position updatePositionAfterBuy(String accountId, String portfolioId, String symbol, int quantity,
+                                           BigDecimal price, String orderId) {
         BigDecimal shares = BigDecimal.valueOf(quantity);
         requirePositive(shares, "Quantity and price must be greater than zero");
         requirePositive(price, "Quantity and price must be greater than zero");
 
-        Position position = getPosition(accountId, symbol)
-            .orElseGet(() -> emptyPosition(accountId, symbol));
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        Position position = positionRepository.findById(new PositionId(portfolio.getPortfolioId(), symbol))
+            .orElseGet(() -> emptyPosition(accountId, portfolio.getPortfolioId(), symbol));
 
-        if (isRepeat(orderId, MovementType.BUY, accountId, symbol, shares, price)) {
+        if (isRepeat(orderId, MovementType.BUY, accountId, portfolio.getPortfolioId(), symbol, shares, price)) {
             return position;
         }
 
@@ -91,22 +110,18 @@ public class PositionService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public Position updatePositionAfterSell(String accountId, String symbol, int quantity)
-            throws InsufficientHoldingsException {
-        return updatePositionAfterSell(accountId, symbol, quantity, null);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public Position updatePositionAfterSell(String accountId, String symbol, int quantity, String orderId)
-            throws InsufficientHoldingsException {
+    public Position updatePositionAfterSell(String accountId, String portfolioId, String symbol, int quantity,
+                                            String orderId) throws InsufficientHoldingsException {
         BigDecimal shares = BigDecimal.valueOf(quantity);
         requirePositive(shares, "Quantity must be greater than zero");
 
-        Optional<Position> existing = getPosition(accountId, symbol);
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        PositionId id = new PositionId(portfolio.getPortfolioId(), symbol);
+        Optional<Position> existing = positionRepository.findById(id);
         BigDecimal averageCost = existing.map(Position::getAverageCost).orElse(BigDecimal.ZERO);
 
-        if (isRepeat(orderId, MovementType.SELL, accountId, symbol, shares, averageCost)) {
-            return existing.orElseGet(() -> emptyPosition(accountId, symbol));
+        if (isRepeat(orderId, MovementType.SELL, accountId, portfolio.getPortfolioId(), symbol, shares, averageCost)) {
+            return existing.orElseGet(() -> emptyPosition(accountId, portfolio.getPortfolioId(), symbol));
         }
 
         Position position = existing.orElseThrow(() -> new InsufficientHoldingsException(
@@ -115,27 +130,25 @@ public class PositionService {
         applySell(position, shares);
 
         if (position.getQuantity().compareTo(BigDecimal.ZERO) == 0) {
-            positionRepository.deleteById(new PositionId(accountId, symbol));
+            positionRepository.deleteById(id);
             return position;
         }
         return positionRepository.save(position);
     }
 
+    /** Undoes an order's buy or sell, in whichever portfolio that order went to. */
     @Transactional(rollbackFor = Exception.class)
     public Position reverse(String accountId, String symbol, String orderId) throws InsufficientHoldingsException {
         if (orderId == null || orderId.isBlank()) {
             throw new IllegalArgumentException("Order ID is required for a reversal");
         }
 
-        Position position = getPosition(accountId, symbol)
-            .orElseGet(() -> emptyPosition(accountId, symbol));
-
         List<PositionMovement> originals = positionMovementRepository.findByOrderId(orderId).stream()
             .filter(movement -> movement.getMovementType() != MovementType.REVERSAL)
             .toList();
 
         if (originals.isEmpty()) {
-            return position;
+            return getPositionOrEmpty(accountId, null, symbol);
         }
         if (originals.size() > 1) {
             throw new IllegalArgumentException("Order " + orderId + " has more than one position movement to reverse");
@@ -146,7 +159,12 @@ public class PositionService {
             throw new IllegalArgumentException("Order " + orderId + " belongs to a different position");
         }
 
-        if (isRepeat(orderId, MovementType.REVERSAL, accountId, symbol, original.getQuantity(), original.getPrice())) {
+        String portfolioId = original.getPortfolioId();
+        Position position = positionRepository.findById(new PositionId(portfolioId, symbol))
+            .orElseGet(() -> emptyPosition(accountId, portfolioId, symbol));
+
+        if (isRepeat(orderId, MovementType.REVERSAL, accountId, portfolioId, symbol,
+                original.getQuantity(), original.getPrice())) {
             return position;
         }
 
@@ -176,8 +194,14 @@ public class PositionService {
         position.setQuantity(position.getQuantity().subtract(quantity));
     }
 
-    private Position findExisting(String accountId, String symbol) {
-        return getPosition(accountId, symbol)
+    private Position getPositionOrEmpty(String accountId, String portfolioId, String symbol) {
+        Portfolio portfolio = portfolioService.resolve(accountId, portfolioId);
+        return positionRepository.findById(new PositionId(portfolio.getPortfolioId(), symbol))
+            .orElseGet(() -> emptyPosition(accountId, portfolio.getPortfolioId(), symbol));
+    }
+
+    private Position findExisting(String accountId, String portfolioId, String symbol) {
+        return getPosition(accountId, portfolioId, symbol)
             .orElseThrow(() -> new PositionNotFoundException(accountId, symbol));
     }
 
@@ -206,10 +230,11 @@ public class PositionService {
             throw new IllegalArgumentException(message);
         }
     }
-    
-    private boolean isRepeat(String orderId, MovementType type, String accountId, String symbol, BigDecimal quantity, BigDecimal price) {
+
+    private boolean isRepeat(String orderId, MovementType type, String accountId, String portfolioId, String symbol,
+                             BigDecimal quantity, BigDecimal price) {
         return orderId != null && positionMovementRepository.insertIfAbsent(
-                orderId, type.name(), accountId, symbol, quantity, price) == 0;
+                orderId, type.name(), accountId, portfolioId, symbol, quantity, price) == 0;
     }
 
     private static void addShares(Position position, BigDecimal quantity, BigDecimal price) {
@@ -230,7 +255,7 @@ public class PositionService {
 
         BigDecimal remaining = position.getQuantity().subtract(quantity);
         if (remaining.signum() == 0) {
-            positionRepository.deleteById(new PositionId(position.getAccountId(), position.getSymbol()));
+            positionRepository.deleteById(new PositionId(position.getPortfolioId(), position.getSymbol()));
             position.setQuantity(BigDecimal.ZERO);
             return position;
         }
@@ -243,8 +268,8 @@ public class PositionService {
         return positionRepository.save(position);
     }
 
-    private static Position emptyPosition(String accountId, String symbol) {
-        return new Position(accountId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
+    private static Position emptyPosition(String accountId, String portfolioId, String symbol) {
+        return new Position(accountId, portfolioId, symbol, BigDecimal.ZERO, BigDecimal.ZERO);
     }
 
 }

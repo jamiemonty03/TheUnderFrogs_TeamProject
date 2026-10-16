@@ -19,11 +19,12 @@ import com.neueda.orderservice.enums.OrderStatus;
  * Represents a trade order (buy or sell) for a financial instrument.
  * 
  * Tracks the complete lifecycle of an order from creation through execution:
- * - Order submission with quantity, price, and direction (buy/sell)
+ * - Order submission with quantity, price limit, and direction (buy/sell)
  * - Status transitions (NEW → FILLED or REJECTED)
  * - Version tracking for optimistic locking during concurrent updates
  * 
- * Total cost calculation: quantity × price
+ * priceLimit is the worst price per share the user accepts; the trade-executor
+ * fills at the market price, or rejects the order if the market is past the limit.
  * 
  * @see Account
  * @see Position
@@ -40,6 +41,9 @@ public class Order {
     @Column(name = "account_id")
     private String accountId;
 
+    @Column(name = "portfolio_id", updatable = false)
+    private String portfolioId;
+
     @NotBlank(message = "Symbol is mandatory")
     private String symbol;
 
@@ -50,9 +54,10 @@ public class Order {
     @Positive(message = "Quantity must be positive")
     private int quantity;
 
-    @NotNull(message = "Price is mandatory")
-    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
-    private BigDecimal price;
+    @NotNull(message = "Price limit is mandatory")
+    @DecimalMin(value = "0.01", message = "Price limit must be greater than 0")
+    @Column(name = "price_limit")
+    private BigDecimal priceLimit;
 
     @NotNull(message = "Idempotency key is mandatory")
     @NotBlank(message = "Idempotency key cannot be blank")
@@ -63,6 +68,9 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(name = "order_status")
     private OrderStatus orderStatus;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 
     private int version;
 
@@ -78,7 +86,7 @@ public class Order {
 
     public Order() {}
 
-    public Order(String orderId, String accountId, String symbol, OrderSide side, int quantity, BigDecimal price, String idempotencyKey) {
+    public Order(String orderId, String accountId, String symbol, OrderSide side, int quantity, BigDecimal priceLimit, String idempotencyKey) {
         if (accountId == null) {
         throw new IllegalArgumentException("AccountId is mandatory");
         }
@@ -91,11 +99,11 @@ public class Order {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
-        if (price == null) {
-            throw new IllegalArgumentException("Price is mandatory");
+        if (priceLimit == null) {
+            throw new IllegalArgumentException("Price limit is mandatory");
         }
-        if (price.compareTo(new BigDecimal("0.01")) < 0) {
-            throw new IllegalArgumentException("Price must be greater than 0");
+        if (priceLimit.compareTo(new BigDecimal("0.01")) < 0) {
+            throw new IllegalArgumentException("Price limit must be greater than 0");
         }
         if (idempotencyKey == null || idempotencyKey.trim().isEmpty()) {
             throw new IllegalArgumentException("Idempotency key is mandatory and cannot be blank");
@@ -109,7 +117,7 @@ public class Order {
         this.symbol = symbol;
         this.side = side;
         this.quantity = quantity;
-        this.price = price;
+        this.priceLimit = priceLimit;
         this.idempotencyKey = idempotencyKey;
         this.orderStatus = OrderStatus.NEW; 
         this.version = 0;
@@ -132,6 +140,14 @@ public class Order {
 
     public void setAccountId(String accountId) {
         this.accountId = accountId;
+    }
+
+    public String getPortfolioId() {
+        return portfolioId;
+    }
+
+    public void setPortfolioId(String portfolioId) {
+        this.portfolioId = portfolioId;
     }
 
     public String getSymbol() {
@@ -158,12 +174,12 @@ public class Order {
         this.quantity = quantity;
     }
 
-    public BigDecimal getPrice() {
-        return price;
+    public BigDecimal getPriceLimit() {
+        return priceLimit;
     }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
+    public void setPriceLimit(BigDecimal priceLimit) {
+        this.priceLimit = priceLimit;
     }
 
     public OrderStatus getOrderStatus() {
@@ -172,6 +188,14 @@ public class Order {
 
     public void setOrderStatus(OrderStatus orderStatus) {
         this.orderStatus = orderStatus;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
     }
 
     public int getVersion() {
@@ -218,7 +242,7 @@ public class Order {
                 ", symbol='" + symbol + '\'' +
                 ", side=" + side +
                 ", quantity=" + quantity +
-                ", price=" + price +
+                ", priceLimit=" + priceLimit +
                 ", orderStatus=" + orderStatus +
                 ", version=" + version +
                 '}';

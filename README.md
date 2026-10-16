@@ -9,61 +9,138 @@
 ## Links
 [Jira Board](https://underfrog.atlassian.net/?continue=https%3A%2F%2Funderfrog.atlassian.net%2Fwelcome%2Fsoftware%3FprojectId%3D10000&atlOrigin=eyJpIjoiNGY4NzRlNDY5N2I4NDUwYmI3NDFjYjY2ZGUyYWRmMDUiLCJwIjoiamlyYS1zb2Z0d2FyZSJ9)
 
+[Example UI](https://claude.ai/artifact/MGcqvq2Sjnbi1U1FVrFH8N#page-dcb81aee8d83)
+
 
 ## Entity Relationship Diagram
 
 ![ERD Diagram](app/docs/diagrams/ERD-Diagram.PNG)
 
-## Docker Setup
-The project ships with a `docker-compose.yml` that spins up Postgres and the app together.
+## Getting Started (fresh clone)
 
-1) Create a `.env` file in the project root (this is gitignored, so it won't be committed):
+### Prerequisites
+- Docker with the standalone `docker-compose` command (v2)
+- JDK 21 and Maven (the setup script builds the Java jars on your machine)
+- Bash and `openssl` (on Windows, use WSL or Git Bash)
 
-2) Start the stack:
-```
-docker-compose up -d
-```
-Each service runs in its own container with its own Postgres container: `accounts-db`, `instruments-db`, `orders-db`, `positions-db` (host ports 5433-5436, localhost only), each with its own named volume. Each database is initialised on first start from that service's `app/<service>/db/schema/` folder. Historical trade data is stored in `orders-db` as `client_trades`. The python ETL/dashboard container (`underfrog-python`) talks to `instruments-db`.
+You don't need Node or Python locally: auth-service and the ETL/dashboard are built inside Docker.
 
-3) Check the containers are up:
+### 1) Create the `.env` files
+Each service reads its own `app/<service>/.env`. These files are gitignored and must never be committed. The command below creates them from the `.env.example` files. It also generates one database password and one `JWT_SECRET` and writes the same values into every file:
 ```
-docker ps
+SECRET=$(openssl rand -hex 32)
+PASSWORD=$(openssl rand -hex 16)
+for s in accounts-service auth-service instruments-service orders-service positions-service trade-executor trade-analytics-service; do
+  if [ ! -f app/$s/.env ]; then
+    cp app/$s/.env.example app/$s/.env
+    sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=$SECRET|; s|ENTER_PASSWORD_HERE|$PASSWORD|g" app/$s/.env && rm app/$s/.env.bak
+  fi
+done
 ```
-If `docker-compose up -d` fails with a port conflict on 5432, another Postgres container is already using it. Find and stop it:
+It skips any service that already has a `.env`. If you already have some, copy their `JWT_SECRET` and password into the new ones by hand.
+
+> **Only auth-service issues tokens.** accounts, instruments, orders and positions verify them with auth-service's public key (`/.well-known/jwks.json`), so they don't need `JWT_SECRET`. auth-service and the trade-executor still read it until they switch to RS256 signing (S8-4 and S8-9).
+
+Optional: add your own free [Alpaca](https://alpaca.markets) paper-trading keys to `app/trade-executor/.env` (`ALPACA_KEY_ID` starts with `PK`, plus `ALPACA_SECRET_KEY`) to get live bid/ask prices. If you leave them blank, the trade executor prices orders from the daily close.
+
+### 2) Run the setup script
+From the repo root:
 ```
-docker ps
-docker stop <container_name>
+./db/scripts/setup-pipeline.sh
+```
+The script:
+1. builds the Java jars;
+2. stops anything already running and starts every container;
+3. creates the tables;
+4. loads the instruments and prices through the Python ETL;
+5. seeds the dummy accounts, orders and positions;
+6. starts trade-analytics-service;
+7. prints row counts, Kafka topics and container status.
+
+When it finishes with `✓ Setup stage 'all' completed successfully!`, the stack is ready to use.
+
+To run only part of the setup, pass a stage: `build`, `containers`, `tables` or `populate` (see `--help`). After editing a `.env`, recreate that container so it reads the change. A plain `restart` doesn't reload `.env` files:
+```
+docker-compose up -d --force-recreate <service>
 ```
 
-4) Connect to the database inside the container:
+| Service | Host port |
+|---|---|
+| accounts-service | 8081 |
+| instruments-service | 8082 |
+| orders-service | 8083 |
+| positions-service | 8084 |
+| python dashboard | 8085 |
+| kafka-ui | 8086 |
+| auth-service | 8087 |
+| sonarqube (`quality` profile only) | 8088 |
+| frontend (Angular app, served by nginx) | 8089 |
+| kafka (external listener) | 127.0.0.1:9094 |
+| accounts / instruments / orders / positions / analytics / auth DBs | 127.0.0.1:5433-5438 |
+
+Environment variables:
+
+| Variable | Service | Purpose |
+|---|---|---|
+| `KAFKA_BOOTSTRAP_SERVERS` | orders-service, trade-executor | Kafka broker, `kafka:9092` inside compose |
+| `AUTH_JWKS_URI`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | accounts, instruments, orders, positions | Where to fetch auth-service's public keys, and the `iss` / `aud` every token must carry. Optional; the defaults match docker-compose |
+| `JWT_SECRET` | auth-service, trade-executor | Signing secret, until both move to RS256 (S8-4, S8-9) |
+| `SERVICE_TOKEN_TTL` | trade-executor | Lifetime of its service-to-service token |
+| `HTTPS_ENABLED` | auth-service | `true` adds the HTTPS-only security headers (HSTS and `upgrade-insecure-requests`). Leave it unset while auth-service is served over plain http, or browsers can't load Swagger |
+| `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
+| `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
+| `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
+
+### 3) Log in and call the APIs
+Only auth-service issues tokens. Every other service needs one on each request, as `Authorization: Bearer <accessToken>`. Tokens last 15 minutes; log in again when you start getting `401`.
+
+**In Swagger**
+1. Open auth-service at http://localhost:8087/docs and call `POST /auth/register` (or `POST /auth/login` if you already have a user). Passwords need at least 12 characters:
+   ```json
+   {"username": "jane", "email": "jane@example.com", "password": "correct-horse-battery", "full_name": "Jane Doe"}
+   ```
+   Registering also creates your trading account; its id is the `accountId` in the response. New accounts start with no cash.
+2. Copy the `accessToken` from the response.
+3. Open a service's Swagger page, click **Authorize**, paste the token, and call any endpoint:
+
+| Service | Swagger |
+|---|---|
+| accounts-service | http://localhost:8081/api/swagger-ui/index.html |
+| instruments-service | http://localhost:8082/api/swagger-ui/index.html |
+| orders-service | http://localhost:8083/api/swagger-ui/index.html |
+| positions-service | http://localhost:8084/api/swagger-ui/index.html |
+
+**With curl**
 ```
-docker exec -it accounts-db psql -U postgres -d accounts_db   # or instruments-db / orders-db / positions-db
+TOKEN=$(curl -s -X POST localhost:8087/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"jane","password":"correct-horse-battery"}' | python3 -c 'import sys,json; print(json.load(sys.stdin)["accessToken"])')
+curl -H "Authorization: Bearer $TOKEN" localhost:8083/api/orders
 ```
 
-5) Tear down (add `-v` to also delete the data volume):
+### 4) Check it works
+Watch a Kafka topic (or open kafka-ui on port 8086):
+```
+docker exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic trade-events --from-beginning
+```
+
+Run the end-to-end smoke test. It builds and starts the stack, registers a user through auth-service, places a BUY, checks the fill, cash, position and `ORDER_FILLED` event, then tears everything down:
+```
+./scripts/smoke-test-e2e.sh
+```
+Set `KEEP_UP=true` to leave the stack running afterwards.
+
+### 5) Tear down
+Add `--volumes` to also wipe the databases:
 ```
 docker-compose down
-docker-compose down -v   # also wipes the postgres_data volume
+docker-compose down --volumes
 ```
 
-> Note: `sql/dummy-data.sql` is **not** currently auto-loaded by Docker init. To seed sample data, run it manually after the container is up:
-> ```
-> docker exec -i underfrog-postgres psql -U postgres -d underfrog < sql/dummy-data.sql
-> ```
-
-## Database Setup (manual / non-Docker)
-1) Create the database (note: underscores, not hyphens, since Postgres identifiers can't contain `-` unquoted):
-```
-psql -U postgres -h <host> -p 5432 -c "CREATE DATABASE enterprise_schema;"
-```
-2) Create the schema (tables):
-```
-psql -U postgres -h <host> -p 5432 -d enterprise_schema -f sql/tables.sql
-```
-3) Load the seed/dummy data:
-```
-psql -U postgres -h <host> -p 5432 -d enterprise_schema -f sql/dummy-data.sql
-```
+### Troubleshooting
+- **`Schema-validation: missing table`**: the database volume was created from an older schema. Run `docker-compose down --volumes`, then run the setup script again.
+- **`401` errors on every request**: the token wasn't issued by auth-service, or its `iss` / `aud` doesn't match `AUTH_ISSUER` / `AUTH_AUDIENCE`. Log in through auth-service to get a new token. If the services can't reach `AUTH_JWKS_URI`, every token is rejected too.
+- **Database password errors after changing a password in `.env`**: Postgres keeps the password it was created with. Change it back, or wipe the volumes.
+- **`docker: 'compose' is not a docker command`**: use `docker-compose` (with the hyphen).
 
 ## Branching Strategy (GitFlow)
 ### Purpose
@@ -107,7 +184,7 @@ For local SonarQube, the optional Compose profile avoids starting a second serve
 docker-compose --profile quality up -d sonarqube
 ```
 
-The default local URL is `http://localhost:9001` (override it with `SONARQUBE_PORT`). Complete the first-run setup, create an analysis token, and use the server’s **Sonar way** quality gate or create a project gate with these conditions on new code:
+The local URL is `http://localhost:8088`. Complete the first-run setup, create an analysis token, and use the server’s **Sonar way** quality gate or create a project gate with these conditions on new code:
 
 - Blocker issues greater than 0: fail.
 - Critical issues greater than 0: fail.
@@ -122,7 +199,7 @@ Configure Jenkins under **Manage Jenkins → System → SonarQube installations*
 To run an analysis locally, first test the service so JaCoCo writes the XML report, then provide the host and token through environment variables (do not commit the token):
 
 ```bash
-export SONAR_HOST_URL=http://localhost:9001
+export SONAR_HOST_URL=http://localhost:8088
 export SONAR_TOKEN='<your SonarQube token>'
 mvn -B -f app/accounts-service/pom.xml clean verify sonar:sonar \
   -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN" \

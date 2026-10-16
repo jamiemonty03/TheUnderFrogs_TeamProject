@@ -13,7 +13,7 @@ class OrderPlacedEventDeserializerTest {
 
     @Test
     void deserializesOrderPlacedJson() {
-        String json = "{\"eventId\":\"evt-1\",\"eventType\":\"ORDER_PLACED\",\"occurredAt\":\"2026-09-28T10:00:00Z\",\"key\":\"ACC-1\",\"payload\":{\"orderId\":\"ORD-1\",\"accountId\":\"ACC-1\",\"symbol\":\"AAPL\",\"side\":\"BUY\",\"quantity\":2,\"price\":10.00,\"idempotencyKey\":\"idem-1\"}}";
+        String json = "{\"eventId\":\"evt-1\",\"eventType\":\"ORDER_PLACED\",\"occurredAt\":\"2026-09-28T10:00:00Z\",\"key\":\"ACC-1\",\"payload\":{\"orderId\":\"ORD-1\",\"accountId\":\"ACC-1\",\"symbol\":\"AAPL\",\"side\":\"BUY\",\"quantity\":2,\"priceLimit\":10.00,\"idempotencyKey\":\"idem-1\"}}";
         var event = deserializer.deserialize("orders", json.getBytes(StandardCharsets.UTF_8));
         assertEquals("ORD-1", event.payload().orderId());
         assertEquals(OrderSide.BUY, event.payload().side());

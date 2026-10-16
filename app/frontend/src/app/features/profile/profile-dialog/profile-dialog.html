@@ -1,0 +1,222 @@
+<section class="profile" data-testid="profile-dialog">
+  <header class="profile__header">
+    <h2 mat-dialog-title class="profile__title">Edit profile</h2>
+    <button
+      mat-icon-button
+      type="button"
+      class="profile__close"
+      aria-label="Close edit profile"
+      data-testid="profile-close"
+      (click)="close()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+    </button>
+  </header>
+
+  <mat-dialog-content>
+    <mat-tab-group animationDuration="0ms" mat-stretch-tabs="true">
+      <mat-tab label="Details">
+        @if (loading()) {
+          <div class="profile__loading" role="status" data-testid="profile-loading">
+            <mat-progress-spinner mode="indeterminate" diameter="32" aria-hidden="true" />
+            Loading your profile…
+          </div>
+        } @else if (loadError(); as message) {
+          <p class="profile__error" role="alert" data-testid="profile-load-error">{{ message }}</p>
+        } @else {
+          <form class="profile__form" [formGroup]="details" (ngSubmit)="saveDetails()" novalidate>
+            <div class="profile__readonly">
+              <span class="profile__label">Username</span>
+              <span class="profile__username" data-testid="profile-username">{{ username() }}</span>
+              <span class="profile__hint">Your username can't be changed.</span>
+            </div>
+
+            <label class="profile__label" for="profile-full-name">Full name</label>
+            <mat-form-field appearance="outline" class="profile__field">
+              <input
+                matInput
+                id="profile-full-name"
+                formControlName="fullName"
+                autocomplete="name"
+                data-testid="profile-full-name"
+              />
+              @if (
+                details.controls.fullName.hasError('required') ||
+                details.controls.fullName.hasError('blank')
+              ) {
+                <mat-error>Full name is required.</mat-error>
+              } @else if (details.controls.fullName.hasError('maxlength')) {
+                <mat-error>Full name must be 255 characters or fewer.</mat-error>
+              }
+            </mat-form-field>
+
+            <label class="profile__label" for="profile-email">Email</label>
+            <mat-form-field appearance="outline" class="profile__field">
+              <input
+                matInput
+                id="profile-email"
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                data-testid="profile-email"
+              />
+              @if (details.controls.email.hasError('required')) {
+                <mat-error>Email is required.</mat-error>
+              } @else if (details.controls.email.hasError('taken')) {
+                <mat-error>{{ details.controls.email.getError('taken') }}</mat-error>
+              } @else if (
+                details.controls.email.hasError('email') ||
+                details.controls.email.hasError('maxlength')
+              ) {
+                <mat-error>Enter a valid email address.</mat-error>
+              }
+            </mat-form-field>
+
+            @if (detailsError(); as message) {
+              <p class="profile__error" role="alert" data-testid="profile-details-error">
+                {{ message }}
+              </p>
+            }
+
+            <button
+              mat-flat-button
+              type="submit"
+              class="profile__submit"
+              [disabled]="savingDetails()"
+              data-testid="profile-save-details"
+            >
+              @if (savingDetails()) {
+                Saving…
+              } @else {
+                Save details
+              }
+            </button>
+          </form>
+        }
+      </mat-tab>
+
+      <mat-tab label="Password">
+        <form
+          class="profile__form"
+          [formGroup]="password"
+          #passwordForm="ngForm"
+          (ngSubmit)="changePassword()"
+          novalidate
+        >
+          <label class="profile__label" for="profile-current-password">Current password</label>
+          <mat-form-field appearance="outline" class="profile__field">
+            <input
+              matInput
+              id="profile-current-password"
+              [type]="showCurrent() ? 'text' : 'password'"
+              formControlName="currentPassword"
+              autocomplete="current-password"
+              data-testid="profile-current-password"
+            />
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              class="profile__reveal"
+              [attr.aria-label]="showCurrent() ? 'Hide current password' : 'Show current password'"
+              [attr.aria-pressed]="showCurrent()"
+              (click)="showCurrent.set(!showCurrent())"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                @if (showCurrent()) {
+                  <path d="M3 3l18 18" />
+                }
+              </svg>
+            </button>
+            @if (password.controls.currentPassword.hasError('required')) {
+              <mat-error>Enter your current password.</mat-error>
+            } @else if (password.controls.currentPassword.hasError('incorrect')) {
+              <mat-error>{{ password.controls.currentPassword.getError('incorrect') }}</mat-error>
+            }
+          </mat-form-field>
+
+          <label class="profile__label" for="profile-new-password">New password</label>
+          <mat-form-field appearance="outline" class="profile__field">
+            <input
+              matInput
+              id="profile-new-password"
+              [type]="showNew() ? 'text' : 'password'"
+              formControlName="newPassword"
+              autocomplete="new-password"
+              placeholder="At least 12 characters"
+              data-testid="profile-new-password"
+            />
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              class="profile__reveal"
+              [attr.aria-label]="showNew() ? 'Hide new password' : 'Show new password'"
+              [attr.aria-pressed]="showNew()"
+              (click)="showNew.set(!showNew())"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                @if (showNew()) {
+                  <path d="M3 3l18 18" />
+                }
+              </svg>
+            </button>
+            @if (password.controls.newPassword.hasError('required')) {
+              <mat-error>Enter a new password.</mat-error>
+            } @else if (password.controls.newPassword.hasError('blank')) {
+              <mat-error>Password can't be only spaces.</mat-error>
+            } @else if (password.controls.newPassword.hasError('minlength')) {
+              <mat-error>Password must be at least 12 characters.</mat-error>
+            } @else if (password.controls.newPassword.hasError('maxlength')) {
+              <mat-error>Password must be 128 characters or fewer.</mat-error>
+            }
+          </mat-form-field>
+
+          <label class="profile__label" for="profile-confirm-password">Confirm new password</label>
+          <mat-form-field appearance="outline" class="profile__field">
+            <input
+              matInput
+              id="profile-confirm-password"
+              [type]="showNew() ? 'text' : 'password'"
+              formControlName="confirmPassword"
+              autocomplete="new-password"
+              data-testid="profile-confirm-password"
+            />
+            @if (password.controls.confirmPassword.hasError('required')) {
+              <mat-error>Type the new password again.</mat-error>
+            }
+          </mat-form-field>
+          @if (password.hasError('mismatch') && passwordForm.submitted) {
+            <p class="profile__field-error" role="alert" data-testid="profile-mismatch">
+              The new passwords don't match.
+            </p>
+          }
+
+          @if (passwordError(); as message) {
+            <p class="profile__error" role="alert" data-testid="profile-password-error">
+              {{ message }}
+            </p>
+          }
+
+          <button
+            mat-flat-button
+            type="submit"
+            class="profile__submit"
+            [disabled]="savingPassword()"
+            data-testid="profile-change-password"
+          >
+            @if (savingPassword()) {
+              Changing…
+            } @else {
+              Change password
+            }
+          </button>
+        </form>
+      </mat-tab>
+    </mat-tab-group>
+  </mat-dialog-content>
+</section>

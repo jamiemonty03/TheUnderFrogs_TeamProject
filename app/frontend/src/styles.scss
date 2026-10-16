@@ -1,0 +1,233 @@
+@use '@angular/material' as mat;
+
+:root {
+  --ts-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ts-frog: #3dfa8c;
+  --ts-frog-light: #8cffb9;
+  --ts-frog-tint: #1b3a27;
+  --ts-frog-glow: #0f3a22;
+  --ts-on-frog: #04140a;
+  --ts-on-frog-muted: #0b3b1e;
+
+  --ts-bg: #07110b;
+  --ts-bg-raised: #091510;
+  --ts-input-bg: #0b1710;
+  --ts-surface: #0e1a13;
+  --ts-surface-hover: #13241a;
+
+  --ts-divider: #1a2c21;
+  --ts-border: #1f3328;
+  --ts-border-strong: #2b5a3c;
+
+  --ts-text: #e8f5ec;
+  --ts-text-secondary: #c3d6cb;
+  --ts-text-muted: #9db5a7;
+
+  --ts-loss: #ff6b4a;
+  --ts-on-loss: #1a0703;
+  --ts-sell: #ff6b4a;
+
+  --ts-success-bg: #12321f;
+  --ts-danger-text: #ff8a6e;
+  --ts-danger-bg: #3a1a12;
+  --ts-danger-border: #5a2a1e;
+  --ts-info: #6cc4ff;
+  --ts-info-bg: #12283a;
+  --ts-neutral: #5e7468;
+  --ts-neutral-bg: #1d2420;
+}
+
+html {
+  color-scheme: dark;
+
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$green-palette,
+        tertiary: mat.$cyan-palette,
+        error: mat.$red-palette,
+      ),
+      density: 0,
+    )
+  );
+
+  --mat-sys-primary: var(--ts-frog);
+  --mat-sys-on-primary: var(--ts-on-frog);
+  --mat-sys-primary-container: var(--ts-frog-tint);
+  --mat-sys-on-primary-container: var(--ts-frog-light);
+
+  --mat-sys-surface: var(--ts-bg);
+  --mat-sys-surface-container: var(--ts-bg-raised);
+  --mat-sys-surface-container-high: var(--ts-surface);
+  --mat-sys-on-surface: var(--ts-text);
+  --mat-sys-on-surface-variant: var(--ts-text-secondary);
+  --mat-sys-outline: var(--ts-border);
+
+  --mat-sys-error: var(--ts-danger-text);
+  --mat-sys-on-error: var(--ts-on-loss);
+  --mat-sys-error-container: var(--ts-danger-bg);
+  --mat-sys-on-error-container: var(--ts-danger-text);
+
+  --mdc-theme-primary: var(--ts-frog);
+  --mdc-theme-on-primary: var(--ts-on-frog);
+  --mdc-theme-surface: var(--ts-bg);
+  --mdc-theme-on-surface: var(--ts-text);
+  --mdc-theme-error: var(--ts-danger-text);
+
+  --mat-sys-on-secondary-container: var(--ts-on-frog);
+  --mat-sys-secondary-container: var(--ts-frog);
+}
+
+body {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: var(--ts-font-family);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  background-color: var(--ts-bg);
+}
+
+app-root {
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
+
+html {
+  color-scheme: dark;
+  @include mat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$spring-green-palette,
+      ),
+      typography: (
+        plain-family: var(--ts-font-family),
+        brand-family: var(--ts-font-family),
+      ),
+      density: 0,
+    )
+  );
+  @include mat.form-field-overrides(
+    (
+      outlined-outline-color: var(--ts-border-strong),
+      outlined-focus-outline-color: var(--ts-frog),
+      outlined-focus-label-text-color: var(--ts-frog),
+      outlined-label-text-color: var(--ts-text-muted),
+      outlined-input-text-color: var(--ts-text),
+      outlined-error-outline-color: var(--ts-danger-text),
+      outlined-error-focus-outline-color: var(--ts-danger-text),
+      outlined-error-label-text-color: var(--ts-danger-text),
+      error-text-color: var(--ts-danger-text),
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--ts-frog),
+      filled-label-text-color: var(--ts-on-frog),
+    )
+  );
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-text-secondary);
+
+  &--main {
+    background: var(--ts-success-bg);
+    color: var(--ts-frog-light);
+  }
+
+  &--low {
+    background: var(--ts-info-bg);
+    color: var(--ts-info);
+  }
+
+  &--high {
+    background: var(--ts-danger-bg);
+    color: var(--ts-sell);
+  }
+}
+
+.pos {
+  color: var(--ts-frog);
+}
+
+.neg {
+  color: var(--ts-loss);
+}
+
+.button--danger {
+  color: var(--ts-danger-text);
+}
+
+.button--danger-filled.mdc-button {
+  --mdc-filled-button-container-color: var(--ts-loss);
+  --mdc-filled-button-label-text-color: var(--ts-on-loss);
+  background: var(--ts-loss);
+  color: var(--ts-on-loss);
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+// Set the colour Material's outlined button reads, since a plain `color` here loses to Material's own rule
+// The dashboard's Live / Close price tag, for the Portfolios page's holdings table
+.holdings-table .price-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-neutral);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.holdings-table .price-tag--live {
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+}
+
+.row-actions .buy {
+  --mat-button-outlined-label-text-color: var(--ts-frog);
+}
+
+.row-actions .sell {
+  --mat-button-outlined-label-text-color: var(--ts-sell);
+}
+
+.mat-mdc-menu-panel.nav-bar__account-menu {
+  @include mat.menu-overrides(
+    (
+      container-color: var(--ts-surface),
+      container-shape: 14px,
+      container-elevation-shadow: 0 16px 40px rgb(0 0 0 / 0.5),
+    )
+  );
+  min-width: 15rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--ts-border);
+}
+

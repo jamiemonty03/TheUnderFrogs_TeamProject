@@ -23,7 +23,7 @@ public class OrderPlacedEventDeserializer implements Deserializer<EventEnvelope<
             if (payload.symbol() == null || payload.symbol().isBlank()) throw new IllegalArgumentException("payload.symbol is required");
             if (payload.side() == null) throw new IllegalArgumentException("payload.side is required");
             if (payload.quantity() <= 0) throw new IllegalArgumentException("payload.quantity must be positive");
-            if (payload.price() == null || payload.price().signum() <= 0) throw new IllegalArgumentException("payload.price must be positive");
+            if (payload.priceLimit() == null || payload.priceLimit().signum() <= 0) throw new IllegalArgumentException("payload.priceLimit must be positive");
             if (payload.idempotencyKey() == null || payload.idempotencyKey().isBlank()) throw new IllegalArgumentException("payload.idempotencyKey is required");
             return event;
         } catch (Exception e) {

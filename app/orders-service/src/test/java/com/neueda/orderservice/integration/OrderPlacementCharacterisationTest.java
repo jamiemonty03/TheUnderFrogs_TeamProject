@@ -20,11 +20,6 @@ import org.mockito.ArgumentCaptor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.repositories.OrderRepository;
 import com.neueda.orderservice.events.EventEnvelope;
 import com.neueda.orderservice.events.OrderPlacedPayload;
@@ -50,6 +45,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.neueda.orderservice.config.TestJwtIssuer;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -86,6 +82,7 @@ class OrderPlacementCharacterisationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        TestJwtIssuer.registerProperties(registry);
     }
 
     @LocalServerPort
@@ -114,8 +111,6 @@ class OrderPlacementCharacterisationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${jwt.secret}")
-    private String configuredJwtSecret;
 
     @BeforeEach
     void clearOrders() {
@@ -177,7 +172,7 @@ class OrderPlacementCharacterisationTest {
     @Test
     void invalidRequestBodyReturnsUnprocessableEntityVal422() throws Exception {
         ResponseEntity<String> response = postOrder(createToken(), """
-                {"accountId":"ACC0001","symbol":"AAPL","side":"BUY","quantity":0,"price":50,"idempotencyKey":"invalid"}
+                {"accountId":"ACC0001","symbol":"AAPL","side":"BUY","quantity":0,"priceLimit":50,"idempotencyKey":"invalid"}
                 """);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
@@ -274,7 +269,7 @@ class OrderPlacementCharacterisationTest {
         assertThat(body.path("symbol").asText()).isEqualTo(SYMBOL);
         assertThat(body.path("side").asText()).isEqualTo(side);
         assertThat(body.path("quantity").asInt()).isEqualTo(2);
-        assertThat(body.path("price").decimalValue()).isEqualByComparingTo("50.00");
+        assertThat(body.path("priceLimit").decimalValue()).isEqualByComparingTo("50.00");
         assertThat(body.path("orderStatus").asText()).isEqualTo("NEW");
         assertThat(body.path("version").asInt()).isZero();
         assertThat(body.path("createdAt").asText()).isNotBlank();
@@ -297,7 +292,7 @@ class OrderPlacementCharacterisationTest {
         assertThat(payload.symbol()).isEqualTo(SYMBOL);
         assertThat(payload.side()).isEqualTo(side);
         assertThat(payload.quantity()).isEqualTo(2);
-        assertThat(payload.price()).isEqualByComparingTo("50.00");
+        assertThat(payload.priceLimit()).isEqualByComparingTo("50.00");
         assertThat(payload.idempotencyKey()).isEqualTo(idempotencyKey);
     }
 
@@ -357,7 +352,7 @@ class OrderPlacementCharacterisationTest {
 
     private String orderRequest(String side, String idempotencyKey) {
         return """
-                {"accountId":"ACC0001","symbol":"AAPL","side":"%s","quantity":2,"price":50.00,"idempotencyKey":"%s"}
+                {"accountId":"ACC0001","symbol":"AAPL","side":"%s","quantity":2,"priceLimit":50.00,"idempotencyKey":"%s"}
                 """.formatted(side, idempotencyKey);
     }
 
@@ -373,14 +368,7 @@ class OrderPlacementCharacterisationTest {
                 """;
     }
 
-    private String createToken() throws Exception {
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("characterisation-user")
-                .issueTime(Date.from(Instant.now()))
-                .expirationTime(Date.from(Instant.now().plusSeconds(300)))
-                .build();
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-        jwt.sign(new MACSigner(configuredJwtSecret.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+    private String createToken() {
+        return TestJwtIssuer.token().subject("characterisation-user").accountId(ACCOUNT_ID).build();
     }
 }

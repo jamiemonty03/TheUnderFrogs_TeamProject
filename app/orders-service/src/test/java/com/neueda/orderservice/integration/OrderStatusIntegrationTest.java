@@ -3,8 +3,10 @@ package com.neueda.orderservice.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import com.neueda.orderservice.config.TestJwtIssuer;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -38,11 +41,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.crypto.MACSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
 import com.neueda.orderservice.enums.OrderStatus;
 
 @Testcontainers
@@ -51,6 +49,7 @@ import com.neueda.orderservice.enums.OrderStatus;
 class OrderStatusIntegrationTest {
 
     private static final String ACCOUNT_ID = "ACC0001";
+    private static final String FILL_PRICE = "148.50";
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
@@ -65,6 +64,7 @@ class OrderStatusIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        TestJwtIssuer.registerProperties(registry);
     }
 
     @Autowired
@@ -79,12 +79,11 @@ class OrderStatusIntegrationTest {
     @MockBean
     private KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${jwt.secret}")
-    private String jwtSecret;
 
     @BeforeEach
     void clearOrders() {
         jdbcTemplate.update("DELETE FROM orders");
+        jdbcTemplate.update("DELETE FROM client_trades");
     }
 
     @ParameterizedTest(name = "NEW -> {0} is allowed")
@@ -172,11 +171,75 @@ class OrderStatusIntegrationTest {
         String orderId = insertOrder("NEW");
 
         ResponseEntity<String> response = send(orderId,
-                "{\"expectedStatus\": \"NEW\", \"newStatus\": \"FILLED\", \"reason\": \"filled by executor\"}",
+                "{\"expectedStatus\": \"NEW\", \"newStatus\": \"FILLED\", \"fillPrice\": 148.50, \"reason\": \"filled by executor\"}",
                 createToken("trade-executor", List.of("SERVICE")));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(row(orderId).get("order_status")).isEqualTo("FILLED");
+    }
+
+    @Test
+    @DisplayName("Filling an order records one client trade with the order's details and the fill price")
+    void fillRecordsClientTrade() throws Exception {
+        String orderId = insertOrder("NEW");
+
+        ResponseEntity<String> response = patchStatus(orderId, "NEW", "FILLED");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        Map<String, Object> trade = jdbcTemplate.queryForMap(
+                "SELECT account_id, symbol, trade_type, quantity, price, trade_date FROM client_trades");
+        assertThat(trade.get("account_id")).isEqualTo(ACCOUNT_ID);
+        assertThat(trade.get("symbol")).isEqualTo("AAPL");
+        assertThat(trade.get("trade_type")).isEqualTo("BUY");
+        assertThat((BigDecimal) trade.get("quantity")).isEqualByComparingTo("10");
+        assertThat((BigDecimal) trade.get("price")).isEqualByComparingTo(FILL_PRICE);
+        assertThat(trade.get("trade_date").toString()).isEqualTo(LocalDate.now().toString());
+    }
+
+    @Test
+    @DisplayName("A repeated fill returns 409 and records no second client trade")
+    void repeatedFillRecordsOneTrade() throws Exception {
+        String orderId = insertOrder("NEW");
+        patchStatus(orderId, "NEW", "FILLED");
+
+        patchStatus(orderId, "NEW", "FILLED");
+
+        assertThat(tradeCount()).isEqualTo(1);
+    }
+
+    @ParameterizedTest(name = "NEW -> {0} records no trade")
+    @EnumSource(value = OrderStatus.class, names = {"REJECTED", "CANCELLED"})
+    @DisplayName("Changes other than FILLED record no client trade")
+    void nonFillRecordsNoTrade(OrderStatus newStatus) throws Exception {
+        String orderId = insertOrder("NEW");
+
+        patchStatus(orderId, "NEW", newStatus.name());
+
+        assertThat(tradeCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("FILLED without fillPrice returns 422, leaves the order NEW and records no trade")
+    void fillWithoutPriceReturns422() throws Exception {
+        String orderId = insertOrder("NEW");
+
+        ResponseEntity<String> response = send(orderId, "{\"expectedStatus\": \"NEW\", \"newStatus\": \"FILLED\"}");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(row(orderId).get("order_status")).isEqualTo("NEW");
+        assertThat(tradeCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("fillPrice on a change other than FILLED returns 422 and changes nothing")
+    void fillPriceOnRejectReturns422() throws Exception {
+        String orderId = insertOrder("NEW");
+
+        ResponseEntity<String> response = send(orderId,
+                "{\"expectedStatus\": \"NEW\", \"newStatus\": \"REJECTED\", \"fillPrice\": 148.50}");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(row(orderId).get("order_status")).isEqualTo("NEW");
     }
 
     @Test
@@ -207,7 +270,7 @@ class OrderStatusIntegrationTest {
     private String insertOrder(String status) {
         String orderId = UUID.randomUUID().toString();
         jdbcTemplate.update("""
-                INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price, order_status)
+                INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price_limit, order_status)
                 VALUES (?, ?, ?, 'AAPL', 'BUY', 10, 150.00, ?)
                 """, orderId, "idem-" + orderId, ACCOUNT_ID, status);
         return orderId;
@@ -217,11 +280,17 @@ class OrderStatusIntegrationTest {
         return jdbcTemplate.queryForMap("SELECT order_status, version FROM orders WHERE order_id = ?", orderId);
     }
 
+    private int tradeCount() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM client_trades", Integer.class);
+    }
+
+    // FILLED requests carry a fill price, as the trade executor sends
     private ResponseEntity<String> patchStatus(String orderId, String expectedStatus, String newStatus)
             throws Exception {
+        String fillPrice = "FILLED".equals(newStatus) ? ", \"fillPrice\": " + FILL_PRICE : "";
         return send(orderId, """
-                {"expectedStatus": "%s", "newStatus": "%s", "reason": "test"}
-                """.formatted(expectedStatus, newStatus));
+                {"expectedStatus": "%s", "newStatus": "%s"%s, "reason": "test"}
+                """.formatted(expectedStatus, newStatus, fillPrice));
     }
 
     private ResponseEntity<String> send(String orderId, String body) throws Exception {
@@ -239,8 +308,9 @@ class OrderStatusIntegrationTest {
     }
 
     private MockHttpServletResponse put(String orderId, String body) throws Exception {
+        String ownerToken = TestJwtIssuer.token().subject("status-test-user").accountId(ACCOUNT_ID).build();
         return mockMvc.perform(MockMvcRequestBuilders.put("/orders/{orderId}", orderId)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + createToken("status-test-user", null))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn()
@@ -251,16 +321,11 @@ class OrderStatusIntegrationTest {
         return objectMapper.readTree(response.getBody());
     }
 
-    private String createToken(String subject, List<String> roles) throws Exception {
-        JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder()
-                .subject(subject)
-                .issueTime(Date.from(Instant.now()))
-                .expirationTime(Date.from(Instant.now().plusSeconds(300)));
+    private String createToken(String subject, List<String> roles) {
+        TestJwtIssuer.Builder token = TestJwtIssuer.token().subject(subject);
         if (roles != null) {
-            claims.claim("roles", roles);
+            token.roles(roles.toArray(String[]::new));
         }
-        SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims.build());
-        jwt.sign(new MACSigner(jwtSecret.getBytes(StandardCharsets.UTF_8)));
-        return jwt.serialize();
+        return token.build();
     }
 }

@@ -10,6 +10,7 @@ public record OrderPlacedPayload(
         String symbol,
         OrderSide side,
         int quantity,
-        BigDecimal price,
-        String idempotencyKey) {
+        BigDecimal priceLimit,
+        String idempotencyKey,
+        String portfolioId) {
 }

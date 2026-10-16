@@ -13,7 +13,9 @@ import com.neueda.positionservice.dtos.requests.SellRequest;
 import com.neueda.positionservice.dtos.requests.UpdatePositionRequest;
 import com.neueda.positionservice.exceptions.InsufficientHoldingsException;
 import com.neueda.positionservice.exceptions.PositionNotFoundException;
+import com.neueda.positionservice.utils.AuthorizationUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +31,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -51,13 +55,24 @@ public class PositionControllerTest {
     private ObjectMapper objectMapper;
 
     private Position testPosition;
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
     @BeforeEach
     public void setUp() {
-        testPosition = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        testPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
         testPosition.setVersion(1);
         testPosition.setLastUpdated(LocalDateTime.now());
         testPosition.setUpdatedBy("SYSTEM");
+        
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
     }
 
     // ==================== CREATE POSITION TESTS ====================
@@ -65,7 +80,7 @@ public class PositionControllerTest {
     @Test
     @DisplayName("POST /positions: Successfully creates position and returns 200 OK")
     public void testCreatePositionSuccess() throws Exception {
-        Position newPosition = new Position("ACC002", "MSFT", new BigDecimal("50"), new BigDecimal("350.00"));
+        Position newPosition = new Position("ACC002", "PF0001", "MSFT", new BigDecimal("50"), new BigDecimal("350.00"));
         when(positionService.createPosition(any(CreatePositionRequest.class))).thenReturn(newPosition);
         
         mockMvc.perform(post("/positions")
@@ -122,10 +137,10 @@ public class PositionControllerTest {
     @Test
     @DisplayName("GET /positions/{accountId}: Successfully retrieves all positions for account")
     public void testGetPositionsByAccountSuccess() throws Exception {
-        Position position2 = new Position("ACC001", "GOOGL", new BigDecimal("25"), new BigDecimal("2800.00"));
+        Position position2 = new Position("ACC001", "PF0001", "GOOGL", new BigDecimal("25"), new BigDecimal("2800.00"));
         List<Position> positions = Arrays.asList(testPosition, position2);
         
-        when(positionService.getPositionsByAccountId("ACC001")).thenReturn(positions);
+        when(positionService.getPositionsByAccountId("ACC001", null)).thenReturn(positions);
 
         mockMvc.perform(get("/positions/ACC001")
                 .contentType(MediaType.APPLICATION_JSON))
@@ -135,20 +150,20 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$[0].symbol", equalTo("AAPL")))
                 .andExpect(jsonPath("$[1].symbol", equalTo("GOOGL")));
 
-        verify(positionService).getPositionsByAccountId("ACC001");
+        verify(positionService).getPositionsByAccountId("ACC001", null);
     }
 
     @Test
     @DisplayName("GET /positions/{accountId}: Returns empty list when account has no positions")
     public void testGetPositionsByAccountEmpty() throws Exception {
-        when(positionService.getPositionsByAccountId("ACC999")).thenReturn(Arrays.asList());
+        when(positionService.getPositionsByAccountId("ACC999", null)).thenReturn(Arrays.asList());
 
         mockMvc.perform(get("/positions/ACC999")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
 
-        verify(positionService).getPositionsByAccountId("ACC999");
+        verify(positionService).getPositionsByAccountId("ACC999", null);
     }
 
     // ==================== GET SINGLE POSITION TESTS ====================
@@ -156,7 +171,7 @@ public class PositionControllerTest {
     @Test
     @DisplayName("GET /positions/{accountId}/{symbol}: Successfully retrieves position by account and symbol")
     public void testGetPositionSuccess() throws Exception {
-        when(positionService.getPosition("ACC001", "AAPL")).thenReturn(Optional.of(testPosition));
+        when(positionService.getPosition("ACC001", null, "AAPL")).thenReturn(Optional.of(testPosition));
 
         mockMvc.perform(get("/positions/ACC001/AAPL")
                 .contentType(MediaType.APPLICATION_JSON))
@@ -167,19 +182,19 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.averageCost", notNullValue()))
                 .andExpect(jsonPath("$.version", equalTo(1)));
 
-        verify(positionService).getPosition("ACC001", "AAPL");
+        verify(positionService).getPosition("ACC001", null, "AAPL");
     }
 
     @Test
     @DisplayName("GET /positions/{accountId}/{symbol}: Returns 404 when position not found")
     public void testGetPositionNotFound() throws Exception {
-        when(positionService.getPosition("ACC001", "INVALID")).thenReturn(Optional.empty());
+        when(positionService.getPosition("ACC001", null, "INVALID")).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/positions/ACC001/INVALID")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
 
-        verify(positionService).getPosition("ACC001", "INVALID");
+        verify(positionService).getPosition("ACC001", null, "INVALID");
     }
 
     // ==================== DELETE POSITION TESTS ====================
@@ -191,21 +206,21 @@ public class PositionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNoContent());
 
-        verify(positionService).deletePosition("ACC001", "AAPL");
+        verify(positionService).deletePosition("ACC001", null, "AAPL");
     }
 
     @Test
     @DisplayName("DELETE /positions/{accountId}/{symbol}: Returns 404 when position not found")
     public void testDeletePositionNotFound() throws Exception {
         doThrow(new PositionNotFoundException("ACC001", "INVALID"))
-                .when(positionService).deletePosition("ACC001", "INVALID");
+                .when(positionService).deletePosition("ACC001", null, "INVALID");
 
         mockMvc.perform(delete("/positions/ACC001/INVALID")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode", equalTo("POS-404")));
 
-        verify(positionService).deletePosition("ACC001", "INVALID");
+        verify(positionService).deletePosition("ACC001", null, "INVALID");
     }
 
     // ==================== EDGE CASE TESTS ====================
@@ -213,7 +228,7 @@ public class PositionControllerTest {
     @Test
     @DisplayName("POST /positions: Successfully creates position with large quantity")
     public void testCreatePositionLargeQuantity() throws Exception {
-        Position largePosition = new Position("ACC001", "SPY", new BigDecimal("10000"), new BigDecimal("450.00"));
+        Position largePosition = new Position("ACC001", "PF0001", "SPY", new BigDecimal("10000"), new BigDecimal("450.00"));
         when(positionService.createPosition(any(CreatePositionRequest.class))).thenReturn(largePosition);
         
         mockMvc.perform(post("/positions")
@@ -228,7 +243,7 @@ public class PositionControllerTest {
     @Test
     @DisplayName("POST /positions: Successfully creates position with decimal prices")
     public void testCreatePositionDecimalPrice() throws Exception {
-        Position decimalPosition = new Position("ACC001", "BRK.A", new BigDecimal("1"), new BigDecimal("575123.4567"));
+        Position decimalPosition = new Position("ACC001", "PF0001", "BRK.A", new BigDecimal("1"), new BigDecimal("575123.4567"));
         when(positionService.createPosition(any(CreatePositionRequest.class))).thenReturn(decimalPosition);
         
         mockMvc.perform(post("/positions")
@@ -245,9 +260,9 @@ public class PositionControllerTest {
     @Test
     @DisplayName("PUT /positions/{accountId}/{symbol}: Successfully updates position")
     public void testUpdatePositionSuccess() throws Exception {
-        Position updatedPosition = new Position("ACC001", "AAPL", new BigDecimal("150"), new BigDecimal("155.00"));
+        Position updatedPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("150"), new BigDecimal("155.00"));
         updatedPosition.setVersion(2);
-        when(positionService.updatePosition(eq("ACC001"), eq("AAPL"), any(ReplacePositionRequest.class))).thenReturn(updatedPosition);
+        when(positionService.updatePosition(eq("ACC001"), isNull(), eq("AAPL"), any(ReplacePositionRequest.class))).thenReturn(updatedPosition);
         
         mockMvc.perform(put("/positions/ACC001/AAPL")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -257,14 +272,14 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.quantity", equalTo(150)))
                 .andExpect(jsonPath("$.version", equalTo(2)));
 
-        verify(positionService).updatePosition(eq("ACC001"), eq("AAPL"), any(ReplacePositionRequest.class));
+        verify(positionService).updatePosition(eq("ACC001"), isNull(), eq("AAPL"), any(ReplacePositionRequest.class));
     }
 
     @Test
     @DisplayName("PUT /positions/{accountId}/{symbol}: Returns 404 when position not found")
     public void testUpdatePositionNotFound() throws Exception {
-        Position updateData = new Position("ACC001", "UNKNOWN", new BigDecimal("100"), new BigDecimal("150.00"));
-        when(positionService.updatePosition(eq("ACC001"), eq("UNKNOWN"), any(ReplacePositionRequest.class)))
+        Position updateData = new Position("ACC001", "PF0001", "UNKNOWN", new BigDecimal("100"), new BigDecimal("150.00"));
+        when(positionService.updatePosition(eq("ACC001"), isNull(), eq("UNKNOWN"), any(ReplacePositionRequest.class)))
                 .thenThrow(new PositionNotFoundException("ACC001", "X"));
         
         mockMvc.perform(put("/positions/ACC001/UNKNOWN")
@@ -272,7 +287,7 @@ public class PositionControllerTest {
                 .content(objectMapper.writeValueAsString(updateData)))
                 .andExpect(status().isNotFound());
 
-        verify(positionService).updatePosition(eq("ACC001"), eq("UNKNOWN"), any(ReplacePositionRequest.class));
+        verify(positionService).updatePosition(eq("ACC001"), isNull(), eq("UNKNOWN"), any(ReplacePositionRequest.class));
     }
 
     @Test
@@ -285,7 +300,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePosition(anyString(), anyString(), any(ReplacePositionRequest.class));
+        verify(positionService, never()).updatePosition(anyString(), any(), anyString(), any(ReplacePositionRequest.class));
     }
 
     @Test
@@ -298,7 +313,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePosition(anyString(), anyString(), any(ReplacePositionRequest.class));
+        verify(positionService, never()).updatePosition(anyString(), any(), anyString(), any(ReplacePositionRequest.class));
     }
 
     @Test
@@ -311,7 +326,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePosition(anyString(), anyString(), any(ReplacePositionRequest.class));
+        verify(positionService, never()).updatePosition(anyString(), any(), anyString(), any(ReplacePositionRequest.class));
     }
 
     @Test
@@ -324,7 +339,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePosition(anyString(), anyString(), any(ReplacePositionRequest.class));
+        verify(positionService, never()).updatePosition(anyString(), any(), anyString(), any(ReplacePositionRequest.class));
     }
     
     // ==================== PARTIAL UPDATE POSITION (PATCH) TESTS ====================
@@ -332,9 +347,9 @@ public class PositionControllerTest {
     @Test
     @DisplayName("PATCH /positions/{accountId}/{symbol}: Successfully patches position with quantity only")
     public void testPatchPositionQuantityOnly() throws Exception {
-        Position patchedPosition = new Position("ACC001", "AAPL", new BigDecimal("120"), new BigDecimal("150.50"));
+        Position patchedPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("120"), new BigDecimal("150.50"));
         patchedPosition.setVersion(2);
-        when(positionService.patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
+        when(positionService.patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
         
         UpdatePositionRequest patchRequest = new UpdatePositionRequest(new BigDecimal("120"), null);
         mockMvc.perform(patch("/positions/ACC001/AAPL")
@@ -344,15 +359,15 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.quantity", equalTo(120)))
                 .andExpect(jsonPath("$.version", equalTo(2)));
 
-        verify(positionService).patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class));
+        verify(positionService).patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class));
     }
 
     @Test
     @DisplayName("PATCH /positions/{accountId}/{symbol}: Successfully patches position with averageCost only")
     public void testPatchPositionAverageCostOnly() throws Exception {
-        Position patchedPosition = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("160.00"));
+        Position patchedPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("160.00"));
         patchedPosition.setVersion(2);
-        when(positionService.patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
+        when(positionService.patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
         
         UpdatePositionRequest patchRequest = new UpdatePositionRequest(null, new BigDecimal("160.00"));
         mockMvc.perform(patch("/positions/ACC001/AAPL")
@@ -362,13 +377,13 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.averageCost", equalTo(160.00)))
                 .andExpect(jsonPath("$.version", equalTo(2)));
 
-        verify(positionService).patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class));
+        verify(positionService).patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class));
     }
 
     @Test
     @DisplayName("PATCH /positions/{accountId}/{symbol}: Returns 404 when position not found")
     public void testPatchPositionNotFound() throws Exception {
-        when(positionService.patchPosition(eq("ACC001"), eq("INVALID"), any(UpdatePositionRequest.class)))
+        when(positionService.patchPosition(eq("ACC001"), isNull(), eq("INVALID"), any(UpdatePositionRequest.class)))
                 .thenThrow(new PositionNotFoundException("ACC001", "X"));
         
         UpdatePositionRequest patchRequest = new UpdatePositionRequest(new BigDecimal("100"), null);
@@ -377,15 +392,15 @@ public class PositionControllerTest {
                 .content(objectMapper.writeValueAsString(patchRequest)))
                 .andExpect(status().isNotFound());
 
-        verify(positionService).patchPosition(eq("ACC001"), eq("INVALID"), any(UpdatePositionRequest.class));
+        verify(positionService).patchPosition(eq("ACC001"), isNull(), eq("INVALID"), any(UpdatePositionRequest.class));
     }
 
     @Test
     @DisplayName("PATCH /positions/{accountId}/{symbol}: Successfully patches with empty request (no fields)")
     public void testPatchPositionEmptyRequest() throws Exception {
-        Position patchedPosition = new Position("ACC001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
+        Position patchedPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("100"), new BigDecimal("150.50"));
         patchedPosition.setVersion(2);
-        when(positionService.patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
+        when(positionService.patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
         
         UpdatePositionRequest emptyRequest = new UpdatePositionRequest(null, null);
         mockMvc.perform(patch("/positions/ACC001/AAPL")
@@ -394,16 +409,16 @@ public class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version", equalTo(2)));
 
-        verify(positionService).patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class));
+        verify(positionService).patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class));
     }
 
     @Test
     @DisplayName("PATCH /positions/{accountId}/{symbol}: Successfully patches all fields together")
     public void testPatchPositionAllFields() throws Exception {
-        Position patchedPosition = new Position("ACC001", "AAPL", new BigDecimal("200"), new BigDecimal("160.00"));
+        Position patchedPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("200"), new BigDecimal("160.00"));
         patchedPosition.setVersion(2);
         patchedPosition.setUpdatedBy("ADMIN");
-        when(positionService.patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
+        when(positionService.patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class))).thenReturn(patchedPosition);
         
         UpdatePositionRequest patchRequest = new UpdatePositionRequest(new BigDecimal("200"), new BigDecimal("160.00"));
         mockMvc.perform(patch("/positions/ACC001/AAPL")
@@ -414,7 +429,7 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.averageCost", equalTo(160.00)))
                 .andExpect(jsonPath("$.updatedBy", equalTo("ADMIN")));
 
-        verify(positionService).patchPosition(eq("ACC001"), eq("AAPL"), any(UpdatePositionRequest.class));
+        verify(positionService).patchPosition(eq("ACC001"), isNull(), eq("AAPL"), any(UpdatePositionRequest.class));
     }
 
     // ==================== BUY OPERATION TESTS ====================
@@ -422,11 +437,11 @@ public class PositionControllerTest {
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/buy: Successfully executes buy operation")
     public void testBuyPositionSuccess() throws Exception {
-        Position boughtPosition = new Position("ACC001", "AAPL", new BigDecimal("150"), new BigDecimal("152.00"));
+        Position boughtPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("150"), new BigDecimal("152.00"));
         boughtPosition.setVersion(2);
         
         BuyRequest buyRequest = new BuyRequest(50, new BigDecimal("155.00"));
-        when(positionService.updatePositionAfterBuy(eq("ACC001"), eq("AAPL"), anyInt(), any(BigDecimal.class))).thenReturn(boughtPosition);
+        when(positionService.updatePositionAfterBuy(eq("ACC001"), isNull(), eq("AAPL"), anyInt(), any(BigDecimal.class), isNull())).thenReturn(boughtPosition);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/buy")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -435,7 +450,35 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.symbol", equalTo("AAPL")))
                 .andExpect(jsonPath("$.quantity", notNullValue()));
 
-        verify(positionService).updatePositionAfterBuy("ACC001", "AAPL", 50, new BigDecimal("155.00"));
+        verify(positionService).updatePositionAfterBuy("ACC001", null, "AAPL", 50, new BigDecimal("155.00"), null);
+    }
+
+    @Test
+    @DisplayName("POST /positions/{accountId}/{symbol}/buy: Passes the portfolioId from the body to the service")
+    public void testBuyIntoNamedPortfolio() throws Exception {
+        Position boughtPosition = new Position("ACC001", "PF0042", "AAPL", new BigDecimal("5"), new BigDecimal("155.00"));
+        when(positionService.updatePositionAfterBuy(eq("ACC001"), eq("PF0042"), eq("AAPL"), anyInt(), any(BigDecimal.class), isNull()))
+            .thenReturn(boughtPosition);
+
+        mockMvc.perform(post("/positions/ACC001/AAPL/buy")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"quantity\":5,\"price\":155.00,\"portfolioId\":\"PF0042\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.portfolioId", equalTo("PF0042")));
+
+        verify(positionService).updatePositionAfterBuy("ACC001", "PF0042", "AAPL", 5, new BigDecimal("155.00"), null);
+    }
+
+    @Test
+    @DisplayName("GET /positions/{accountId}?portfolioId=: Lists one portfolio's holdings")
+    public void testGetPositionsForOnePortfolio() throws Exception {
+        when(positionService.getPositionsByAccountId("ACC001", "PF0042")).thenReturn(List.of(testPosition));
+
+        mockMvc.perform(get("/positions/ACC001").param("portfolioId", "PF0042"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        verify(positionService).getPositionsByAccountId("ACC001", "PF0042");
     }
 
     @Test
@@ -448,7 +491,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
@@ -461,7 +504,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
@@ -474,7 +517,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
@@ -487,7 +530,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
@@ -500,7 +543,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
@@ -513,17 +556,17 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterBuy(anyString(), anyString(), anyInt(), any(BigDecimal.class));
+        verify(positionService, never()).updatePositionAfterBuy(anyString(), any(), anyString(), anyInt(), any(BigDecimal.class), any());
     }
 
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/buy: Successfully buys with large quantity")
     public void testBuyPositionLargeQuantity() throws Exception {
-        Position boughtPosition = new Position("ACC001", "AAPL", new BigDecimal("10000"), new BigDecimal("152.00"));
+        Position boughtPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("10000"), new BigDecimal("152.00"));
         boughtPosition.setVersion(2);
         
         BuyRequest buyRequest = new BuyRequest(10000, new BigDecimal("155.00"));
-        when(positionService.updatePositionAfterBuy(eq("ACC001"), eq("AAPL"), anyInt(), any(BigDecimal.class))).thenReturn(boughtPosition);
+        when(positionService.updatePositionAfterBuy(eq("ACC001"), isNull(), eq("AAPL"), anyInt(), any(BigDecimal.class), isNull())).thenReturn(boughtPosition);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/buy")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -531,17 +574,17 @@ public class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.quantity", equalTo(10000)));
 
-        verify(positionService).updatePositionAfterBuy("ACC001", "AAPL", 10000, new BigDecimal("155.00"));
+        verify(positionService).updatePositionAfterBuy("ACC001", null, "AAPL", 10000, new BigDecimal("155.00"), null);
     }
 
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/buy: Successfully buys with decimal price")
     public void testBuyPositionDecimalPrice() throws Exception {
-        Position boughtPosition = new Position("ACC001", "BRK.A", new BigDecimal("1"), new BigDecimal("575123.4567"));
+        Position boughtPosition = new Position("ACC001", "PF0001", "BRK.A", new BigDecimal("1"), new BigDecimal("575123.4567"));
         boughtPosition.setVersion(2);
         
         BuyRequest buyRequest = new BuyRequest(1, new BigDecimal("575123.4567"));
-        when(positionService.updatePositionAfterBuy(eq("ACC001"), eq("BRK.A"), anyInt(), any(BigDecimal.class))).thenReturn(boughtPosition);
+        when(positionService.updatePositionAfterBuy(eq("ACC001"), isNull(), eq("BRK.A"), anyInt(), any(BigDecimal.class), isNull())).thenReturn(boughtPosition);
         
         mockMvc.perform(post("/positions/ACC001/BRK.A/buy")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -549,7 +592,7 @@ public class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.averageCost", notNullValue()));
 
-        verify(positionService).updatePositionAfterBuy("ACC001", "BRK.A", 1, new BigDecimal("575123.4567"));
+        verify(positionService).updatePositionAfterBuy("ACC001", null, "BRK.A", 1, new BigDecimal("575123.4567"), null);
     }
 
     // ==================== SELL OPERATION TESTS ====================
@@ -557,11 +600,11 @@ public class PositionControllerTest {
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/sell: Successfully executes sell operation")
     public void testSellPositionSuccess() throws Exception {
-        Position soldPosition = new Position("ACC001", "AAPL", new BigDecimal("50"), new BigDecimal("150.50"));
+        Position soldPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("50"), new BigDecimal("150.50"));
         soldPosition.setVersion(2);
         
         SellRequest sellRequest = new SellRequest(50);
-        when(positionService.updatePositionAfterSell(eq("ACC001"), eq("AAPL"), anyInt())).thenReturn(soldPosition);
+        when(positionService.updatePositionAfterSell(eq("ACC001"), isNull(), eq("AAPL"), anyInt(), isNull())).thenReturn(soldPosition);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/sell")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -570,7 +613,7 @@ public class PositionControllerTest {
                 .andExpect(jsonPath("$.symbol", equalTo("AAPL")))
                 .andExpect(jsonPath("$.quantity", notNullValue()));
 
-        verify(positionService).updatePositionAfterSell("ACC001", "AAPL", 50);
+        verify(positionService).updatePositionAfterSell("ACC001", null, "AAPL", 50, null);
     }
 
     @Test
@@ -583,7 +626,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterSell(anyString(), anyString(), anyInt());
+        verify(positionService, never()).updatePositionAfterSell(anyString(), any(), anyString(), anyInt(), any());
     }
 
     @Test
@@ -596,7 +639,7 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterSell(anyString(), anyString(), anyInt());
+        verify(positionService, never()).updatePositionAfterSell(anyString(), any(), anyString(), anyInt(), any());
     }
 
     @Test
@@ -609,17 +652,17 @@ public class PositionControllerTest {
                 .content(invalidJson))
                 .andExpect(status().isUnprocessableEntity());
 
-        verify(positionService, never()).updatePositionAfterSell(anyString(), anyString(), anyInt());
+        verify(positionService, never()).updatePositionAfterSell(anyString(), any(), anyString(), anyInt(), any());
     }
 
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/sell: Successfully sells with large quantity")
     public void testSellPositionLargeQuantity() throws Exception {
-        Position soldPosition = new Position("ACC001", "AAPL", new BigDecimal("1000"), new BigDecimal("150.50"));
+        Position soldPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("1000"), new BigDecimal("150.50"));
         soldPosition.setVersion(2);
         
         SellRequest sellRequest = new SellRequest(1000);
-        when(positionService.updatePositionAfterSell(eq("ACC001"), eq("AAPL"), anyInt())).thenReturn(soldPosition);
+        when(positionService.updatePositionAfterSell(eq("ACC001"), isNull(), eq("AAPL"), anyInt(), isNull())).thenReturn(soldPosition);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/sell")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -627,7 +670,7 @@ public class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.quantity", notNullValue()));
 
-        verify(positionService).updatePositionAfterSell("ACC001", "AAPL", 1000);
+        verify(positionService).updatePositionAfterSell("ACC001", null, "AAPL", 1000, null);
     }
 
     @Test
@@ -635,24 +678,24 @@ public class PositionControllerTest {
     public void testSellPositionNotFound() throws Exception {
         SellRequest sellRequest = new SellRequest(50);
         doThrow(new InsufficientHoldingsException("Insufficient holdings"))
-                .when(positionService).updatePositionAfterSell("ACC001", "UNKNOWN", 50);
+                .when(positionService).updatePositionAfterSell("ACC001", null, "UNKNOWN", 50, null);
         
         mockMvc.perform(post("/positions/ACC001/UNKNOWN/sell")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(sellRequest)))
                 .andExpect(status().isConflict());
 
-        verify(positionService).updatePositionAfterSell("ACC001", "UNKNOWN", 50);
+        verify(positionService).updatePositionAfterSell("ACC001", null, "UNKNOWN", 50, null);
     }
 
     @Test
     @DisplayName("POST /positions/{accountId}/{symbol}/sell: Successfully sells all shares")
     public void testSellPositionAllShares() throws Exception {
-        Position soldPosition = new Position("ACC001", "AAPL", new BigDecimal("0"), new BigDecimal("150.50"));
+        Position soldPosition = new Position("ACC001", "PF0001", "AAPL", new BigDecimal("0"), new BigDecimal("150.50"));
         soldPosition.setVersion(2);
         
         SellRequest sellRequest = new SellRequest(100);
-        when(positionService.updatePositionAfterSell(eq("ACC001"), eq("AAPL"), anyInt())).thenReturn(soldPosition);
+        when(positionService.updatePositionAfterSell(eq("ACC001"), isNull(), eq("AAPL"), anyInt(), isNull())).thenReturn(soldPosition);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/sell")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -660,7 +703,7 @@ public class PositionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.quantity", equalTo(0)));
 
-        verify(positionService).updatePositionAfterSell("ACC001", "AAPL", 100);
+        verify(positionService).updatePositionAfterSell("ACC001", null, "AAPL", 100, null);
     }
 
     @Test
@@ -668,13 +711,13 @@ public class PositionControllerTest {
     public void testSellPositionInsufficientHoldings() throws Exception {
         SellRequest sellRequest = new SellRequest(200);
         doThrow(new InsufficientHoldingsException("Insufficient holdings"))
-                .when(positionService).updatePositionAfterSell("ACC001", "AAPL", 200);
+                .when(positionService).updatePositionAfterSell("ACC001", null, "AAPL", 200, null);
         
         mockMvc.perform(post("/positions/ACC001/AAPL/sell")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(sellRequest)))
                 .andExpect(status().isConflict());
 
-        verify(positionService).updatePositionAfterSell("ACC001", "AAPL", 200);
+        verify(positionService).updatePositionAfterSell("ACC001", null, "AAPL", 200, null);
     }
 }

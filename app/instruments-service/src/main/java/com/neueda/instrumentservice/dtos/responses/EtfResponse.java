@@ -7,6 +7,7 @@ public record EtfResponse(
     String symbol,
     String name,
     BigDecimal price,
+    BigDecimal previousClose,
     LocalDateTime tradeDate,
     LocalDateTime createdAt,
     LocalDateTime lastUpdated,

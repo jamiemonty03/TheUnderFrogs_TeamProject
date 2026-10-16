@@ -1,0 +1,163 @@
+<section class="market" aria-labelledby="market-title">
+  <div class="market__header">
+    <div>
+      <p class="market__eyebrow">Instruments</p>
+      <h2 id="market-title" class="market__title">Markets</h2>
+    </div>
+    <label class="market__search">
+      <span class="market__search-label">Search by symbol or name</span>
+      <input
+        type="search"
+        placeholder="e.g. NVDA or Vanguard"
+        [value]="query()"
+        (input)="query.set($any($event.target).value)"
+      />
+    </label>
+  </div>
+
+  @if (loading()) {
+    <output class="market__status">
+      <mat-progress-spinner mode="indeterminate" diameter="20" />
+      Loading the market…
+    </output>
+  } @else {
+    @if (failed()) {
+      <p class="market__error" role="alert">
+        @if (allRows().length) {
+          Couldn't refresh prices · showing the last values. Retrying in 30 seconds.
+        } @else {
+          Couldn't load market prices. Retrying in 30 seconds.
+        }
+      </p>
+    }
+
+    <div class="market__tiles">
+      @for (tile of indices(); track tile.label) {
+        <div class="tile" [attr.data-testid]="'tile-' + tile.label">
+          <p class="tile__label">{{ tile.label }}</p>
+          @if (tile.row; as row) {
+            <p class="tile__value mono">{{ row.price === null ? '—' : (row.price | number: '1.2-2') }}</p>
+            <ng-container *ngTemplateOutlet="move; context: { $implicit: row }" />
+            <p class="tile__hint">via {{ row.symbol }}</p>
+          } @else {
+            <p class="tile__value mono">—</p>
+          }
+        </div>
+      }
+
+      <div class="tile" data-testid="tile-hopper">
+        <p class="tile__label">Top hopper</p>
+        @if (movers().hopper; as row) {
+          <p class="tile__value mono">{{ row.symbol }}</p>
+          <p class="tile__name">{{ row.name }}</p>
+          <ng-container *ngTemplateOutlet="move; context: { $implicit: row }" />
+        } @else {
+          <p class="tile__hint">Nobody's jumping today</p>
+        }
+      </div>
+
+      <div class="tile" data-testid="tile-sinker">
+        <p class="tile__label">Biggest sinker</p>
+        @if (movers().sinker; as row) {
+          <p class="tile__value mono">{{ row.symbol }}</p>
+          <p class="tile__name">{{ row.name }}</p>
+          <ng-container *ngTemplateOutlet="move; context: { $implicit: row }" />
+        } @else {
+          <p class="tile__hint">Nothing's sinking today</p>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="market__tabs" role="group" aria-label="Asset class">
+        @for (tab of tabs; track tab.assetClass) {
+          <button
+            type="button"
+            class="market__tab"
+            [class.market__tab--active]="assetClass() === tab.assetClass"
+            [attr.aria-pressed]="assetClass() === tab.assetClass"
+            (click)="assetClass.set(tab.assetClass)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </div>
+
+      <div class="market__table-scroll">
+        <table class="market__table">
+          <thead>
+            <tr>
+              <th scope="col">Symbol</th>
+              <th scope="col">Name</th>
+              <th scope="col" class="market__source"><span class="visually-hidden">Price source</span></th>
+              <th scope="col" class="num">Price</th>
+              <th scope="col" class="num">Change</th>
+              <th scope="col" class="num">Change %</th>
+              <th scope="col"><span class="visually-hidden">Trade</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.symbol) {
+              <tr class="market__row">
+                <td>
+                  <a class="market__symbol" [routerLink]="['/instruments', row.symbol]">{{ row.symbol }}</a>
+                </td>
+                <td class="market__name">{{ row.name }}</td>
+                <td class="market__source">
+                  @if (row.priceSource) {
+                    <span class="price-tag" [class.price-tag--live]="row.priceSource === 'live'">
+                      {{ row.priceSource === 'live' ? 'Live' : 'Close' }}
+                    </span>
+                  }
+                </td>
+                <td class="num">{{ row.price === null ? '—' : (row.price | currency: 'USD') }}</td>
+                <td class="num" [class]="trend(row)">
+                  @if (row.change; as change) {
+                    {{ change.amount > 0 ? '▲' : change.amount < 0 ? '▼' : '' }}
+                    {{ change.amount | currency: 'USD' }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td class="num" [class]="trend(row)">
+                  {{ row.change === null ? '—' : (row.change.percent | number: '1.2-2') + '%' }}
+                </td>
+                <td class="market__actions">
+                  <a
+                    mat-stroked-button
+                    class="buy"
+                    routerLink="/orders"
+                    [queryParams]="{ new: true, symbol: row.symbol, side: 'BUY' }"
+                    [attr.aria-label]="'Buy ' + row.symbol"
+                    >Buy</a
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="market__empty">
+                  {{ query() ? 'No lily pads match "' + query() + '".' : 'No prices yet.' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="market__note">
+        Prices are live while the market is open. Otherwise they show the latest daily
+        close{{ asOf() ? ' (' + (asOf() | date: 'mediumDate') + ')' : '' }}.
+      </p>
+    </div>
+  }
+</section>
+
+<ng-template #move let-row>
+  <p class="tile__change mono" [class]="trend(row)">
+    @if (row.change; as change) {
+      {{ change.amount > 0 ? '▲' : change.amount < 0 ? '▼' : '' }} {{ change.percent | number: '1.2-2' }}%
+    } @else {
+      —
+    }
+  </p>
+</ng-template>

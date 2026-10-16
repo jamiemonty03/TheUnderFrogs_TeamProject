@@ -1,0 +1,202 @@
+<section class="instrument" data-testid="instrument-page">
+  @switch (status()) {
+    @case ('loading') {
+      <p class="instrument__state" data-testid="instrument-loading">Loading {{ symbol() }}…</p>
+    }
+    @case ('not-found') {
+      <div class="instrument__state" data-testid="instrument-not-found">
+        <h1 class="instrument__title">{{ symbol() }}</h1>
+        <p>We couldn't find an instrument called {{ symbol() }}.</p>
+        <a mat-stroked-button routerLink="/dashboard">Back to the dashboard</a>
+      </div>
+    }
+    @case ('error') {
+      <div class="instrument__state" role="alert" data-testid="instrument-error">
+        <p>Couldn't load {{ symbol() }}. Try again in a moment.</p>
+        <button mat-stroked-button type="button" (click)="retry()">Try again</button>
+      </div>
+    }
+    @case ('ready') {
+      @if (instrument(); as i) {
+        <header class="instrument__header">
+          <div>
+            <p class="instrument__meta" data-testid="instrument-meta">
+              {{ i.assetClass }} · {{ i.exchange }} · {{ i.currency }}
+            </p>
+            <h1 class="instrument__title">
+              <span data-testid="instrument-symbol">{{ i.symbol }}</span>
+              <span class="instrument__name" data-testid="instrument-name">{{ i.name }}</span>
+            </h1>
+            <p class="instrument__price">
+              <span data-testid="instrument-price">{{
+                price() === null ? '-' : (price() | currency: 'USD')
+              }}</span>
+              @if (priceSource()) {
+                <span class="price-tag" [class.price-tag--live]="priceSource() === 'live'">
+                  {{ priceSource() === 'live' ? 'Live' : 'Close' }}
+                </span>
+              }
+              @if (change(); as c) {
+                <span
+                  class="instrument__change"
+                  [class.pos]="c.amount > 0"
+                  [class.neg]="c.amount < 0"
+                  data-testid="instrument-change"
+                >
+                  {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{
+                    c.percent > 0 ? '+' : ''
+                  }}{{ c.percent | number: '1.2-2' }}%) today
+                </span>
+              }
+            </p>
+          </div>
+
+          <div class="instrument__actions">
+            @if (i.tradable) {
+              <a
+                mat-stroked-button
+                class="buy"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: i.symbol, side: 'BUY' }"
+                data-testid="instrument-buy"
+                >Buy</a
+              >
+              <a
+                mat-stroked-button
+                class="sell"
+                routerLink="/orders"
+                [queryParams]="{ new: true, symbol: i.symbol, side: 'SELL' }"
+                data-testid="instrument-sell"
+                >Sell</a
+              >
+            } @else {
+              <span class="instrument__meta" data-testid="instrument-not-tradable"
+                >Not tradable</span
+              >
+            }
+          </div>
+        </header>
+
+        <section class="instrument__card" aria-labelledby="chart-title">
+          <h2 class="instrument__card-title" id="chart-title">Price history</h2>
+          @switch (historyStatus()) {
+            @case ('loading') {
+              <p class="instrument__muted">Loading price history…</p>
+            }
+            @case ('error') {
+              <p class="instrument__muted" data-testid="history-error">
+                Price history couldn't be loaded.
+              </p>
+            }
+            @case ('ready') {
+              @if (history().length) {
+                <app-price-chart [points]="history()" />
+              } @else {
+                <p class="instrument__muted" data-testid="history-empty">No price history yet.</p>
+              }
+            }
+          }
+        </section>
+
+        <div class="instrument__grid">
+          <section class="instrument__card" aria-labelledby="facts-title">
+            <h2 class="instrument__card-title" id="facts-title">Key facts</h2>
+            @switch (detailsStatus()) {
+              @case ('loading') {
+                <p class="instrument__muted">Loading key facts…</p>
+              }
+              @case ('error') {
+                <p class="instrument__muted" data-testid="facts-error">
+                  Key facts couldn't be loaded. You can still trade {{ i.symbol }}.
+                </p>
+              }
+              @case ('ready') {
+                <dl class="instrument__facts" data-testid="instrument-facts">
+                  @for (fact of facts(); track fact.label) {
+                    <div class="instrument__fact">
+                      <dt>{{ fact.label }}</dt>
+                      <dd [attr.data-testid]="'fact-' + fact.label">{{ fact.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              }
+            }
+          </section>
+
+          <section class="instrument__card" aria-labelledby="holdings-title">
+            <h2 class="instrument__card-title" id="holdings-title">Your holdings</h2>
+            @if (holdings().length === 0) {
+              <p class="instrument__muted" data-testid="instrument-no-holdings">
+                You don't hold any {{ i.symbol }}.
+              </p>
+            } @else {
+              <ul class="instrument__holdings">
+                @for (h of holdings(); track h.portfolioId) {
+                  <li class="instrument__holding" [attr.data-testid]="'holding-' + h.portfolioName">
+                    <span class="instrument__holding-name">{{ h.portfolioName }}</span>
+                    <span
+                      >{{ h.quantity | number: '1.0-4' }} at
+                      {{ h.averageCost | currency: 'USD' }}</span
+                    >
+                    <span>{{
+                      h.marketValue === null ? '-' : (h.marketValue | currency: 'USD')
+                    }}</span>
+                    @if (i.tradable) {
+                      <a
+                        mat-stroked-button
+                        class="sell"
+                        routerLink="/orders"
+                        [queryParams]="{
+                          new: true,
+                          symbol: i.symbol,
+                          side: 'SELL',
+                          portfolioId: h.portfolioId,
+                        }"
+                        [attr.aria-label]="'Sell ' + i.symbol + ' from ' + h.portfolioName"
+                        >Sell</a
+                      >
+                    }
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        </div>
+
+        <section class="instrument__card" aria-labelledby="news-title">
+          <h2 class="instrument__card-title" id="news-title">Latest {{ i.symbol }} news</h2>
+          @switch (newsStatus()) {
+            @case ('loading') {
+              <p class="instrument__muted">Loading news…</p>
+            }
+            @case ('error') {
+              <p class="instrument__muted" data-testid="news-error">News couldn't be loaded.</p>
+            }
+            @case ('ready') {
+              @if (news().length) {
+                <ul class="instrument__news" data-testid="instrument-news">
+                  @for (article of news(); track article.articleUrl) {
+                    <li class="instrument__article">
+                      <a [href]="article.articleUrl" target="_blank" rel="noopener noreferrer">{{
+                        article.headline
+                      }}</a>
+                      <time
+                        class="instrument__muted"
+                        [attr.datetime]="article.publishedAt ?? article.updatedAt"
+                        >{{ article.publishedAt ?? article.updatedAt | date: 'd MMM, HH:mm' }}</time
+                      >
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="instrument__muted" data-testid="news-empty">
+                  No recent news for {{ i.symbol }}.
+                </p>
+              }
+            }
+          }
+        </section>
+      }
+    }
+  }
+</section>

@@ -1,0 +1,305 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+  color: var(--ts-text);
+
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+      header-headline-color: var(--ts-text-muted),
+      row-item-label-text-color: var(--ts-text),
+      row-item-outline-color: var(--ts-divider),
+    )
+  );
+  @include mat.sort-overrides(
+    (
+      arrow-color: var(--ts-text-muted),
+    )
+  );
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.dashboard__welcome {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.dashboard__title {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dashboard__greeting {
+  margin: 0 0 0.35rem;
+  color: var(--ts-text-muted);
+  font-size: 1rem;
+}
+
+.dashboard__account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--ts-text-muted);
+}
+
+.dashboard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.dashboard__mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--ts-border);
+  border-radius: 18px;
+  background: var(--ts-surface);
+}
+
+.card--balance {
+  border-color: var(--ts-frog);
+  background: var(--ts-frog);
+  color: var(--ts-on-frog);
+
+  .card__label,
+  .card__hint,
+  .dashboard__status {
+    color: var(--ts-on-frog-muted);
+  }
+
+  .dashboard__error {
+    background: var(--ts-on-frog);
+  }
+}
+
+.card__label {
+  margin: 0;
+  color: var(--ts-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.card__title {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.card__balance {
+  margin: 0.75rem 0 0.25rem;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 700;
+}
+
+.card__value {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.card__hint {
+  margin: 0;
+  color: var(--ts-text-muted);
+  font-size: 0.875rem;
+}
+
+.dashboard__status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  color: var(--ts-text-muted);
+}
+
+.dashboard__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border: 1px solid var(--ts-danger-border);
+  border-radius: 12px;
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+}
+
+.dashboard__error-text {
+  margin: 0.75rem 0 0;
+  color: var(--ts-danger-text);
+}
+
+.dashboard__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  color: var(--ts-text-muted);
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+}
+
+.dashboard__table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th.num ::ng-deep .mat-sort-header-container {
+  justify-content: flex-end;
+}
+
+.dashboard__positions-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.dashboard__stale {
+  color: var(--ts-text-muted);
+  font-size: 0.875rem;
+}
+
+.price-tag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-neutral);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.price-tag--live {
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+}
+
+.dashboard__symbol {
+  color: var(--ts-text);
+  font-weight: 700;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ts-frog);
+  }
+}
+
+.dashboard__name {
+  color: var(--ts-text-muted);
+}
+
+.dashboard__row-actions {
+  text-align: right;
+  white-space: nowrap;
+
+  a + a {
+    margin-left: 0.5rem;
+  }
+
+  .buy {
+    color: var(--ts-frog);
+  }
+
+  .sell {
+    color: var(--ts-sell);
+  }
+}
+
+.gain {
+  color: var(--ts-frog);
+}
+
+.loss {
+  color: var(--ts-loss);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pill--active {
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+}
+
+.pill--suspended {
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+}
+
+.pill--closed {
+  background: var(--ts-neutral-bg);
+  color: var(--ts-neutral);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,757 @@
+openapi: 3.0.0
+info:
+  title: Auth Service API
+  description: Authentication and authorization service for TheUnderFrogs platform.
+  version: 1.0.0
+  contact:
+    name: TheUnderFrogs Team
+
+servers:
+  - url: /
+    description: Local development (relative URLs)
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: >-
+        Creates the user (role TRADER) and opens an ACTIVE trading account with a zero balance in
+        accounts-service, which assigns the account ID. Returns the tokens and the new account ID.
+        If the account cannot be created, the user is removed again and 503 is returned.
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered and trading account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '409':
+          description: User already exists (username or email conflict)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                usernameConflict:
+                  value:
+                    errorCode: AUTH-409
+                    message: User with username johndoe already exists
+                emailConflict:
+                  value:
+                    errorCode: AUTH-409
+                    message: User with email john@example.com already exists
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: The trading account could not be created; nothing was saved, so the request can be retried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                accountsUnavailable:
+                  value:
+                    errorCode: AUTH-503
+                    message: Registration could not be completed, please try again
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticate user with credentials and receive an access and refresh token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          description: >-
+            Wrong username, wrong password or inactive account. All three return exactly the same
+            response so callers cannot tell which usernames exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid credentials
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: >-
+        Exchanges a refresh token for a new access token and a new refresh token (rotation). The presented
+        refresh token is revoked and can only be used once. Presenting an already-used refresh token is
+        treated as theft: every token in its family (the chain started by one login) is revoked and 401 is
+        returned, so the user must log in again. The new access token reflects the user's current roles and
+        account. Clients must not send two refreshes with the same token at once.
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: New access token and refresh token
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokens'
+        '401':
+          description: >-
+            Unknown, expired, revoked or reused refresh token, or the user is no longer active. All return the
+            same response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidToken:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid refresh token
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: >-
+        Revokes every refresh token in the given token's family, so that sign-in can no longer be refreshed.
+        Other sign-ins (other devices) are not affected. No access token is needed, so a user whose access
+        token has expired can still log out. Unknown tokens also return 204, and repeating the call is safe.
+        Access tokens already issued stay valid until they expire (at most 15 minutes).
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '204':
+          description: Logged out
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Client credentials flow
+      description: |
+        Service-to-service authentication (OAuth2 client credentials, RFC 6749 §4.4).
+        A service exchanges its client_id/client_secret for an RS256 access token with the client's roles
+        (SERVICE), valid 5 minutes (JWT_CLIENT_TOKEN_TTL). No refresh token is issued; the client requests a
+        new token shortly before the current one expires. Client secrets are stored as argon2id hashes in
+        service_clients. Accepts JSON or the standard form-encoded body.
+      operationId: clientCredentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClientCredentialsRequest'
+      responses:
+        '200':
+          description: Token obtained successfully
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Wrong secret, unknown client or inactive client. All return exactly the same response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidClient:
+                  value:
+                    errorCode: AUTH-401
+                    message: Invalid client credentials
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/me:
+    get:
+      tags:
+        - User
+      summary: Get current user info
+      description: Retrieve the current authenticated user's information
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User info retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/profile:
+    get:
+      tags:
+        - Profile
+      summary: Get your profile
+      description: Username, email and full name of the signed-in user. Never cached.
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Your profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+        - Profile
+      summary: Update your full name and/or email
+      description: >
+        Always changes the signed-in user (from the token). Only fullName and email are
+        accepted; any other field (role, username, password, id) is rejected with 422.
+        A changed full name is also copied to the trading account's holder name.
+      operationId: updateProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: The updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The email is used by another account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailTaken:
+                  value:
+                    errorCode: AUTH-409
+                    message: That email is already used by another account
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/password:
+    post:
+      tags:
+        - Profile
+      summary: Change your password
+      description: >
+        Checks the current password, saves the new one (12 to 128 characters, different
+        from the current one) and signs out your other sessions. Send this browser's
+        refreshToken to stay signed in here; without it every session is signed out.
+        Limited to 5 requests a minute.
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrongPassword:
+                  value:
+                    errorCode: AUTH-403
+                    message: Your current password is incorrect
+        '409':
+          description: The password was changed somewhere else at the same moment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - JWKS
+      summary: Get JSON Web Key Set
+      description: >-
+        Public keys resource servers use to verify RS256 access tokens. Pick the key whose kid
+        matches the token header. No authentication required; safe to cache for 5 minutes.
+      operationId: getJWKS
+      responses:
+        '200':
+          description: JWKS retrieved successfully
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=300
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKS'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  responses:
+    Unauthorized:
+      description: Missing, invalid or expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                errorCode: AUTH-401
+                message: Invalid or expired token
+
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalidField:
+              value:
+                errorCode: VAL-422
+                message: email must be an email
+
+    TooManyRequests:
+      description: Too many attempts
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            rateLimited:
+              value:
+                errorCode: AUTH-429
+                message: Too many attempts. Please try again later.
+
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            internal:
+              value:
+                errorCode: SRV-500
+                message: Unexpected error
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Unique username for the account
+          example: johndoe
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: john@example.com
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: Account password (12 to 128 characters, not blank)
+          example: correct-horse-battery
+        full_name:
+          type: string
+          maxLength: 255
+          description: Full name
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: Username or email
+          example: johndoe
+        password:
+          type: string
+          description: Account password
+          example: MySecurePass123
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          maxLength: 128
+          description: Opaque refresh token issued by register, login or refresh (usable once)
+          example: kX9fQ2v7rB1mN8pL0sT4wY6zA3cE5gH7jK9lM1nP2qR
+
+    ClientCredentialsRequest:
+      type: object
+      required:
+        - client_id
+        - client_secret
+        - grant_type
+      properties:
+        client_id:
+          type: string
+          description: Client application ID
+          example: trade-executor
+        client_secret:
+          type: string
+          maxLength: 256
+          description: Client application secret
+          example: secret-key-xyz
+        grant_type:
+          type: string
+          enum:
+            - client_credentials
+          description: OAuth2 grant type
+          example: client_credentials
+
+    AuthTokens:
+      type: object
+      required:
+        - accessToken
+        - refreshToken
+        - expiresIn
+        - mfaRequired
+      properties:
+        accessToken:
+          type: string
+          description: >-
+            RS256 JWT. Header carries kid. Claims: sub (user id), username, roles, accountId,
+            iss, aud, iat, exp.
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImF1dGgtMjAyNjEwMDcifQ...
+        refreshToken:
+          type: string
+          description: Opaque random token (43 characters). Only its SHA-256 hash is stored.
+          example: kX9fQ2v7rB1mN8pL0sT4wY6zA3cE5gH7jK9lM1nP2qR
+        expiresIn:
+          type: integer
+          format: int32
+          description: Access token lifetime in seconds
+          example: 300
+        mfaRequired:
+          type: boolean
+          description: Always false until multi-factor authentication is added
+          example: false
+
+    RegisterResponse:
+      allOf:
+        - $ref: '#/components/schemas/AuthTokens'
+        - type: object
+          required:
+            - accountId
+          properties:
+            accountId:
+              type: string
+              description: Trading account created for the new user; also in the accessToken accountId claim
+              example: ACC0012
+
+    Profile:
+      type: object
+      required:
+        - username
+        - email
+        - fullName
+      properties:
+        username:
+          type: string
+          example: demo
+        email:
+          type: string
+          format: email
+          example: demo@toadstock.io
+        fullName:
+          type: string
+          nullable: true
+          example: Demo Trader
+
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        fullName:
+          type: string
+          maxLength: 255
+          example: Kermit T. Frog
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: kermit@pond.io
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          example: Demo123!
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          example: lily-pad-leap-2026
+        refreshToken:
+          type: string
+          description: This browser's refresh token, so this session stays signed in
+
+    CurrentUser:
+      type: object
+      required:
+        - userId
+        - username
+        - roles
+      properties:
+        userId:
+          type: integer
+          format: int64
+          example: 11
+        username:
+          type: string
+          example: demo
+        roles:
+          type: array
+          items:
+            type: string
+          example: [TRADER]
+        accountId:
+          type: string
+          nullable: true
+          example: ACC0011
+
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type:
+          type: string
+          enum:
+            - Bearer
+          description: Always Bearer (required by RFC 6749 §5.1 for OAuth2 clients)
+          example: Bearer
+        expires_in:
+          type: integer
+          format: int32
+          description: Access token lifetime in seconds
+          example: 900
+
+    UserResponse:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - roles
+        - is_active
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        username:
+          type: string
+          description: Username
+          example: johndoe
+        email:
+          type: string
+          format: email
+          description: User email
+          example: john@example.com
+        full_name:
+          type: string
+          nullable: true
+          description: Full name
+          example: John Doe
+        roles:
+          type: array
+          items:
+            type: string
+          description: User roles
+          example: [TRADER]
+        account_id:
+          type: string
+          nullable: true
+          description: Linked trading account ID
+          example: ACC0001
+        is_active:
+          type: boolean
+          description: User account status
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: 2024-10-06T10:30:00Z
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+          example: 2024-10-06T10:30:00Z
+        version:
+          type: integer
+          description: Version for optimistic locking
+          example: 0
+
+    ErrorResponse:
+      type: object
+      required:
+        - errorCode
+        - message
+      properties:
+        errorCode:
+          type: string
+          description: Machine-readable error code
+          example: AUTH-401
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid credentials
+
+    JWKS:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            required:
+              - kty
+              - use
+              - kid
+              - alg
+              - n
+              - e
+            properties:
+              kty:
+                type: string
+                example: RSA
+              use:
+                type: string
+                example: sig
+              kid:
+                type: string
+                example: auth-20261007085126
+              alg:
+                type: string
+                example: RS256
+              n:
+                type: string
+                description: RSA modulus (base64url encoded)
+              e:
+                type: string
+                description: RSA public exponent (base64url encoded)
+                example: AQAB
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: RS256 access token from /auth/login or /auth/register (valid 15 minutes)

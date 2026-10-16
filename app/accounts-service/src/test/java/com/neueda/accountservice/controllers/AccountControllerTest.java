@@ -4,13 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.accountservice.models.Account;
 import com.neueda.accountservice.services.AccountService;
 import com.neueda.accountservice.enums.AccountStatus;
+import com.neueda.accountservice.dtos.requests.CreateAccountRequest;
 import com.neueda.accountservice.exceptions.AccountNotFoundException;
 import com.neueda.accountservice.exceptions.AccountNotActiveException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.config.TestSecurityConfig;
+import com.neueda.accountservice.utils.AuthorizationUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -24,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -45,6 +49,7 @@ public class AccountControllerTest {
     private ObjectMapper objectMapper;
 
     private Account testAccount;
+    private static org.mockito.MockedStatic<AuthorizationUtils> mockedAuthUtils;
 
     @BeforeEach
     public void setUp() {
@@ -52,34 +57,68 @@ public class AccountControllerTest {
         testAccount.setVersion(1);
         testAccount.setCreatedAt(LocalDateTime.now());
         testAccount.setLastUpdated(LocalDateTime.now());
+        
+        mockedAuthUtils = mockStatic(AuthorizationUtils.class);
+        mockedAuthUtils.when(() -> AuthorizationUtils.verifyAccountAccess(anyString())).thenAnswer(invocation -> null);
+    }
+    
+    @AfterEach
+    public void tearDown() {
+        if (mockedAuthUtils != null) {
+            mockedAuthUtils.close();
+        }
     }
 
     // ==================== CREATE ACCOUNT TESTS ====================
 
     @Test
-    @DisplayName("POST /accounts: Successfully creates account and returns 201 CREATED")
+    @DisplayName("POST /accounts: Creates the account and returns 201 with the generated account ID")
     public void testCreateAccountSuccess() throws Exception {
-        Account newAccount = new Account("ACC002", 1L, "Jane Smith", new BigDecimal("1000"), AccountStatus.ACTIVE);
-        when(accountService.createAccount(any(Account.class))).thenReturn(newAccount);
+        Account created = new Account("ACC0012", 12L, "Zed Smith", BigDecimal.ZERO, AccountStatus.ACTIVE);
+        when(accountService.createAccount(any(CreateAccountRequest.class))).thenReturn(created);
 
         mockMvc.perform(post("/accounts")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(newAccount)))
+                .content("{\"userId\":12,\"holderName\":\"Zed Smith\"}"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accountId", equalTo("ACC002")))
-                .andExpect(jsonPath("$.holderName", equalTo("Jane Smith")))
-                .andExpect(jsonPath("$.cashBalance", notNullValue()))
+                .andExpect(jsonPath("$.accountId", equalTo("ACC0012")))
+                .andExpect(jsonPath("$.holderName", equalTo("Zed Smith")))
                 .andExpect(jsonPath("$.status", equalTo("ACTIVE")));
 
-        verify(accountService).createAccount(any(Account.class));
+        verify(accountService).createAccount(new CreateAccountRequest(12L, "Zed Smith"));
     }
 
     @Test
-    @DisplayName("POST /accounts: Returns 422 when account body is invalid")
+    @DisplayName("POST /accounts: Ignores any accountId, balance or status the caller tries to set")
+    public void testCreateAccountIgnoresClientChosenFields() throws Exception {
+        when(accountService.createAccount(any(CreateAccountRequest.class)))
+                .thenReturn(new Account("ACC0012", 12L, "Zed Smith", BigDecimal.ZERO, AccountStatus.ACTIVE));
+
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"accountId\":\"ACC0001\",\"userId\":12,\"holderName\":\"Zed Smith\",\"cashBalance\":1000000,\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isCreated());
+
+        verify(accountService).createAccount(new CreateAccountRequest(12L, "Zed Smith"));
+    }
+
+    @Test
+    @DisplayName("POST /accounts: Returns 422 when userId or holderName is missing")
     public void testCreateAccountInvalidBody() throws Exception {
         mockMvc.perform(post("/accounts")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        verify(accountService, never()).createAccount(any());
+    }
+
+    @Test
+    @DisplayName("POST /accounts: Returns 422 when holderName is blank")
+    public void testCreateAccountBlankHolderName() throws Exception {
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"userId\":12,\"holderName\":\"  \"}"))
                 .andExpect(status().isUnprocessableEntity());
 
         verify(accountService, never()).createAccount(any());
@@ -329,5 +368,33 @@ public class AccountControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity());
+    }
+
+    // ==================== UPDATE HOLDER NAME TESTS ====================
+
+    @Test
+    @DisplayName("PATCH /accounts/{accountId}/holder-name: Returns the account with the new holder name")
+    public void testUpdateHolderName() throws Exception {
+        Account renamed = new Account("ACC001", 1L, "Kermit T. Frog", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        when(accountService.updateHolderName("ACC001", "Kermit T. Frog")).thenReturn(renamed);
+
+        mockMvc.perform(patch("/accounts/ACC001/holder-name")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"holderName\": \"Kermit T. Frog\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.holderName", equalTo("Kermit T. Frog")));
+    }
+
+    @Test
+    @DisplayName("PATCH /accounts/{accountId}/holder-name: Rejects a blank or too-long name with 422")
+    public void testUpdateHolderNameValidation() throws Exception {
+        for (String body : new String[] {"{\"holderName\": \"   \"}", "{}", "{\"holderName\": \"" + "x".repeat(256) + "\"}"}) {
+            mockMvc.perform(patch("/accounts/ACC001/holder-name")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.errorCode", equalTo("VAL-422")));
+        }
+        verify(accountService, never()).updateHolderName(anyString(), anyString());
     }
 }

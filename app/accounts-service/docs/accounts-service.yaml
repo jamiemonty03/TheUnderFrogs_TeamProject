@@ -230,12 +230,58 @@ paths:
                     errorCode: "ACC-404"
                     message: "Account not found: ACC001"
 
+  /accounts/{accountId}/holder-name:
+    patch:
+      tags:
+        - Account Management
+      summary: Rename an account holder
+      description: >
+        Service only: needs a token with the SERVICE role (auth-service keeps it in sync with
+        the user's full name); a user token gets 403. Changes the holder name and nothing else.
+      operationId: updateHolderName
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "ACC0011"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHolderNameRequest'
+      responses:
+        '200':
+          description: The account with its new holder name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '403':
+          description: Not a SERVICE token
+        '404':
+          description: Account not found (ACC-404)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Holder name blank or over 255 characters (VAL-422)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /accounts/{accountId}/credit:
     post:
       tags:
         - Credit Operations
       summary: Credit an account
       description: >
+        Service only: needs a token with the SERVICE role (the trade-executor); a user token gets 403.
+        Users add cash with a top-up instead.
         Adds funds to an active account's cash balance.
         When an orderId is sent, the credit is applied at most once for that order:
         a repeat call returns 200 with the current balance and changes nothing.
@@ -343,6 +389,7 @@ paths:
         - Debit Operations
       summary: Debit an account
       description: >
+        Service only: needs a token with the SERVICE role (the trade-executor); a user token gets 403.
         Withdraws funds from an active account's cash balance.
         When an orderId is sent, the debit is applied at most once for that order:
         a repeat call returns 200 with the current balance and changes nothing.
@@ -450,6 +497,7 @@ paths:
         - Reversal Operations
       summary: Reverse an order's cash movement
       description: >
+        Service only: needs a token with the SERVICE role (the trade-executor); a user token gets 403.
         Undoes the debit or credit recorded for the given orderId by applying the opposite amount.
         Applied at most once per order: a repeat call returns 200 with the current balance and changes nothing.
         If the order has no cash movement, nothing is changed and 200 is returned, so a saga can safely
@@ -517,6 +565,141 @@ paths:
                   value:
                     errorCode: "VAL-422"
                     message: "Order 0adf7599-df9d-4176-93b6-3a555e54415d belongs to a different account"
+
+  /accounts/{accountId}/top-ups:
+    post:
+      tags:
+        - Top-ups
+      summary: Start a Stripe top-up for your own account
+      description: >
+        Creates a Stripe Checkout session for a one-off USD payment of $10.00 to $10,000.00
+        and returns the Stripe page to send the user to. Nothing is credited yet: Stripe sends
+        the user back to /wallet/return, and the app then calls the confirm endpoint.
+        returnTo must be an app path; anything else falls back to /dashboard.
+      operationId: startTopUp
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Your own account ID
+          schema:
+            type: string
+            example: "ACC0011"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopUpRequest'
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopUpStartResponse'
+        '403':
+          description: Not your account (AUTH-403) or the account is not active (ACC-403)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Account not found (ACC-404)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Amount missing, outside $10.00 to $10,000.00, or with more than 2 decimals (VAL-422)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: "VAL-422"
+                message: "The minimum top-up is $10.00"
+        '502':
+          description: Stripe could not start the payment (PAY-502)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Payments are not configured on this server (PAY-503)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: "PAY-503"
+                message: "Adding funds isn't available right now"
+
+  /accounts/{accountId}/top-ups/{sessionId}/confirm:
+    post:
+      tags:
+        - Top-ups
+      summary: Confirm a Stripe top-up and credit the account
+      description: >
+        Asks Stripe whether the checkout session is paid, for this account, in USD,
+        then credits the amount Stripe charged. The credit is keyed by Stripe's payment ID,
+        so confirming the same session again returns 200 and changes nothing.
+      operationId: confirmTopUp
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: Your own account ID
+          schema:
+            type: string
+            example: "ACC0011"
+        - name: sessionId
+          in: path
+          required: true
+          description: The Stripe Checkout session ID from the return URL
+          schema:
+            type: string
+            example: "cs_test_a1B2c3"
+      responses:
+        '200':
+          description: Credited (or already credited earlier)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopUpConfirmResponse'
+        '403':
+          description: Not your account, or the payment was made for a different account (AUTH-403)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Unknown or malformed session ID (PAY-404)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The payment is not completed, or cannot be added (PAY-409)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                errorCode: "PAY-409"
+                message: "This payment hasn't been completed"
+        '502':
+          description: Stripe could not be reached (PAY-502)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Payments are not configured on this server (PAY-503)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -641,6 +824,61 @@ components:
           example: "0adf7599-df9d-4176-93b6-3a555e54415d"
       required:
         - orderId
+
+    UpdateHolderNameRequest:
+      type: object
+      properties:
+        holderName:
+          type: string
+          maxLength: 255
+          example: "Kermit T. Frog"
+      required:
+        - holderName
+
+    TopUpRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 10.00
+          maximum: 10000.00
+          description: Dollars to add, with at most 2 decimals
+          example: 250.00
+        returnTo:
+          type: string
+          maxLength: 200
+          description: App path to return to after paying
+          example: "/positions"
+      required:
+        - amount
+
+    TopUpStartResponse:
+      type: object
+      properties:
+        checkoutUrl:
+          type: string
+          description: Stripe's hosted payment page
+          example: "https://checkout.stripe.com/c/pay/cs_test_a1B2c3"
+      required:
+        - checkoutUrl
+
+    TopUpConfirmResponse:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Dollars added by this payment
+          example: 250.00
+        cashBalance:
+          type: number
+          format: double
+          description: The account's cash balance after the top-up
+          example: 750.00
+      required:
+        - amount
+        - cashBalance
 
     ErrorResponse:
       type: object

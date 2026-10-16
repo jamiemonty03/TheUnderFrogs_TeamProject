@@ -62,12 +62,12 @@ class SagaSettlementServiceTest {
     }
 
     private void statusUpdates(OrderStatus newStatus) {
-        when(ordersClient.updateStatus(eq("ORD-1"), eq(newStatus), any()))
+        when(ordersClient.updateStatus(eq("ORD-1"), eq(newStatus), any(), any()))
                 .thenReturn(new StatusUpdateResult(true, newStatus));
     }
 
     private void statusConflicts(OrderStatus newStatus, OrderStatus current) {
-        when(ordersClient.updateStatus(eq("ORD-1"), eq(newStatus), any()))
+        when(ordersClient.updateStatus(eq("ORD-1"), eq(newStatus), any(), any()))
                 .thenReturn(new StatusUpdateResult(false, current));
     }
 
@@ -95,8 +95,8 @@ class SagaSettlementServiceTest {
 
         InOrder steps = inOrder(accountsClient, positionsClient, ordersClient, publisher);
         steps.verify(accountsClient).debit("ACC-1", "ORD-1", AMOUNT);
-        steps.verify(positionsClient).addPosition("ACC-1", "AAPL", "ORD-1", 10, PRICE);
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, null);
+        steps.verify(positionsClient).addPosition("ACC-1", "AAPL", "ORD-1", 10, PRICE, null);
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, PRICE, null);
         steps.verify(publisher).publishOutcome(any());
 
         OrderOutcomePayload outcome = publishedOutcome();
@@ -113,10 +113,28 @@ class SagaSettlementServiceTest {
         saga.settle(order(OrderSide.SELL), FILL);
 
         InOrder steps = inOrder(accountsClient, positionsClient, ordersClient, publisher);
-        steps.verify(positionsClient).reducePosition("ACC-1", "AAPL", "ORD-1", 10);
+        steps.verify(positionsClient).reducePosition("ACC-1", "AAPL", "ORD-1", 10, null);
         steps.verify(accountsClient).credit("ACC-1", "ORD-1", AMOUNT);
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, null);
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, PRICE, null);
         steps.verify(publisher).publishOutcome(any());
+    }
+
+    @Test
+    void buyForAPortfolioAddsTheSharesToThatPortfolio() {
+        statusUpdates(OrderStatus.FILLED);
+
+        saga.settle(new OrderDto("ORD-1", "ACC-1", "AAPL", OrderSide.BUY, 10, PRICE, OrderStatus.NEW, "PF0012"), FILL);
+
+        verify(positionsClient).addPosition("ACC-1", "AAPL", "ORD-1", 10, PRICE, "PF0012");
+    }
+
+    @Test
+    void sellForAPortfolioSellsFromThatPortfolio() {
+        statusUpdates(OrderStatus.FILLED);
+
+        saga.settle(new OrderDto("ORD-1", "ACC-1", "AAPL", OrderSide.SELL, 10, PRICE, OrderStatus.NEW, "PF0012"), FILL);
+
+        verify(positionsClient).reducePosition("ACC-1", "AAPL", "ORD-1", 10, "PF0012");
     }
 
     @Test
@@ -139,12 +157,12 @@ class SagaSettlementServiceTest {
         InOrder steps = inOrder(positionsClient, accountsClient, ordersClient);
         steps.verify(positionsClient).reverse("ACC-1", "AAPL", "ORD-1");
         steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Instrument AAPL is not tradable");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Instrument AAPL is not tradable");
         verify(accountsClient, never()).debit(anyString(), anyString(), any());
         verify(accountsClient, never()).credit(anyString(), anyString(), any());
-        verify(positionsClient, never()).addPosition(anyString(), anyString(), anyString(), anyInt(), any());
-        verify(positionsClient, never()).reducePosition(anyString(), anyString(), anyString(), anyInt());
-        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Instrument AAPL is not tradable");
+        verify(positionsClient, never()).addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
+        verify(positionsClient, never()).reducePosition(anyString(), anyString(), anyString(), anyInt(), any());
+        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Instrument AAPL is not tradable");
         OrderOutcomePayload outcome = publishedOutcome();
         assertEquals(OrderStatus.REJECTED, outcome.status());
         assertNull(outcome.fillPrice());
@@ -154,7 +172,7 @@ class SagaSettlementServiceTest {
     @Test
     void redeliveryThatFlipsToRejectUndoesTheEarlierAttemptsDebit() {
         doThrow(unavailable()).when(positionsClient)
-                .addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+                .addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
         assertThrows(HttpServerErrorException.class, () -> saga.settle(order(OrderSide.BUY), FILL));
         statusUpdates(OrderStatus.REJECTED);
 
@@ -163,7 +181,7 @@ class SagaSettlementServiceTest {
         InOrder steps = inOrder(accountsClient, ordersClient);
         steps.verify(accountsClient).debit("ACC-1", "ORD-1", AMOUNT);
         steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Market price 160.00 is above BUY limit 150.00");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Market price 160.00 is above BUY limit 150.00");
         assertEquals(OrderStatus.REJECTED, publishedOutcome().status());
     }
 
@@ -176,27 +194,27 @@ class SagaSettlementServiceTest {
 
         verifyNoInteractions(positionsClient);
         verify(accountsClient, never()).reverse(anyString(), anyString());
-        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Insufficient funds");
+        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Insufficient funds");
         assertEquals(OrderStatus.REJECTED, publishedOutcome().status());
     }
 
     @Test
     void insufficientHoldingsOnFirstStepRejectsWithoutMovingCash() {
         doThrow(refused("Insufficient holdings")).when(positionsClient)
-                .reducePosition(anyString(), anyString(), anyString(), anyInt());
+                .reducePosition(anyString(), anyString(), anyString(), anyInt(), any());
         statusUpdates(OrderStatus.REJECTED);
 
         saga.settle(order(OrderSide.SELL), FILL);
 
         verifyNoInteractions(accountsClient);
         verify(positionsClient, never()).reverse(anyString(), anyString(), anyString());
-        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Insufficient holdings");
+        verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Insufficient holdings");
     }
 
     @Test
     void buyPositionStepRefusedReversesCashThenRejects() {
         doThrow(refused("Position refused")).when(positionsClient)
-                .addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+                .addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
         statusUpdates(OrderStatus.REJECTED);
 
         saga.settle(order(OrderSide.BUY), FILL);
@@ -204,7 +222,7 @@ class SagaSettlementServiceTest {
         InOrder steps = inOrder(accountsClient, ordersClient, publisher);
         steps.verify(accountsClient).debit("ACC-1", "ORD-1", AMOUNT);
         steps.verify(accountsClient).reverse("ACC-1", "ORD-1");
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Position refused");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Position refused");
         steps.verify(publisher).publishOutcome(any());
     }
 
@@ -216,20 +234,20 @@ class SagaSettlementServiceTest {
         saga.settle(order(OrderSide.SELL), FILL);
 
         InOrder steps = inOrder(positionsClient, ordersClient);
-        steps.verify(positionsClient).reducePosition("ACC-1", "AAPL", "ORD-1", 10);
+        steps.verify(positionsClient).reducePosition("ACC-1", "AAPL", "ORD-1", 10, null);
         steps.verify(positionsClient).reverse("ACC-1", "AAPL", "ORD-1");
-        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, "Account not active");
+        steps.verify(ordersClient).updateStatus("ORD-1", OrderStatus.REJECTED, null, "Account not active");
     }
 
     @Test
     void failedReversalPropagatesAndLeavesTheOrderNew() {
         doThrow(refused("Position refused")).when(positionsClient)
-                .addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+                .addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
         doThrow(unavailable()).when(accountsClient).reverse(anyString(), anyString());
 
         assertThrows(HttpServerErrorException.class, () -> saga.settle(order(OrderSide.BUY), FILL));
 
-        verify(ordersClient, never()).updateStatus(anyString(), any(), any());
+        verify(ordersClient, never()).updateStatus(anyString(), any(), any(), any());
         verifyNoInteractions(publisher);
     }
 
@@ -289,12 +307,12 @@ class SagaSettlementServiceTest {
     @Test
     void transientErrorOnSecondStepPropagatesWithoutReversingOrPublishing() {
         doThrow(unavailable()).when(positionsClient)
-                .addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+                .addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
 
         assertThrows(HttpServerErrorException.class, () -> saga.settle(order(OrderSide.BUY), FILL));
 
         verify(accountsClient, never()).reverse(anyString(), anyString());
-        verify(ordersClient, never()).updateStatus(anyString(), any(), any());
+        verify(ordersClient, never()).updateStatus(anyString(), any(), any(), any());
         verifyNoInteractions(publisher);
     }
 
@@ -312,14 +330,14 @@ class SagaSettlementServiceTest {
         // The repeated debit carries the same orderId, which accounts-service treats as a no-op.
         doThrow(unavailable())
                 .doNothing()
-                .when(positionsClient).addPosition(anyString(), anyString(), anyString(), anyInt(), any());
+                .when(positionsClient).addPosition(anyString(), anyString(), anyString(), anyInt(), any(), any());
         statusUpdates(OrderStatus.FILLED);
 
         assertThrows(HttpServerErrorException.class, () -> saga.settle(order(OrderSide.BUY), FILL));
         saga.settle(order(OrderSide.BUY), FILL);
 
         verify(accountsClient, times(2)).debit("ACC-1", "ORD-1", AMOUNT);
-        verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, null);
+        verify(ordersClient).updateStatus("ORD-1", OrderStatus.FILLED, PRICE, null);
         verify(publisher).publishOutcome(any());
     }
 }

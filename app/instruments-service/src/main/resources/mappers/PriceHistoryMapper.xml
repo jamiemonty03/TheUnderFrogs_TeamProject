@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.neueda.instrumentservice.mappers.PriceHistoryMapper">
+
+    <resultMap id="PricePointResultMap" type="com.neueda.instrumentservice.dtos.responses.PricePointResponse">
+        <constructor>
+            <arg column="trade_date" javaType="java.time.LocalDate" />
+            <arg column="close_price" javaType="java.math.BigDecimal" />
+            <arg column="moving_avg_20" javaType="java.math.BigDecimal" />
+            <arg column="moving_avg_50" javaType="java.math.BigDecimal" />
+        </constructor>
+    </resultMap>
+
+    <select id="findRecent" resultMap="PricePointResultMap">
+        SELECT trade_date, close_price, moving_avg_20, moving_avg_50
+        FROM (
+            SELECT CAST(trade_date AS DATE) AS trade_date, close_price, moving_avg_20, moving_avg_50
+            FROM price_metrics
+            WHERE ticker = #{symbol}
+            ORDER BY trade_date DESC
+            LIMIT #{days}
+        ) recent
+        ORDER BY trade_date
+    </select>
+
+</mapper>

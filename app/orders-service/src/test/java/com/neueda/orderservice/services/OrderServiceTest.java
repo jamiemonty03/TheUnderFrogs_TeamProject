@@ -52,7 +52,7 @@ public class OrderServiceTest {
         assertNotNull(order);
         assertEquals("AAPL", order.getSymbol());
         assertEquals(100, order.getQuantity());
-        assertEquals(new BigDecimal("150.25"), order.getPrice());
+        assertEquals(new BigDecimal("150.25"), order.getPriceLimit());
         assertEquals("key-001", order.getIdempotencyKey());
         assertNotNull(order.getOrderId());
         assertEquals(OrderStatus.NEW, order.getOrderStatus());

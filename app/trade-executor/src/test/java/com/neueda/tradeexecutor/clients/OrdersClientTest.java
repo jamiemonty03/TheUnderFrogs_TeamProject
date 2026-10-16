@@ -18,7 +18,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import com.neueda.tradeexecutor.dtos.OrderDto;
 import com.neueda.tradeexecutor.dtos.StatusUpdateResult;
@@ -48,7 +47,7 @@ class OrdersClientTest {
               "symbol": "AAPL",
               "side": "BUY",
               "quantity": 10,
-              "price": 150.00,
+              "priceLimit": 150.00,
               "orderStatus": "%s",
               "version": 0,
               "createdAt": "2026-09-28T10:00:00",
@@ -71,7 +70,7 @@ class OrdersClientTest {
         assertEquals("AAPL", order.symbol());
         assertEquals(OrderSide.BUY, order.side());
         assertEquals(10, order.quantity());
-        assertEquals(0, new BigDecimal("150.00").compareTo(order.price()));
+        assertEquals(0, new BigDecimal("150.00").compareTo(order.priceLimit()));
         assertEquals(OrderStatus.NEW, order.orderStatus());
         ordersService.verify();
     }
@@ -84,6 +83,23 @@ class OrdersClientTest {
         OrderDto order = ordersClient.getOrder("ORD-1");
 
         assertEquals(OrderStatus.CANCELLED, order.orderStatus());
+    }
+
+    @Test
+    void getOrderReadsThePortfolio() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1"))
+                .andRespond(withSuccess(orderJson("NEW").replace("\"accountId\": \"ACC-1\",",
+                        "\"accountId\": \"ACC-1\", \"portfolioId\": \"PF0012\","), MediaType.APPLICATION_JSON));
+
+        assertEquals("PF0012", ordersClient.getOrder("ORD-1").portfolioId());
+    }
+
+    @Test
+    void getOrderWithoutAPortfolioIsForMain() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1"))
+                .andRespond(withSuccess(orderJson("NEW"), MediaType.APPLICATION_JSON));
+
+        assertEquals(null, ordersClient.getOrder("ORD-1").portfolioId());
     }
 
     @Test
@@ -102,10 +118,24 @@ class OrdersClientTest {
                         "{\"expectedStatus\":\"NEW\",\"newStatus\":\"REJECTED\",\"reason\":\"Insufficient funds\"}"))
                 .andRespond(withSuccess(orderJson("REJECTED"), MediaType.APPLICATION_JSON));
 
-        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.REJECTED, "Insufficient funds");
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.REJECTED, null, "Insufficient funds");
 
         assertTrue(result.updated());
         assertEquals(OrderStatus.REJECTED, result.currentStatus());
+        ordersService.verify();
+    }
+
+    @Test
+    void updateStatusToFilledSendsTheFillPrice() {
+        ordersService.expect(requestTo(ORDERS_URL + "/ORD-1/status"))
+                .andExpect(method(HttpMethod.PATCH))
+                .andExpect(content().json(
+                        "{\"expectedStatus\":\"NEW\",\"newStatus\":\"FILLED\",\"fillPrice\":148.50}"))
+                .andRespond(withSuccess(orderJson("FILLED"), MediaType.APPLICATION_JSON));
+
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, new BigDecimal("148.50"), null);
+
+        assertTrue(result.updated());
         ordersService.verify();
     }
 
@@ -115,7 +145,7 @@ class OrdersClientTest {
                 .andRespond(withStatus(HttpStatus.CONFLICT).contentType(MediaType.APPLICATION_JSON)
                         .body("{\"errorCode\":\"ORD-409\",\"message\":\"conflict\",\"currentStatus\":\"CANCELLED\"}"));
 
-        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, null);
+        StatusUpdateResult result = ordersClient.updateStatus("ORD-1", OrderStatus.FILLED, new BigDecimal("148.50"), null);
 
         assertFalse(result.updated());
         assertEquals(OrderStatus.CANCELLED, result.currentStatus());
@@ -127,6 +157,6 @@ class OrdersClientTest {
                 .andRespond(withResourceNotFound());
 
         assertThrows(UnknownOrderException.class,
-                () -> ordersClient.updateStatus("MISSING", OrderStatus.FILLED, null));
+                () -> ordersClient.updateStatus("MISSING", OrderStatus.FILLED, new BigDecimal("148.50"), null));
     }
 }

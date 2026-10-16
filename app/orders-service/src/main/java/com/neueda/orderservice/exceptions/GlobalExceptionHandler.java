@@ -27,9 +27,34 @@ public class GlobalExceptionHandler {
         return reject(HttpStatus.FORBIDDEN, "ACC-403", ex.getMessage());
     }
 
+    @ExceptionHandler(AccountAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountAuthorization(AccountAuthorizationException ex) {
+        return reject(HttpStatus.FORBIDDEN, "AUTH-403", ex.getMessage());
+    }
+
     @ExceptionHandler(InstrumentNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInstrumentNotFound(InstrumentNotFoundException ex) {
         return reject(HttpStatus.NOT_FOUND, "INS-404", ex.getMessage());
+    }
+
+    @ExceptionHandler(PortfolioNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePortfolioNotFound(PortfolioNotFoundException ex) {
+        return reject(HttpStatus.NOT_FOUND, "PFL-404", ex.getMessage());
+    }
+
+    @ExceptionHandler(PortfolioServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handlePortfolioServiceUnavailable(PortfolioServiceUnavailableException ex) {
+        return reject(HttpStatus.SERVICE_UNAVAILABLE, "PFL-503", ex.getMessage());
+    }
+
+    @ExceptionHandler(InstrumentServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleInstrumentServiceUnavailable(InstrumentServiceUnavailableException ex) {
+        return reject(HttpStatus.SERVICE_UNAVAILABLE, "INS-503", ex.getMessage());
+    }
+
+    @ExceptionHandler(ClientTradeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleClientTradeNotFound(ClientTradeNotFoundException ex) {
+        return reject(HttpStatus.NOT_FOUND, "TRD-404", ex.getMessage());
     }
 
     @ExceptionHandler(InsufficientFundsException.class)

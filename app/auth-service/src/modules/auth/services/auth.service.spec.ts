@@ -1,0 +1,362 @@
+import { jest } from '@jest/globals';
+// @ts-nocheck
+import { Test, TestingModule } from '@nestjs/testing';
+import { ConflictException, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { AuthService, REGISTRATION_FAILED } from './auth.service';
+import { AuthRepository } from '../repositories/auth.repository';
+import { UsersService } from '../../users/services/users.service';
+import { TokenService } from '../../tokens/services/token.service';
+import { RefreshTokensService } from '../../tokens/services/refresh-tokens.service';
+import { AccountsServiceClient } from './accounts-service-client';
+import { ServiceClientsService } from '../../clients/services/service-clients.service';
+
+describe('AuthService', () => {
+  let service: AuthService;
+  let usersService: any;
+  let authRepository: any;
+  let tokenService: any;
+  let refreshTokensService: any;
+  let module_get: (token: any) => any;
+  let accountsServiceClient: any;
+
+  const mockUser = {
+    id: 1,
+    username: 'testuser',
+    email: 'test@example.com',
+    password_hash: 'hashedPassword',
+    full_name: 'Test User',
+    roles: ['TRADER'],
+    account_id: null,
+    is_active: true,
+    failed_attempts: 0,
+    locked_until: null,
+    version: 0,
+    created_at: new Date(),
+    updated_at: new Date(),
+    updated_by: 'SYSTEM',
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        {
+          provide: UsersService,
+          useValue: {
+            createUser: jest.fn(),
+            verifyCredentials: jest.fn(),
+            getUserByUsername: jest.fn(),
+            recordFailedLogin: jest.fn(),
+            recordSuccessfulLogin: jest.fn(),
+            linkAccount: jest.fn(),
+            getUserById: jest.fn(),
+            updateUser: jest.fn(),
+            deleteUser: jest.fn(),
+          },
+        },
+        {
+          provide: AuthRepository,
+          useValue: {
+            update: jest.fn() as any,
+            recordLogin: jest.fn() as any,
+          } as any,
+        },
+        {
+          provide: TokenService,
+          useValue: {
+            issue: jest.fn().mockReturnValue({ accessToken: 'rs256.token.here', expiresIn: 900 }) as any,
+            verify: jest.fn() as any,
+          } as any,
+        },
+        {
+          provide: RefreshTokensService,
+          useValue: {
+            issue: jest.fn().mockResolvedValue({ refreshToken: 'opaque-refresh', expiresAt: new Date() }) as any,
+            rotate: jest.fn() as any,
+            revokeFamilyOf: jest.fn() as any,
+            revokeFamily: jest.fn() as any,
+          } as any,
+        },
+        {
+          provide: ServiceClientsService,
+          useValue: { verify: jest.fn() as any } as any,
+        },
+        {
+          provide: AccountsServiceClient,
+          useValue: {
+            createAccount: jest.fn() as any,
+          } as any,
+        },
+      ],
+    }).compile();
+
+    service = module.get<AuthService>(AuthService);
+    usersService = module.get<any>(UsersService);
+    authRepository = module.get<any>(AuthRepository);
+    tokenService = module.get<any>(TokenService);
+    refreshTokensService = module.get<any>(RefreshTokensService);
+    module_get = (token) => module.get<any>(token);
+    accountsServiceClient = module.get<any>(AccountsServiceClient);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('register', () => {
+    const registerDto = { username: 'zed', email: 'zed@example.com', password: 'correct-horse-battery', full_name: 'Zed Smith' };
+    const created = { ...mockUser, id: 12, username: 'zed', full_name: 'Zed Smith', roles: ['TRADER'], account_id: null };
+    const linked = { ...created, account_id: 'ACC0012' };
+
+    beforeEach(() => {
+      (usersService.createUser as jest.Mock).mockResolvedValue(created as any);
+      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue({ accountId: 'ACC0012', userId: 12 } as any);
+      (usersService.linkAccount as jest.Mock).mockResolvedValue(linked as any);
+    });
+
+    it('creates the user with the TRADER role', async () => {
+      await service.register(registerDto);
+
+      expect(usersService.createUser).toHaveBeenCalledWith(expect.objectContaining({ username: 'zed', role: 'TRADER' }));
+    });
+
+    it('creates an account in accounts-service for the new user, named after their full name', async () => {
+      await service.register(registerDto);
+
+      expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({ userId: 12, holderName: 'Zed Smith' });
+    });
+
+    it('names the account after the username when there is no full name', async () => {
+      (usersService.createUser as jest.Mock).mockResolvedValue({ ...created, full_name: null } as any);
+
+      await service.register({ ...registerDto, full_name: undefined });
+
+      expect(accountsServiceClient.createAccount).toHaveBeenCalledWith({ userId: 12, holderName: 'zed' });
+    });
+
+    it('links the account to the user and issues tokens that carry the account ID', async () => {
+      const result = await service.register(registerDto);
+
+      expect(usersService.linkAccount).toHaveBeenCalledWith(12, 'ACC0012');
+      expect(tokenService.issue).toHaveBeenCalledWith(linked);
+      expect(refreshTokensService.issue).toHaveBeenCalledWith(12);
+      expect(result).toEqual({
+        accessToken: 'rs256.token.here',
+        refreshToken: 'opaque-refresh',
+        expiresIn: 900,
+        mfaRequired: false,
+        accountId: 'ACC0012',
+      });
+    });
+
+    it('returns the account ID that accounts-service created, not one it worked out itself', async () => {
+      (accountsServiceClient.createAccount as jest.Mock).mockResolvedValue({ accountId: 'ACC9999', userId: 12 } as any);
+      (usersService.linkAccount as jest.Mock).mockResolvedValue({ ...linked, account_id: 'ACC9999' } as any);
+
+      const result = await service.register(registerDto);
+
+      expect(usersService.linkAccount).toHaveBeenCalledWith(12, 'ACC9999');
+      expect(result.accountId).toBe('ACC9999');
+    });
+
+    it('passes a taken username or email straight through as a conflict without creating an account', async () => {
+      (usersService.createUser as jest.Mock).mockRejectedValue(new ConflictException('User with username zed already exists') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
+      expect(accountsServiceClient.createAccount).not.toHaveBeenCalled();
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['accounts-service is down', new ServiceUnavailableException('Account service is unavailable, please try again')],
+    ])('deletes the new user and returns 503 when %s', async (_label, failure) => {
+      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(failure as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
+      expect(usersService.deleteUser).toHaveBeenCalledWith(12);
+      expect(usersService.linkAccount).not.toHaveBeenCalled();
+      expect(tokenService.issue).not.toHaveBeenCalled();
+      expect(refreshTokensService.issue).not.toHaveBeenCalled();
+    });
+
+    it('deletes the new user and returns 503 when the account cannot be linked', async () => {
+      (usersService.linkAccount as jest.Mock).mockRejectedValue(new Error('connection lost') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
+      expect(usersService.deleteUser).toHaveBeenCalledWith(12);
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it('still returns 503 when deleting the unfinished user also fails', async () => {
+      (accountsServiceClient.createAccount as jest.Mock).mockRejectedValue(new ServiceUnavailableException() as any);
+      (usersService.deleteUser as jest.Mock).mockRejectedValue(new Error('database down') as any);
+
+      await expect(service.register(registerDto)).rejects.toThrow(new ServiceUnavailableException(REGISTRATION_FAILED));
+    });
+  });
+
+  describe('login', () => {
+    const loginDto = { username: 'testuser', password: 'password123' };
+
+    it('returns an access token, a refresh token, the lifetime and mfaRequired false', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(mockUser as any);
+
+      const result = await service.login(loginDto);
+
+      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'opaque-refresh', expiresIn: 900, mfaRequired: false });
+      expect(usersService.verifyCredentials).toHaveBeenCalledWith('testuser', 'password123');
+      expect(tokenService.issue).toHaveBeenCalledWith(mockUser);
+      expect(refreshTokensService.issue).toHaveBeenCalledWith(1);
+      expect(authRepository.recordLogin).toHaveBeenCalledWith(1);
+      expect(usersService.recordSuccessfulLogin).toHaveBeenCalledWith(1);
+      expect(usersService.recordFailedLogin).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an unknown username', null, null],
+      ['a wrong password', mockUser, null],
+      ['an inactive account', { ...mockUser, is_active: false }, { ...mockUser, is_active: false }],
+    ])('rejects %s with the same generic error and issues nothing', async (_label, found, verified) => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(found as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(verified as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+      expect(tokenService.issue).not.toHaveBeenCalled();
+      expect(refreshTokensService.issue).not.toHaveBeenCalled();
+      expect(authRepository.recordLogin).not.toHaveBeenCalled();
+      expect(usersService.recordSuccessfulLogin).not.toHaveBeenCalled();
+    });
+
+    it('records a failed attempt against a known user', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(mockUser as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(null as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(usersService.recordFailedLogin).toHaveBeenCalledWith(1);
+    });
+
+    it('records nothing for an unknown username', async () => {
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(null as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(null as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      expect(usersService.recordFailedLogin).not.toHaveBeenCalled();
+    });
+
+    it('rejects a locked account before checking the password, even if it is correct', async () => {
+      const locked = { ...mockUser, locked_until: new Date(Date.now() + 60_000) };
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(locked as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(locked as any);
+
+      await expect(service.login(loginDto)).rejects.toThrow(/Account is locked/);
+      expect(usersService.verifyCredentials).not.toHaveBeenCalled();
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it('lets a user sign in once the lock has expired', async () => {
+      const expired = { ...mockUser, locked_until: new Date(Date.now() - 60_000) };
+      (usersService.getUserByUsername as jest.Mock).mockResolvedValue(expired as any);
+      (usersService.verifyCredentials as jest.Mock).mockResolvedValue(expired as any);
+
+      await expect(service.login(loginDto)).resolves.toMatchObject({ accessToken: 'rs256.token.here' });
+      expect(usersService.recordSuccessfulLogin).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes the family of the given refresh token', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(3 as any);
+
+      await expect(service.logout({ refresh_token: 'current-refresh' })).resolves.toBeUndefined();
+      expect(refreshTokensService.revokeFamilyOf).toHaveBeenCalledWith('current-refresh');
+    });
+
+    it('succeeds quietly for a token it does not know', async () => {
+      (refreshTokensService.revokeFamilyOf as jest.Mock).mockResolvedValue(0 as any);
+
+      await expect(service.logout({ refresh_token: 'unknown' })).resolves.toBeUndefined();
+    });
+  });
+
+  describe('refresh', () => {
+    const rotated = { userId: 1, refreshToken: 'next-refresh', familyId: 'family-1' };
+
+    it('rotates the refresh token and issues an access token from the current user record', async () => {
+      const promoted = { ...mockUser, roles: ['ADMIN'], account_id: 'ACC0001' };
+      (refreshTokensService.rotate as jest.Mock).mockResolvedValue(rotated as any);
+      (usersService.getUserById as jest.Mock).mockResolvedValue(promoted as any);
+
+      const result = await service.refresh({ refresh_token: 'old-refresh' });
+
+      expect(refreshTokensService.rotate).toHaveBeenCalledWith('old-refresh');
+      expect(tokenService.issue).toHaveBeenCalledWith(promoted);
+      expect(result).toEqual({ accessToken: 'rs256.token.here', refreshToken: 'next-refresh', expiresIn: 900, mfaRequired: false });
+    });
+
+    it('passes on the 401 from an invalid or reused refresh token without issuing an access token', async () => {
+      (refreshTokensService.rotate as jest.Mock).mockRejectedValue(new UnauthorizedException('Invalid refresh token') as any);
+
+      await expect(service.refresh({ refresh_token: 'reused' })).rejects.toThrow(new UnauthorizedException('Invalid refresh token'));
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['deactivated', async () => ({ ...mockUser, is_active: false })],
+      ['deleted', async () => { throw new Error('User with id 1 not found'); }],
+    ])('revokes the family and refuses when the user has been %s', async (_label, lookup) => {
+      (refreshTokensService.rotate as jest.Mock).mockResolvedValue(rotated as any);
+      (usersService.getUserById as jest.Mock).mockImplementation(lookup as any);
+
+      await expect(service.refresh({ refresh_token: 'old-refresh' })).rejects.toThrow(new UnauthorizedException('Invalid refresh token'));
+      expect(refreshTokensService.revokeFamily).toHaveBeenCalledWith('family-1');
+      expect(tokenService.issue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clientCredentials', () => {
+    const body = { grant_type: 'client_credentials', client_id: 'trade-executor', client_secret: 'secret' };
+
+    it('returns an OAuth2 token response for a verified client', async () => {
+      const serviceClients = module_get(ServiceClientsService);
+      (serviceClients.verify as jest.Mock).mockResolvedValue({ client_id: 'trade-executor', roles: ['SERVICE'] } as any);
+      tokenService.issueClientToken = jest.fn().mockReturnValue({ accessToken: 'client.jwt', expiresIn: 300 });
+
+      expect(await service.clientCredentials(body)).toEqual({ access_token: 'client.jwt', token_type: 'Bearer', expires_in: 300 });
+      expect(serviceClients.verify).toHaveBeenCalledWith('trade-executor', 'secret');
+      expect(tokenService.issueClientToken).toHaveBeenCalledWith('trade-executor', ['SERVICE']);
+    });
+
+    it('rejects bad credentials with a generic 401 and issues nothing', async () => {
+      (module_get(ServiceClientsService).verify as jest.Mock).mockResolvedValue(null as any);
+      tokenService.issueClientToken = jest.fn();
+
+      await expect(service.clientCredentials(body)).rejects.toThrow(new UnauthorizedException('Invalid client credentials'));
+      expect(tokenService.issueClientToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('validateToken', () => {
+    it('should validate a token successfully', async () => {
+      const token = 'valid_token';
+      const decoded = { sub: '1', username: 'testuser', roles: ['TRADER'], accountId: 'ACC0001' };
+
+      (tokenService.verify as jest.Mock).mockReturnValue(decoded as any);
+
+      const result = await service.validateToken(token);
+
+      expect(result).toEqual(decoded);
+      expect(tokenService.verify).toHaveBeenCalledWith(token);
+    });
+
+    it('should throw UnauthorizedException for invalid token', async () => {
+      const token = 'invalid_token';
+
+      (tokenService.verify as jest.Mock).mockImplementation(() => {
+        throw new UnauthorizedException('Invalid or expired token');
+      });
+
+      await expect(service.validateToken(token)).rejects.toThrow(UnauthorizedException);
+    });
+  });
+});

@@ -1,0 +1,11 @@
+@if (showShell()) {
+  <app-navigation-bar></app-navigation-bar>
+}
+
+<main [class.page-shell]="showShell()">
+  <router-outlet></router-outlet>
+</main>
+
+@if (showShell()) {
+  <app-news-footer></app-news-footer>
+}

@@ -1,0 +1,206 @@
+.orders-page {
+	padding: 2rem 16rem;
+	color: var(--ts-text);
+
+	&__header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 1.25rem;
+	}
+
+	&__account {
+		margin: 0;
+		color: var(--ts-text-muted);
+		font-size: 1.4rem;
+	}
+
+	&__title {
+		margin: 0.4rem 0 0;
+		font-size: 2.2rem;
+		line-height: 1;
+		letter-spacing: -0.02em;
+	}
+
+	&__new-order {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.55rem;
+		border-radius: 0.9rem;
+		padding: 0 1.5rem;
+		font-size: 1.6rem;
+		font-weight: 700;
+		height: 5.5rem;
+	}
+
+	&__new-order.mdc-button {
+		min-width: unset;
+		box-shadow: none;
+		background: var(--ts-frog);
+		color: var(--ts-on-frog);
+		--mdc-filled-button-container-color: var(--ts-frog);
+		--mdc-filled-button-label-text-color: var(--ts-on-frog);
+	}
+}
+
+.orders-card {
+	background: var(--ts-bg-raised);
+	border: 1px solid var(--ts-divider);
+	border-radius: 1.25rem;
+	padding: 1rem;
+
+	&__filters {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.65rem;
+		margin-bottom: 0.85rem;
+	}
+
+	&__dot {
+		opacity: 0.8;
+	}
+}
+
+
+.orders-table-wrap {
+	overflow-x: auto;
+}
+
+mat-paginator {
+	margin-top: 0.5rem;
+	background: transparent;
+	color: var(--ts-text-secondary);
+	--mat-paginator-container-text-color: var(--ts-text-secondary);
+	--mat-paginator-container-background-color: transparent;
+	--mat-paginator-enabled-icon-color: var(--ts-text-secondary);
+	--mat-paginator-disabled-icon-color: var(--ts-neutral);
+}
+
+.orders-table {
+	width: 100%;
+	min-width: 56rem;
+	background: transparent;
+
+	.mat-mdc-header-cell,
+	.mat-mdc-cell {
+		padding: 0.95rem 0.8rem;
+		border-bottom: 1px solid var(--ts-divider);
+		text-align: left;
+		vertical-align: middle;
+		background: transparent;
+		color: var(--ts-text);
+	}
+
+	.mat-mdc-header-cell {
+		color: var(--ts-text-muted);
+		letter-spacing: 0.05em;
+		font-weight: 700;
+	}
+
+	.mdc-data-table__row:last-child .mat-mdc-cell {
+		border-bottom: 0;
+	}
+
+	.mdc-data-table__row,
+	.mat-mdc-header-row {
+		background: transparent;
+	}
+
+	&__id {
+		color: var(--ts-text-muted);
+	}
+
+	&__qty,
+	&__price {
+		text-align: right;
+	}
+
+	&__side {
+		font-weight: 700;
+	}
+
+	&__side--buy {
+		color: var(--ts-frog);
+	}
+
+	&__side--sell {
+		color: var(--ts-sell);
+	}
+
+	&__status {
+		display: inline-flex;
+		align-items: center;
+		border-radius: 9999px;
+		padding: 0.22rem 0.65rem;
+		font-weight: 700;
+	}
+
+	&__status--new {
+		background: var(--ts-info-bg);
+		color: var(--ts-info);
+	}
+
+	&__status--filled {
+		background: var(--ts-success-bg);
+		color: var(--ts-frog);
+	}
+
+	&__status--rejected {
+		background: var(--ts-danger-bg);
+		color: var(--ts-danger-text);
+	}
+
+	&__status--cancelled {
+		background: var(--ts-neutral-bg);
+		color: var(--ts-neutral);
+	}
+
+}
+
+@media (max-width: 1024px) {
+	.orders-page {
+		&__title {
+			font-size: 2.4rem;
+		}
+
+		&__new-order {
+			font-size: 1.5rem;
+		}
+	}
+}
+
+@media (max-width: 740px) {
+	.orders-page {
+		padding: 0.75rem;
+
+		&__header {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		&__new-order {
+			width: 100%;
+		}
+	}
+
+	.orders-card {
+		padding: 0.7rem;
+
+		&__filter {
+			font-size: 1.1rem;
+		}
+	}
+
+	.orders-table {
+		th,
+		td {
+			font-size: 1.2rem;
+		}
+
+		th {
+			font-size: 0.9rem;
+		}
+	}
+}

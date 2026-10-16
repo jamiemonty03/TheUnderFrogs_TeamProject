@@ -1,0 +1,13 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "testRegex": "test/.*\\.e2e-spec\\.ts$",
+  "extensionsToTreatAsEsm": [".ts"],
+  "preset": "ts-jest/presets/default-esm",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { "useESM": true, "tsconfig": { "module": "esnext" } }]
+  },
+  "setupFiles": ["<rootDir>/test/e2e.setup.ts"],
+  "testTimeout": 30000
+}
