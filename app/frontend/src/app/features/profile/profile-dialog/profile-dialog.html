@@ -77,11 +77,6 @@
                 {{ message }}
               </p>
             }
-            @if (detailsMessage(); as message) {
-              <p class="profile__success" role="status" data-testid="profile-details-saved">
-                {{ message }}
-              </p>
-            }
 
             <button
               mat-flat-button
@@ -105,7 +100,7 @@
           class="profile__form"
           [formGroup]="password"
           #passwordForm="ngForm"
-          (ngSubmit)="changePassword(passwordForm)"
+          (ngSubmit)="changePassword()"
           novalidate
         >
           <label class="profile__label" for="profile-current-password">Current password</label>
@@ -203,11 +198,6 @@
 
           @if (passwordError(); as message) {
             <p class="profile__error" role="alert" data-testid="profile-password-error">
-              {{ message }}
-            </p>
-          }
-          @if (passwordMessage(); as message) {
-            <p class="profile__success" role="status" data-testid="profile-password-changed">
               {{ message }}
             </p>
           }

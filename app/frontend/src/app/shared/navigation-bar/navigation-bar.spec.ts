@@ -288,4 +288,17 @@ describe('NavigationBar', () => {
       expect(open.mock.calls[0][1]).toMatchObject({ width: '480px', maxWidth: '95vw' });
     });
   });
+
+  describe('main links', () => {
+    it('shows Dashboard, Orders and Portfolios, with no Markets link', async () => {
+      await setUp();
+
+      const links = Array.from(page.querySelectorAll('.nav-bar__links a')).map((link) =>
+        link.textContent?.trim(),
+      );
+      expect(links).toEqual(['Dashboard', 'Orders', 'Portfolios']);
+      expect(page.querySelector('[data-testid="nav-markets"]')).toBeNull();
+    });
+  });
 });
+

@@ -2,7 +2,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
-  FormGroupDirective,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
@@ -13,6 +12,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Auth } from '../../../services/auth';
 import { Profile, ProfileChanges } from '../../../services/profile';
@@ -22,6 +22,7 @@ import { PROFILE_ERRORS, profileErrorMessage } from '../profile-error';
 export const DETAILS_SAVED = 'Your details were saved.';
 export const PASSWORD_CHANGED =
   'Your password was changed. Your other devices have been signed out.';
+const NOTICE_DURATION_MS = 6000;
 
 function matchingPasswords(group: AbstractControl): ValidationErrors | null {
   const { newPassword, confirmPassword } = group.value as Record<string, string>;
@@ -47,6 +48,7 @@ export class ProfileDialog {
   private readonly profile = inject(Profile);
   private readonly auth = inject(Auth);
   private readonly dialogRef = inject(MatDialogRef<ProfileDialog>);
+  private readonly snackBar = inject(MatSnackBar);
   private loaded: ProfileChanges = {};
 
   readonly loading = signal(true);
@@ -58,7 +60,6 @@ export class ProfileDialog {
     email: ['', [Validators.required, Validators.maxLength(255), strictEmail]],
   });
   readonly savingDetails = signal(false);
-  readonly detailsMessage = signal<string | null>(null);
   readonly detailsError = signal<string | null>(null);
 
   readonly password = this.fb.group(
@@ -73,7 +74,6 @@ export class ProfileDialog {
     { validators: matchingPasswords },
   );
   readonly savingPassword = signal(false);
-  readonly passwordMessage = signal<string | null>(null);
   readonly passwordError = signal<string | null>(null);
   readonly showCurrent = signal(false);
   readonly showNew = signal(false);
@@ -102,20 +102,17 @@ export class ProfileDialog {
       ...(fullName.trim() !== this.loaded.fullName ? { fullName: fullName.trim() } : {}),
       ...(email.trim() !== this.loaded.email ? { email: email.trim() } : {}),
     };
-    this.detailsMessage.set(null);
     this.detailsError.set(null);
     if (Object.keys(changes).length === 0) {
-      this.detailsMessage.set(DETAILS_SAVED);
+      this.closeWith(DETAILS_SAVED);
       return;
     }
 
     this.savingDetails.set(true);
     this.profile.updateProfile(changes).subscribe({
-      next: (profile) => {
+      next: () => {
         this.savingDetails.set(false);
-        this.loaded = { fullName: profile.fullName ?? '', email: profile.email };
-        this.details.reset({ fullName: this.loaded.fullName, email: this.loaded.email });
-        this.detailsMessage.set(DETAILS_SAVED);
+        this.closeWith(DETAILS_SAVED);
       },
       error: (error: unknown) => {
         this.savingDetails.set(false);
@@ -128,22 +125,18 @@ export class ProfileDialog {
     });
   }
 
-  changePassword(form: FormGroupDirective): void {
+  changePassword(): void {
     if (this.password.invalid || this.savingPassword()) {
       return;
     }
     const { currentPassword, newPassword } = this.password.getRawValue();
     this.savingPassword.set(true);
-    this.passwordMessage.set(null);
     this.passwordError.set(null);
 
     this.auth.changePassword(currentPassword, newPassword).subscribe({
       next: () => {
         this.savingPassword.set(false);
-        form.resetForm();
-        this.showCurrent.set(false);
-        this.showNew.set(false);
-        this.passwordMessage.set(PASSWORD_CHANGED);
+        this.closeWith(PASSWORD_CHANGED);
       },
       error: (error: unknown) => {
         this.savingPassword.set(false);
@@ -160,5 +153,10 @@ export class ProfileDialog {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  private closeWith(message: string): void {
+    this.dialogRef.close();
+    this.snackBar.open(message, 'OK', { duration: NOTICE_DURATION_MS });
   }
 }

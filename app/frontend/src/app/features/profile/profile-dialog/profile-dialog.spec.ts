@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Auth } from '../../../services/auth';
@@ -17,18 +18,21 @@ describe('ProfileDialog', () => {
   let updateProfile: ReturnType<typeof vi.fn<(changes: ProfileChanges) => Observable<UserProfile>>>;
   let changePassword: ReturnType<typeof vi.fn<(current: string, next: string) => Observable<void>>>;
   let close: ReturnType<typeof vi.fn>;
+  let snackBarOpen: ReturnType<typeof vi.fn>;
 
   async function setUp(profile$: Observable<UserProfile> = of(demo)) {
     getProfile = vi.fn(() => profile$);
     updateProfile = vi.fn((changes: ProfileChanges) => of({ ...demo, ...changes }));
     changePassword = vi.fn(() => of(undefined));
     close = vi.fn();
+    snackBarOpen = vi.fn();
     await TestBed.configureTestingModule({
       imports: [ProfileDialog],
       providers: [
         { provide: Profile, useValue: { getProfile, updateProfile } },
         { provide: Auth, useValue: { changePassword } },
         { provide: MatDialogRef, useValue: { close } },
+        { provide: MatSnackBar, useValue: { open: snackBarOpen } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(ProfileDialog);
@@ -86,14 +90,15 @@ describe('ProfileDialog', () => {
       expect(byTestId('profile-load-error')?.textContent?.trim()).toBe(PROFILE_ERRORS.loadFailed);
     });
 
-    it('sends only the fields that changed', async () => {
+    it('sends only the fields that changed, then closes and confirms', async () => {
       await setUp();
       type('profile-full-name', 'Kermit T. Frog');
 
       await click('profile-save-details');
 
       expect(updateProfile).toHaveBeenCalledWith({ fullName: 'Kermit T. Frog' });
-      expect(byTestId('profile-details-saved')?.textContent?.trim()).toBe(DETAILS_SAVED);
+      expect(close).toHaveBeenCalled();
+      expect(snackBarOpen).toHaveBeenCalledWith(DETAILS_SAVED, 'OK', { duration: 6000 });
     });
 
     it('trims spaces before sending', async () => {
@@ -105,13 +110,14 @@ describe('ProfileDialog', () => {
       expect(updateProfile).toHaveBeenCalledWith({ email: 'kermit@pond.io' });
     });
 
-    it('does not call the server when nothing changed', async () => {
+    it('closes and confirms without calling the server when nothing changed', async () => {
       await setUp();
 
       await click('profile-save-details');
 
       expect(updateProfile).not.toHaveBeenCalled();
-      expect(byTestId('profile-details-saved')?.textContent?.trim()).toBe(DETAILS_SAVED);
+      expect(close).toHaveBeenCalled();
+      expect(snackBarOpen).toHaveBeenCalledWith(DETAILS_SAVED, 'OK', { duration: 6000 });
     });
 
     it.each([
@@ -129,7 +135,7 @@ describe('ProfileDialog', () => {
       expect(updateProfile).not.toHaveBeenCalled();
     });
 
-    it('shows a taken email under the email field', async () => {
+    it('shows a taken email under the email field and stays open', async () => {
       await setUp();
       updateProfile.mockReturnValue(
         throwError(() => httpError(409, 'That email is already used by another account')),
@@ -139,7 +145,8 @@ describe('ProfileDialog', () => {
       await click('profile-save-details');
 
       expect(errors()).toEqual(['That email is already used by another account.']);
-      expect(byTestId('profile-details-saved')).toBeNull();
+      expect(close).not.toHaveBeenCalled();
+      expect(snackBarOpen).not.toHaveBeenCalled();
     });
 
     it('shows "Saving…" and ignores a second click while waiting', async () => {
@@ -188,16 +195,14 @@ describe('ProfileDialog', () => {
       expect(input('profile-confirm-password').type).toBe('text');
     });
 
-    it('changes the password, clears the form and says other devices were signed out', async () => {
+    it('changes the password, closes the dialog and says other devices were signed out', async () => {
       fill('Demo123!', 'lily-pad-leap-2026');
 
       await click('profile-change-password');
 
       expect(changePassword).toHaveBeenCalledWith('Demo123!', 'lily-pad-leap-2026');
-      expect(byTestId('profile-password-changed')?.textContent?.trim()).toBe(PASSWORD_CHANGED);
-      expect(input('profile-current-password').value).toBe('');
-      expect(input('profile-new-password').value).toBe('');
-      expect(errors()).toEqual([]);
+      expect(close).toHaveBeenCalledTimes(1);
+      expect(snackBarOpen).toHaveBeenCalledWith(PASSWORD_CHANGED, 'OK', { duration: 6000 });
     });
 
     it.each([
@@ -224,7 +229,7 @@ describe('ProfileDialog', () => {
       expect(changePassword).not.toHaveBeenCalled();
     });
 
-    it('shows a wrong current password under the current password field', async () => {
+    it('shows a wrong current password under its field and stays open', async () => {
       changePassword.mockReturnValue(
         throwError(() => httpError(403, 'Your current password is incorrect')),
       );
@@ -233,7 +238,8 @@ describe('ProfileDialog', () => {
       await click('profile-change-password');
 
       expect(errors()).toEqual(['Your current password is incorrect.']);
-      expect(byTestId('profile-password-changed')).toBeNull();
+      expect(close).not.toHaveBeenCalled();
+      expect(snackBarOpen).not.toHaveBeenCalled();
     });
 
     it.each([

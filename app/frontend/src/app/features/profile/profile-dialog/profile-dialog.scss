@@ -33,7 +33,7 @@
 .profile__loading {
   display: flex;
   flex-direction: column;
-  padding-top: 1.25rem;
+  padding: 1.25rem 0.5rem 0;
 }
 
 .profile__loading {
@@ -80,23 +80,13 @@
   font-size: 0.85rem;
 }
 
-.profile__error,
-.profile__success {
+.profile__error {
   margin: 0.25rem 0 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 10px;
-}
-
-.profile__error {
   border: 1px solid var(--ts-danger-border);
+  border-radius: 10px;
   background: var(--ts-danger-bg);
   color: var(--ts-danger-text);
-}
-
-.profile__success {
-  border: 1px solid var(--ts-border-strong);
-  background: var(--ts-frog-glow);
-  color: var(--ts-frog);
 }
 
 .profile__submit {
