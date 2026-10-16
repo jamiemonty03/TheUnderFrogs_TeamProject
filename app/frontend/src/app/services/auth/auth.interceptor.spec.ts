@@ -73,6 +73,13 @@ describe('authInterceptor', () => {
   });
 
   it.each([
+    ['/auth/profile', 'GET'],
+    ['/auth/password', 'POST'],
+  ] as const)('adds the Bearer token to %s', (url, method) => {
+    expect(authorizationFor(url, method)).toBe('Bearer access.jwt.token');
+  });
+
+  it.each([
     ['login', '/auth/login', 'POST'],
     ['register', '/auth/register', 'POST'],
     ['refresh', '/auth/refresh', 'POST'],
@@ -327,6 +334,19 @@ describe('authInterceptor', () => {
       expect(navigate).toHaveBeenCalledWith(['/login'], {
         queryParams: { returnUrl: '/orders', expired: 1 },
       });
+    });
+
+    it('refreshes and retries a profile request whose token expired', async () => {
+      const result = firstValueFrom(http.get('/auth/profile'));
+      unauthorized('/auth/profile');
+      const newToken = jwt(900);
+      renew(newToken);
+
+      const retry = retried('/auth/profile');
+      retry.request.flush({ username: 'demo' });
+
+      expect(retry.authorization).toBe(`Bearer ${newToken}`);
+      expect(await result).toEqual({ username: 'demo' });
     });
 
     it('does not try to refresh when /auth/login says the password is wrong', async () => {

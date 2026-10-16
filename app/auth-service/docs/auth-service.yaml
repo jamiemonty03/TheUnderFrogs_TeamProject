@@ -240,6 +240,110 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/profile:
+    get:
+      tags:
+        - Profile
+      summary: Get your profile
+      description: Username, email and full name of the signed-in user. Never cached.
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Your profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+        - Profile
+      summary: Update your full name and/or email
+      description: >
+        Always changes the signed-in user (from the token). Only fullName and email are
+        accepted; any other field (role, username, password, id) is rejected with 422.
+        A changed full name is also copied to the trading account's holder name.
+      operationId: updateProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: The updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The email is used by another account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emailTaken:
+                  value:
+                    errorCode: AUTH-409
+                    message: That email is already used by another account
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/password:
+    post:
+      tags:
+        - Profile
+      summary: Change your password
+      description: >
+        Checks the current password, saves the new one (12 to 128 characters, different
+        from the current one) and signs out your other sessions. Send this browser's
+        refreshToken to stay signed in here; without it every session is signed out.
+        Limited to 5 requests a minute.
+      operationId: changePassword
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrongPassword:
+                  value:
+                    errorCode: AUTH-403
+                    message: Your current password is incorrect
+        '409':
+          description: The password was changed somewhere else at the same moment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /.well-known/jwks.json:
     get:
       tags:
@@ -433,6 +537,58 @@ components:
               type: string
               description: Trading account created for the new user; also in the accessToken accountId claim
               example: ACC0012
+
+    Profile:
+      type: object
+      required:
+        - username
+        - email
+        - fullName
+      properties:
+        username:
+          type: string
+          example: demo
+        email:
+          type: string
+          format: email
+          example: demo@toadstock.io
+        fullName:
+          type: string
+          nullable: true
+          example: Demo Trader
+
+    UpdateProfileRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        fullName:
+          type: string
+          maxLength: 255
+          example: Kermit T. Frog
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: kermit@pond.io
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          example: Demo123!
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          example: lily-pad-leap-2026
+        refreshToken:
+          type: string
+          description: This browser's refresh token, so this session stays signed in
 
     CurrentUser:
       type: object

@@ -9,6 +9,8 @@ import { App } from 'supertest/types';
 import { AppController } from '../app.controller';
 import { AppService } from '../app.service';
 import { AuthController } from '../modules/auth/controllers/auth.controller';
+import { ProfileController } from '../modules/auth/controllers/profile.controller';
+import { ProfileService } from '../modules/auth/services/profile.service';
 import { AuthService } from '../modules/auth/services/auth.service';
 import { JwksController } from '../modules/tokens/controllers/jwks.controller';
 import { SIGNING_KEY } from '../modules/tokens/services/token.service';
@@ -38,10 +40,19 @@ describe('rate limits', () => {
     });
     const moduleRef = await Test.createTestingModule({
       imports: [ThrottlerModule.forRoot(throttleConfig)],
-      controllers: [AppController, AuthController, JwksController],
+      controllers: [
+        AppController,
+        AuthController,
+        JwksController,
+        ProfileController,
+      ],
       providers: [
         AppService,
         { provide: AuthService, useValue: authService },
+        {
+          provide: ProfileService,
+          useValue: { changePassword: resolves(undefined) },
+        },
         {
           provide: SIGNING_KEY,
           useValue: { kid: 'test-key', privateKey, publicKey },
@@ -107,6 +118,16 @@ describe('rate limits', () => {
       expect(allowedBefore429(results)).toBe(5);
     },
   );
+
+  it('allows 5 password changes a minute, to slow down guessing the current password', async () => {
+    const results = await statuses(6, () =>
+      server()
+        .post('/auth/password')
+        .send({ currentPassword: 'x', newPassword: 'y'.repeat(12) }),
+    );
+
+    expect(allowedBefore429(results)).toBe(5);
+  });
 
   it('allows 100 requests a minute on routes without their own limit', async () => {
     const results = await statuses(101, () =>

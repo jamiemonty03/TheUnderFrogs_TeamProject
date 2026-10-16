@@ -369,4 +369,32 @@ public class AccountControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnprocessableEntity());
     }
+
+    // ==================== UPDATE HOLDER NAME TESTS ====================
+
+    @Test
+    @DisplayName("PATCH /accounts/{accountId}/holder-name: Returns the account with the new holder name")
+    public void testUpdateHolderName() throws Exception {
+        Account renamed = new Account("ACC001", 1L, "Kermit T. Frog", new BigDecimal("5000"), AccountStatus.ACTIVE);
+        when(accountService.updateHolderName("ACC001", "Kermit T. Frog")).thenReturn(renamed);
+
+        mockMvc.perform(patch("/accounts/ACC001/holder-name")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"holderName\": \"Kermit T. Frog\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.holderName", equalTo("Kermit T. Frog")));
+    }
+
+    @Test
+    @DisplayName("PATCH /accounts/{accountId}/holder-name: Rejects a blank or too-long name with 422")
+    public void testUpdateHolderNameValidation() throws Exception {
+        for (String body : new String[] {"{\"holderName\": \"   \"}", "{}", "{\"holderName\": \"" + "x".repeat(256) + "\"}"}) {
+            mockMvc.perform(patch("/accounts/ACC001/holder-name")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.errorCode", equalTo("VAL-422")));
+        }
+        verify(accountService, never()).updateHolderName(anyString(), anyString());
+    }
 }

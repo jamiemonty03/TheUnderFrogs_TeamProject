@@ -5,14 +5,15 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { Auth } from './auth';
 import { API_BASE_URL } from '../api-config';
 
-const TOKEN_PATHS = ['/auth/me', '/auth/logout'];
+const PROFILE_PATHS = ['/auth/profile', '/auth/password'];
+const TOKEN_PATHS = ['/auth/me', '/auth/logout', ...PROFILE_PATHS];
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(Auth);
   const router = inject(Router);
   const path = trustedPath(request.url, inject(API_BASE_URL));
   const needsToken = path !== null && (isApiPath(path) || TOKEN_PATHS.includes(path));
-  const canRefresh = path !== null && isApiPath(path);
+  const canRefresh = path !== null && (isApiPath(path) || PROFILE_PATHS.includes(path));
 
   const withToken = (token: string | null): HttpRequest<unknown> =>
     token && needsToken

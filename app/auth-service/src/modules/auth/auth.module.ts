@@ -5,6 +5,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';
+import { ProfileController } from './controllers/profile.controller';
+import { ProfileService } from './services/profile.service';
 import { AuthRepository } from './repositories/auth.repository';
 import { Auth } from './entities/auth.entity';
 import { UsersModule } from '../users/users.module';
@@ -21,11 +23,12 @@ import { AccountsServiceClient } from './services/accounts-service-client';
     TokensModule,
     ClientsModule,
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, ProfileController],
   providers: [
     AuthService,
     AuthRepository,
     AccountsServiceClient,
+    ProfileService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

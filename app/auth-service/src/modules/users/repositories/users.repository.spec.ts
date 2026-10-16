@@ -46,4 +46,22 @@ describe('UsersRepository', () => {
       await expect(repository.updatePasswordHash(5, '$2a$10$old', '$argon2id$new')).resolves.toBe(false);
     });
   });
+
+  describe('update', () => {
+    it('turns a unique violation from changing to a taken email into a conflict', async () => {
+      typeorm.update.mockRejectedValue(
+        new QueryFailedError('UPDATE', [], Object.assign(new Error('duplicate key'), { code: '23505' })) as never,
+      );
+
+      await expect(repository.update(1, { email: 'taken@example.com' })).rejects.toThrow(
+        new ConflictException('Username or email already exists'),
+      );
+    });
+
+    it('rethrows any other database error on update', async () => {
+      typeorm.update.mockRejectedValue(new Error('connection lost') as never);
+
+      await expect(repository.update(1, { email: 'new@example.com' })).rejects.toThrow('connection lost');
+    });
+  });
 });

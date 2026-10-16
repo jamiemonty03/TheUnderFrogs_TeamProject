@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
 
 class AlreadyRotated extends Error {}
@@ -42,6 +42,18 @@ export class RefreshTokensRepository {
       }
       throw error;
     }
+  }
+
+  async revokeAllForUser(userId: number, keepFamilyId: string | null): Promise<number> {
+    const result = await this.repository.update(
+      {
+        user_id: userId,
+        revoked_at: IsNull(),
+        ...(keepFamilyId ? { family_id: Not(keepFamilyId) } : {}),
+      },
+      { revoked_at: new Date() },
+    );
+    return result.affected ?? 0;
   }
 
   async revokeFamily(familyId: string): Promise<number> {

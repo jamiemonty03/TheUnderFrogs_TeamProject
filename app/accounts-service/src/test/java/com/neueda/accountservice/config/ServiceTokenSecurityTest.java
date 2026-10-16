@@ -2,6 +2,7 @@ package com.neueda.accountservice.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.Mockito.*;
@@ -116,6 +117,18 @@ class ServiceTokenSecurityTest {
     @DisplayName("User token cannot reverse a cash movement and gets 403")
     void userTokenCannotReverse() throws Exception {
         mockMvc.perform(reversal(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Service token can rename an account's holder")
+    void serviceTokenCanUpdateHolderName() throws Exception {
+        mockMvc.perform(holderName(TestJwtIssuer.serviceToken())).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("User token cannot rename an account's holder and gets 403")
+    void userTokenCannotUpdateHolderName() throws Exception {
+        mockMvc.perform(holderName(TestJwtIssuer.userToken())).andExpect(status().isForbidden());
     }
 
     @Test
@@ -253,6 +266,13 @@ class ServiceTokenSecurityTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"orderId\": \"ORD-1\"}");
+    }
+
+    private static RequestBuilder holderName(String token) {
+        return patch("/accounts/ACC0001/holder-name")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"holderName\": \"Kermit\"}");
     }
 
     private static String bearer(String token) {

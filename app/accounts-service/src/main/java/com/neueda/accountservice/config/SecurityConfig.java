@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/accounts").hasRole("SERVICE")
                         .requestMatchers(HttpMethod.POST, "/accounts/*/debit", "/accounts/*/credit", "/accounts/*/reversal")
                                 .hasRole("SERVICE")
+                        .requestMatchers(HttpMethod.PATCH, "/accounts/*/holder-name").hasRole("SERVICE")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();

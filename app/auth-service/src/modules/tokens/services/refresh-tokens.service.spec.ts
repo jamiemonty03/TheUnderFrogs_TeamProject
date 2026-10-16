@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, Repository, Not } from 'typeorm';
 import { hashRefreshToken, INVALID_REFRESH_TOKEN, RefreshTokensService } from './refresh-tokens.service';
 import { Logger, UnauthorizedException } from '@nestjs/common';
 import { NewRefreshToken, RefreshTokensRepository } from '../repositories/refresh-tokens.repository';
@@ -31,6 +31,11 @@ describe('RefreshTokensService', () => {
     }),
     revokeFamily: jest.fn(async (familyId: string) => {
       const active = rows.filter((r) => r.family_id === familyId && !r.revoked_at);
+      active.forEach((r) => (r.revoked_at = new Date()));
+      return active.length;
+    }),
+    revokeAllForUser: jest.fn(async (userId: number, keepFamilyId: string | null) => {
+      const active = rows.filter((r) => Number(r.user_id) === userId && !r.revoked_at && r.family_id !== keepFamilyId);
       active.forEach((r) => (r.revoked_at = new Date()));
       return active.length;
     }),
@@ -313,6 +318,60 @@ describe('RefreshTokensService', () => {
     });
   });
 
+  describe('revokeOtherSessions', () => {
+    it("keeps this browser's session and signs out the user's other sessions", async () => {
+      const thisBrowser = await service.issue(5);
+      const laptop = await service.issue(5);
+      const phone = await service.issue(5);
+      const someoneElse = await service.issue(6);
+
+      expect(await service.revokeOtherSessions(5, thisBrowser.refreshToken)).toBe(2);
+
+      expect(await service.findValid(thisBrowser.refreshToken)).not.toBeNull();
+      expect(await service.findValid(laptop.refreshToken)).toBeNull();
+      expect(await service.findValid(phone.refreshToken)).toBeNull();
+      expect(await service.findValid(someoneElse.refreshToken)).not.toBeNull();
+    });
+
+    it('keeps this session when Postgres returns the BIGINT user_id as a string', async () => {
+      const thisBrowser = await service.issue(5);
+      const laptop = await service.issue(5);
+      rows.forEach((row) => ((row as { user_id: unknown }).user_id = '5'));
+
+      expect(await service.revokeOtherSessions(5, thisBrowser.refreshToken)).toBe(1);
+      expect(await service.findValid(thisBrowser.refreshToken)).not.toBeNull();
+      expect(await service.findValid(laptop.refreshToken)).toBeNull();
+    });
+
+    it('signs out every session when no refresh token is sent', async () => {
+      const a = await service.issue(5);
+      const b = await service.issue(5);
+
+      expect(await service.revokeOtherSessions(5)).toBe(2);
+      expect(await service.findValid(a.refreshToken)).toBeNull();
+      expect(await service.findValid(b.refreshToken)).toBeNull();
+    });
+
+    it("does not keep a session for someone else's refresh token", async () => {
+      const mine = await service.issue(5);
+      const theirs = await service.issue(6);
+
+      expect(await service.revokeOtherSessions(5, theirs.refreshToken)).toBe(1);
+      expect(await service.findValid(mine.refreshToken)).toBeNull();
+      expect(await service.findValid(theirs.refreshToken)).not.toBeNull();
+    });
+
+    it('does not keep a session for a revoked or made-up refresh token', async () => {
+      const a = await service.issue(5);
+      await service.revokeFamily(a.familyId);
+      const b = await service.issue(5);
+
+      expect(await service.revokeOtherSessions(5, a.refreshToken)).toBe(1);
+      expect(await service.revokeOtherSessions(5, 'made-up')).toBe(0);
+      expect(await service.findValid(b.refreshToken)).toBeNull();
+    });
+  });
+
   it('hashRefreshToken is deterministic', () => {
     expect(hashRefreshToken('abc')).toBe(hashRefreshToken('abc'));
     expect(hashRefreshToken('abc')).toHaveLength(64);
@@ -379,6 +438,26 @@ describe('RefreshTokensRepository', () => {
     expect(await repository.revokeFamily('family-1')).toBe(3);
     expect(typeorm.update).toHaveBeenCalledWith(
       { family_id: 'family-1', revoked_at: IsNull() },
+      { revoked_at: expect.any(Date) },
+    );
+  });
+
+  it("revokes a user's active tokens except one family, so this session stays signed in", async () => {
+    typeorm.update.mockResolvedValue({ affected: 2 } as never);
+
+    expect(await repository.revokeAllForUser(5, 'family-keep')).toBe(2);
+    expect(typeorm.update).toHaveBeenCalledWith(
+      { user_id: 5, revoked_at: IsNull(), family_id: Not('family-keep') },
+      { revoked_at: expect.any(Date) },
+    );
+  });
+
+  it("revokes all of a user's active tokens when there is no session to keep", async () => {
+    typeorm.update.mockResolvedValue({ affected: 3 } as never);
+
+    expect(await repository.revokeAllForUser(5, null)).toBe(3);
+    expect(typeorm.update).toHaveBeenCalledWith(
+      { user_id: 5, revoked_at: IsNull() },
       { revoked_at: expect.any(Date) },
     );
   });

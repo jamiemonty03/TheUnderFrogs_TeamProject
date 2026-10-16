@@ -62,6 +62,17 @@ export class NavigationBar {
     this.isMenuOpen = false;
   }
 
+  openProfile(): void {
+    this.closeMenu();
+    void import('../../features/profile/profile-dialog/profile-dialog').then(({ ProfileDialog }) =>
+      this.dialog.open(ProfileDialog, {
+        width: '480px',
+        maxWidth: '95vw',
+        panelClass: 'profile-dialog-panel',
+      }),
+    );
+  }
+
   openWallet(): void {
     this.closeMenu();
     void import('../../features/wallet/wallet-dialog/wallet-dialog').then(({ WalletDialog }) =>

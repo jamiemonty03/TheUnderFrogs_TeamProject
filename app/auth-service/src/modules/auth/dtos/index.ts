@@ -151,3 +151,5 @@ export class RegisterResponseDto extends TokenResponseDto {
   accountId: string;
 }
 
+
+export * from './profile.dto';

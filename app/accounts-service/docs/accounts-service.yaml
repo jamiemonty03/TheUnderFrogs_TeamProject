@@ -230,6 +230,50 @@ paths:
                     errorCode: "ACC-404"
                     message: "Account not found: ACC001"
 
+  /accounts/{accountId}/holder-name:
+    patch:
+      tags:
+        - Account Management
+      summary: Rename an account holder
+      description: >
+        Service only: needs a token with the SERVICE role (auth-service keeps it in sync with
+        the user's full name); a user token gets 403. Changes the holder name and nothing else.
+      operationId: updateHolderName
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "ACC0011"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHolderNameRequest'
+      responses:
+        '200':
+          description: The account with its new holder name
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '403':
+          description: Not a SERVICE token
+        '404':
+          description: Account not found (ACC-404)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Holder name blank or over 255 characters (VAL-422)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /accounts/{accountId}/credit:
     post:
       tags:
@@ -780,6 +824,16 @@ components:
           example: "0adf7599-df9d-4176-93b6-3a555e54415d"
       required:
         - orderId
+
+    UpdateHolderNameRequest:
+      type: object
+      properties:
+        holderName:
+          type: string
+          maxLength: 255
+          example: "Kermit T. Frog"
+      required:
+        - holderName
 
     TopUpRequest:
       type: object

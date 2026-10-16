@@ -16,6 +16,7 @@ import com.neueda.accountservice.exceptions.AccountAuthorizationException;
 import com.neueda.accountservice.exceptions.InsufficientFundsException;
 import com.neueda.accountservice.dtos.requests.CashMovementRequest;
 import com.neueda.accountservice.dtos.requests.ReversalRequest;
+import com.neueda.accountservice.dtos.requests.UpdateHolderNameRequest;
 import com.neueda.accountservice.utils.AuthorizationUtils;
 
 
@@ -57,6 +58,14 @@ public class AccountController {
         
         Account updated = accountService.updateAccount(accountId, account);
         return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/{accountId}/holder-name")
+    public ResponseEntity<Account> updateHolderName(
+            @PathVariable String accountId,
+            @Valid @RequestBody UpdateHolderNameRequest request) throws AccountNotFoundException, AccountAuthorizationException {
+        AuthorizationUtils.verifyAccountAccess(accountId);
+        return ResponseEntity.ok(accountService.updateHolderName(accountId, request.holderName()));
     }
 
     @DeleteMapping("/{accountId}")
