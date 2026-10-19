@@ -35,6 +35,50 @@
   --ts-info-bg: #12283a;
   --ts-neutral: #5e7468;
   --ts-neutral-bg: #1d2420;
+
+  --ts-up: #22c55e;
+  --ts-down: #ef4444;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --ts-frog: #11793c;
+  --ts-frog-light: #0e6b34;
+  --ts-frog-tint: #e2f4e9;
+  --ts-frog-glow: #d3eedd;
+  --ts-on-frog: #ffffff;
+  --ts-on-frog-muted: #e2f4e9;
+
+  --ts-bg: #f5f8f6;
+  --ts-bg-raised: #ffffff;
+  --ts-input-bg: #ffffff;
+  --ts-surface: #edf2ef;
+  --ts-surface-hover: #e3ebe6;
+
+  --ts-divider: #dfe7e2;
+  --ts-border: #d1dcd5;
+  --ts-border-strong: #9cc2aa;
+
+  --ts-text: #0d1a12;
+  --ts-text-secondary: #33463a;
+  --ts-text-muted: #56695d;
+
+  --ts-loss: #c2341f;
+  --ts-on-loss: #ffffff;
+  --ts-sell: #c2341f;
+
+  --ts-success-bg: #e2f4e9;
+  --ts-danger-text: #b3261e;
+  --ts-danger-bg: #fdecea;
+  --ts-danger-border: #f3c4bf;
+  --ts-info: #0b62a0;
+  --ts-info-bg: #e6f1fa;
+  --ts-neutral: #5d6d63;
+  --ts-neutral-bg: #e9eeeb;
+
+  --ts-up: #15803d;
+  --ts-down: #dc2626;
 }
 
 html {
@@ -43,7 +87,7 @@ html {
   @include mat.theme(
     (
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$green-palette,
         tertiary: mat.$cyan-palette,
         error: mat.$red-palette,
@@ -107,7 +151,7 @@ html {
   @include mat.theme(
     (
       color: (
-        theme-type: dark,
+        theme-type: color-scheme,
         primary: mat.$spring-green-palette,
       ),
       typography: (
