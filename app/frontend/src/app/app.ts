@@ -15,14 +15,16 @@ const FULL_SCREEN_PAGES = /^\/(login|register)(?:[/?#]|$)/;
 })
 export class App {
   private readonly router = inject(Router);
-
   private readonly url = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
       map((event) => event.urlAfterRedirects),
     ),
-    { initialValue: this.router.url },
+    { initialValue: null },
   );
 
-  readonly showShell = computed(() => !FULL_SCREEN_PAGES.test(this.url()));
+  readonly showShell = computed(() => {
+    const url = this.url();
+    return url !== null && !FULL_SCREEN_PAGES.test(url);
+  });
 }
