@@ -12,7 +12,7 @@ This page is the team's reference for which topics exist, what goes on them, and
 |---|---|---|---|---|---|---|---|
 | `orders` | `accountId` | 3 | 7 days | `orders.DLT` | `ORDER_PLACED` | orders-service | trade-executor |
 | `trade-events` | `accountId` | 3 | 7 days | `trade-events.DLT` | `ORDER_FILLED`, `ORDER_REJECTED`, `ORDER_CANCELLED` | trade-executor | orders-service, cash/position updates, batch ETL, dashboard |
-| `market-data` | `symbol` | 3 | 1 day | `market-data.DLT` | `PRICE_UPDATED` | market-data poller (inside trade-executor) | trade-executor, dashboard |
+| `market-data` | `symbol` | 3 | 1 day | `market-data.DLT` | `PRICE_UPDATED` | market-data poller (inside trade-executor) | dashboard (via instruments-service). trade-executor reacts to its own price changes in-process, not through this topic |
 | `orders.DLT` | same as source | 3 | 14 days | n/a | failed `orders` messages | Kafka error handler | team (manual review) |
 | `trade-events.DLT` | same as source | 3 | 14 days | n/a | failed `trade-events` messages | Kafka error handler | team (manual review) |
 | `market-data.DLT` | same as source | 3 | 14 days | n/a | failed `market-data` messages | Kafka error handler | team (manual review) |

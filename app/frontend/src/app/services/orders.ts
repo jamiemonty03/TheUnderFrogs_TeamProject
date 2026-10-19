@@ -14,4 +14,8 @@ export class Orders {
 	placeOrder(request: PlaceOrderRequest): Observable<OrderResponse> {
 		return this.http.post<OrderResponse>('/api/orders', request);
 	}
+
+	cancelOrder(orderId: string): Observable<void> {
+		return this.http.delete<void>(`/api/orders/${orderId}`);
+	}
 }

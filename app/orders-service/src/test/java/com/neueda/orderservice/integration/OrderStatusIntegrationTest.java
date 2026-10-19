@@ -1,6 +1,7 @@
 package com.neueda.orderservice.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 import java.math.BigDecimal;
@@ -267,12 +268,36 @@ class OrderStatusIntegrationTest {
         assertThat(row(orderId).get("order_status")).isEqualTo("NEW");
     }
 
+    @Test
+    @DisplayName("Open orders lists only NEW orders for the symbol, oldest first")
+    void openOrdersListsNewOrdersForTheSymbol() throws Exception {
+        String first = insertOrder("NEW");
+        insertOrder("FILLED");
+        insertOrder("CANCELLED");
+        insertOrder("NEW", "TSLA");
+        jdbcTemplate.update("UPDATE orders SET created_at = created_at - INTERVAL '1 minute' WHERE order_id = ?", first);
+        String second = insertOrder("NEW");
+
+        MockHttpServletResponse response = mockMvc.perform(get("/orders/open").param("symbol", "AAPL")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + createToken("trade-executor", List.of("SERVICE"))))
+                .andReturn()
+                .getResponse();
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        JsonNode body = objectMapper.readTree(response.getContentAsString());
+        assertThat(body).extracting(node -> node.get("orderId").asText()).containsExactly(first, second);
+    }
+
     private String insertOrder(String status) {
+        return insertOrder(status, "AAPL");
+    }
+
+    private String insertOrder(String status, String symbol) {
         String orderId = UUID.randomUUID().toString();
         jdbcTemplate.update("""
                 INSERT INTO orders (order_id, idempotency_key, account_id, symbol, side, quantity, price_limit, order_status)
-                VALUES (?, ?, ?, 'AAPL', 'BUY', 10, 150.00, ?)
-                """, orderId, "idem-" + orderId, ACCOUNT_ID, status);
+                VALUES (?, ?, ?, ?, 'BUY', 10, 150.00, ?)
+                """, orderId, "idem-" + orderId, ACCOUNT_ID, symbol, status);
         return orderId;
     }
 

@@ -36,6 +36,7 @@ export async function sellFromHolding(page: Page, symbol: string, quantity: numb
   await page.getByTestId('sell-instrument-next').click();
 
   await page.getByTestId('sell-quantity').fill(String(quantity));
+  await page.getByTestId('sell-price-limit').fill('0.01');
   await page.getByTestId('sell-details-next').click();
 
   await page.getByTestId('place-sell-order').click();

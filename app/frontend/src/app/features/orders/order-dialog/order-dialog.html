@@ -105,6 +105,7 @@
                 [formControl]="buyOrderStep.controls.priceLimit"
                 data-testid="buy-price-limit"
               />
+              <mat-hint>Buys once the market reaches this price or lower</mat-hint>
             </mat-form-field>
 
             <p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
@@ -262,6 +263,19 @@
               />
             </mat-slider>
 
+            <mat-form-field appearance="outline" class="order-dialog__field">
+              <mat-label>Price limit</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0.01"
+                step="0.01"
+                [formControl]="sellOrderStep.controls.priceLimit"
+                data-testid="sell-price-limit"
+              />
+              <mat-hint>Sells once the market reaches this price or higher</mat-hint>
+            </mat-form-field>
+
             <p class="order-dialog__estimate">
               Market value estimate: {{ sellEstimate() | currency }}
             </p>
@@ -309,7 +323,7 @@
               <p><strong>Portfolio:</strong> {{ portfolioName() }}</p>
               <p><strong>Quantity:</strong> {{ sellOrderStep.controls.quantity.value }}</p>
               <p>
-                <strong>Price limit:</strong> {{ selectedSellInstrument()?.marketPrice | currency }}
+                <strong>Price limit:</strong> {{ sellOrderStep.controls.priceLimit.value | currency }}
               </p>
             </div>
             @if (sellPlaced()) {

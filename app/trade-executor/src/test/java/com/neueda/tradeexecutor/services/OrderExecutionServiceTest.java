@@ -2,7 +2,9 @@ package com.neueda.tradeexecutor.services;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -92,15 +94,14 @@ class OrderExecutionServiceTest {
     }
 
     @Test
-    void rejectsWhenNoPriceIsAvailable() {
-        OrderDto order = buyOrder(OrderStatus.NEW);
-        when(ordersClient.getOrder("ORD-1")).thenReturn(order);
+    void leavesOrderNewWhenNoPriceIsAvailable() {
+        when(ordersClient.getOrder("ORD-1")).thenReturn(buyOrder(OrderStatus.NEW));
         when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
         when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.empty());
 
         executionService.execute("ORD-1");
 
-        verify(settlementService).settle(order, FillDecision.reject("No valid market price for AAPL"));
+        verifyNoInteractions(settlementService);
     }
 
     @Test
@@ -116,16 +117,44 @@ class OrderExecutionServiceTest {
     }
 
     @Test
-    void rejectsWhenMarketPriceIsBeyondLimit() {
-        OrderDto order = buyOrder(OrderStatus.NEW);
-        when(ordersClient.getOrder("ORD-1")).thenReturn(order);
+    void leavesOrderNewWhenMarketPriceIsBeyondLimit() {
+        when(ordersClient.getOrder("ORD-1")).thenReturn(buyOrder(OrderStatus.NEW));
         when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
         when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(new BigDecimal("151.00")));
 
         executionService.execute("ORD-1");
 
-        verify(settlementService).settle(order,
-                FillDecision.reject("Market price 151.00 is above BUY limit 150.00"));
+        verifyNoInteractions(settlementService);
+    }
+
+    @Test
+    void sameOrderIsNotExecutedTwiceAtOnce() {
+        OrderDto order = buyOrder(OrderStatus.NEW);
+        when(ordersClient.getOrder("ORD-1")).thenReturn(order);
+        when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
+        when(priceSource.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(new BigDecimal("148.50")));
+        // A second execute arrives while the first is still settling
+        doAnswer(invocation -> {
+            executionService.execute("ORD-1");
+            return null;
+        }).when(settlementService).settle(any(), any());
+
+        executionService.execute("ORD-1");
+
+        verify(ordersClient, times(1)).getOrder("ORD-1");
+        verify(settlementService, times(1)).settle(any(), any());
+    }
+
+    @Test
+    void orderCanBeExecutedAgainAfterAFailure() {
+        when(ordersClient.getOrder("ORD-1"))
+                .thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE))
+                .thenReturn(buyOrder(OrderStatus.FILLED));
+
+        assertThrows(HttpServerErrorException.class, () -> executionService.execute("ORD-1"));
+        executionService.execute("ORD-1");
+
+        verify(ordersClient, times(2)).getOrder("ORD-1");
     }
 
     @Test

@@ -54,6 +54,21 @@ describe('OrderSnackbar', () => {
     );
   });
 
+  it('renders a resting order with the price it is waiting for', () => {
+    const page = createSnackbar({ orderId: 'ORDER-3', status: 'NEW', priceLimit: 350 });
+
+    expect(page.querySelector('.order-snackbar__message')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Order ORDER-3 placed, waiting for $350.00',
+    );
+    expect(page.querySelector('.order-snackbar--success, .order-snackbar--error')).toBeNull();
+  });
+
+  it('renders a cancelled order', () => {
+    const page = createSnackbar({ orderId: 'ORDER-4', status: 'CANCELLED' });
+
+    expect(page.querySelector('.order-snackbar__message')?.textContent).toContain('Order ORDER-4 cancelled');
+  });
+
   it('dismisses when the Dismiss button is clicked', () => {
     const page = createSnackbar({ orderId: 'ORDER-3', status: 'FILLED' });
 

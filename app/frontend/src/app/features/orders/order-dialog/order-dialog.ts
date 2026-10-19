@@ -25,7 +25,7 @@ import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
-import { startWith } from 'rxjs';
+import { map, startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
 
@@ -106,6 +106,7 @@ export class OrderDialog implements OnInit {
 
   readonly sellOrderStep = this.fb.group({
     quantity: [10, [Validators.required, Validators.min(1)]],
+    priceLimit: [0, [Validators.required, Validators.min(0.01)]],
   });
 
   readonly buyPlaced = signal<boolean | null>(null);
@@ -156,12 +157,18 @@ export class OrderDialog implements OnInit {
   );
 
   readonly buyOrderValid = toSignal(
-    this.buyOrderStep.statusChanges.pipe(startWith(this.buyOrderStep.valid)),
+    this.buyOrderStep.statusChanges.pipe(
+      map((status) => status === 'VALID'),
+      startWith(this.buyOrderStep.valid),
+    ),
     { initialValue: this.buyOrderStep.valid },
   );
 
   readonly sellOrderValid = toSignal(
-    this.sellOrderStep.statusChanges.pipe(startWith(this.sellOrderStep.valid)),
+    this.sellOrderStep.statusChanges.pipe(
+      map((status) => status === 'VALID'),
+      startWith(this.sellOrderStep.valid),
+    ),
     { initialValue: this.sellOrderStep.valid },
   );
 
@@ -263,6 +270,9 @@ export class OrderDialog implements OnInit {
     const selected = this.instruments().find((instrument) => instrument.symbol === symbol) || null;
     this.selectedSellInstrument.set(selected);
     this.sellInstrumentStep.controls.instrumentInput.setValue(symbol);
+    if (selected && this.sellOrderStep.controls.priceLimit.value === 0) {
+      this.sellOrderStep.controls.priceLimit.setValue(selected.marketPrice);
+    }
     this.loadHeldPosition(symbol);
   }
 
@@ -388,7 +398,7 @@ export class OrderDialog implements OnInit {
         symbol: instrument.symbol,
         side: 'SELL',
         quantity: Number(this.sellOrderStep.controls.quantity.value),
-        priceLimit: 0.01,
+        priceLimit: Number(this.sellOrderStep.controls.priceLimit.value),
         idempotencyKey: this.createIdempotencyKey(),
         ...this.portfolio(),
       })

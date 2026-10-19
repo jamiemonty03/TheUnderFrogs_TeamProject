@@ -5,7 +5,8 @@ import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar'
 
 export interface OrderSnackbarData {
   orderId: string;
-  status: 'FILLED' | 'REJECTED';
+  status: 'FILLED' | 'REJECTED' | 'NEW' | 'CANCELLED';
+  priceLimit?: number;
   reason?: string | null;
 }
 

@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -55,6 +56,19 @@ class OrdersClientTest {
               "updatedBy": "SYSTEM"
             }
             """.formatted(status);
+    }
+
+    @Test
+    void getOpenOrdersAsksForNewOrdersOfTheSymbol() {
+        ordersService.expect(requestTo(ORDERS_URL + "/open?symbol=AAPL"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("[" + orderJson("NEW") + "]", MediaType.APPLICATION_JSON));
+
+        List<OrderDto> orders = ordersClient.getOpenOrders("AAPL");
+
+        assertEquals(1, orders.size());
+        assertEquals("ORD-1", orders.get(0).orderId());
+        ordersService.verify();
     }
 
     @Test

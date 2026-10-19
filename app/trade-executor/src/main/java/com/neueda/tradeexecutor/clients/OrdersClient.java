@@ -1,6 +1,8 @@
 package com.neueda.tradeexecutor.clients;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -31,6 +33,12 @@ public class OrdersClient {
         } catch (HttpClientErrorException.NotFound e) {
             throw new UnknownOrderException(orderId, e);
         }
+    }
+
+    /** NEW orders for the symbol, oldest first. */
+    public List<OrderDto> getOpenOrders(String symbol) {
+        OrderDto[] orders = restTemplate.getForObject(ordersServiceUrl + "/open?symbol={symbol}", OrderDto[].class, symbol);
+        return orders == null ? List.of() : Arrays.asList(orders);
     }
 
     private record StatusConflictBody(OrderStatus currentStatus) {}

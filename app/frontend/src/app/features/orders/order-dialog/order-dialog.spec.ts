@@ -218,8 +218,37 @@ describe('OrderDialog', () => {
     expect(component.buyResultMessage()).toBe('Could not reach the order service.');
   });
 
-  it('places a SELL order and reports success', () => {
+  it('selects a SELL instrument and defaults its price limit to market price', () => {
     component.selectSellInstrument(optionEvent('AAPL') as never);
+
+    expect(component.sellOrderStep.controls.priceLimit.value).toBe(100);
+  });
+
+  it('keeps a SELL price limit the user already entered', () => {
+    component.sellOrderStep.controls.priceLimit.setValue(120);
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+
+    expect(component.sellOrderStep.controls.priceLimit.value).toBe(120);
+  });
+
+  it('blocks BUY continuation without a positive price limit', () => {
+    component.availableCash.set(1000);
+    component.selectBuyInstrument(optionEvent('AAPL') as never);
+    component.buyOrderStep.controls.priceLimit.setValue(0);
+
+    expect(component.buyDetailsInvalid()).toBe(true);
+  });
+
+  it('blocks SELL continuation without a positive price limit', () => {
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+    component.sellOrderStep.controls.priceLimit.setValue(0);
+
+    expect(component.sellDetailsInvalid()).toBe(true);
+  });
+
+  it('places a SELL order at its price limit and reports success', () => {
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+    component.sellOrderStep.controls.priceLimit.setValue(105);
     component.placeSellOrder();
 
     expect(orders.placeOrder).toHaveBeenCalledWith(
@@ -228,7 +257,7 @@ describe('OrderDialog', () => {
         symbol: 'AAPL',
         side: 'SELL',
         quantity: 10,
-        priceLimit: 0.01,
+        priceLimit: 105,
       }),
     );
     expect(component.sellResponse()).toEqual(ORDER);
