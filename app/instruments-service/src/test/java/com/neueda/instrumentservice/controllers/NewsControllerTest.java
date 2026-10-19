@@ -48,7 +48,7 @@ class NewsControllerTest {
         when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("AAPL", "SPY"));
         when(newsClient.getNews(5, List.of("AAPL", "SPY"))).thenReturn(List.of(new NewsResponse(
                 "Markets rally", "https://example.com/article",
-                Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"))));
+                Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"), null, null)));
 
         mockMvc.perform(get("/news"))
                 .andExpect(status().isOk())
@@ -84,7 +84,7 @@ class NewsControllerTest {
         when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("AAPL", "SPY"));
         when(newsClient.getNews(5, List.of("AAPL"))).thenReturn(List.of(new NewsResponse(
                 "Apple earnings beat", "https://example.com/apple",
-                Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"))));
+                Instant.parse("2026-10-14T08:00:00Z"), null, List.of("AAPL"), null, null)));
 
         mockMvc.perform(get("/news").param("symbol", "aapl"))
                 .andExpect(status().isOk())
