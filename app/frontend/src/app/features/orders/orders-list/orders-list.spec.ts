@@ -3,11 +3,12 @@ import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Auth, CurrentUser } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
-import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
+import { LivePrice, LivePriceFeed, TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
+import { LivePrices } from '../../../services/live-prices';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
 import { OrderSnackbar } from '../order-snackbar/order-snackbar';
@@ -59,6 +60,8 @@ describe('OrdersList', () => {
   let instruments: { getAllTradableInstruments: ReturnType<typeof vi.fn> };
   let orders: { getOrdersByAccount: ReturnType<typeof vi.fn>; cancelOrder: ReturnType<typeof vi.fn> };
   let dialog: { open: ReturnType<typeof vi.fn> };
+  // Stands in for the live-price WebSocket: tests push quotes into it
+  let liveFeed: Subject<LivePriceFeed>;
 
   beforeEach(async () => {
     user = signal<CurrentUser | null>({
@@ -73,6 +76,7 @@ describe('OrdersList', () => {
       cancelOrder: vi.fn(() => of(undefined)),
     };
     dialog = { open: vi.fn(() => closedDialog) };
+    liveFeed = new Subject<LivePriceFeed>();
 
     await TestBed.configureTestingModule({
       imports: [OrdersList],
@@ -81,6 +85,7 @@ describe('OrdersList', () => {
         { provide: Instruments, useValue: instruments },
         { provide: Orders, useValue: orders },
         { provide: MatDialog, useValue: dialog },
+        { provide: LivePrices, useValue: { watch: () => liveFeed.asObservable() } },
       ],
     })
       .overrideProvider(MatDialog, { useValue: dialog })
@@ -173,6 +178,41 @@ describe('OrdersList', () => {
 
     afterEach(() => vi.useRealTimers());
 
+    const market = (orderId: string) =>
+      row(orderId).querySelector('[data-testid="order-market"]')?.textContent?.replace(/\s+/g, ' ').trim();
+    // Like the real feed, each push keeps the other symbols' latest quotes
+    const quotes = new Map<string, LivePrice>();
+    const push = (symbol: string, bid: number, ask: number) => {
+      quotes.set(symbol, { symbol, price: (bid + ask) / 2, bid, ask, quoteTime: '2026-10-19T14:30:00Z' });
+      liveFeed.next({ prices: new Map(quotes), stale: false });
+      fixture.detectChanges();
+    };
+
+    it('shows the daily close, tagged Close, until a live quote arrives', () => {
+      expect(market('ORDER-1')).toBe('$182.40 Close');
+    });
+
+    it('shows the live ask on a BUY and the live bid on a SELL', () => {
+      push('AAPL', 183, 183.1);
+      push('TSLA', 251, 251.2);
+
+      expect(market('ORDER-1')).toBe('$183.10 Live');
+      expect(market('ORDER-2')).toBe('$251.00 Live');
+    });
+
+    it('updates the market price on every quote without reloading orders', () => {
+      orders.getOrdersByAccount.mockClear();
+      push('AAPL', 183, 183.1);
+      push('AAPL', 184, 184.1);
+
+      expect(market('ORDER-1')).toBe('$184.10 Live');
+      expect(orders.getOrdersByAccount).not.toHaveBeenCalled();
+    });
+
+    it('gives the Cancel button its red accent', () => {
+      expect(row('ORDER-2').querySelector('[data-testid="cancel-order"]')?.classList).toContain('orders-table__cancel');
+    });
+
     it("shows each order's limit price next to the market price", () => {
       expect(row('ORDER-1').querySelector('[data-testid="order-limit"]')?.textContent?.trim()).toBe('$180.00');
       expect(component.orders()[0]).toEqual(expect.objectContaining({ limit: '$180.00', price: '$182.40' }));
@@ -262,6 +302,7 @@ describe('OrdersList opened from a Buy or Sell link', () => {
         },
         { provide: Instruments, useValue: { getAllTradableInstruments: vi.fn(() => of([AAPL])) } },
         { provide: Orders, useValue: { getOrdersByAccount: vi.fn(() => of([])) } },
+        { provide: LivePrices, useValue: { watch: () => NEVER } },
         {
           provide: ActivatedRoute,
           useValue: {

@@ -31,6 +31,7 @@ service:
 alpaca:
   key-id: ${ALPACA_KEY_ID:}
   secret-key: ${ALPACA_SECRET_KEY:}
+  trading-url: ${ALPACA_TRADING_URL:https://paper-api.alpaca.markets/v2}
 
 market-data:
   poll-interval-ms: ${MARKET_DATA_POLL_INTERVAL_MS:5000}

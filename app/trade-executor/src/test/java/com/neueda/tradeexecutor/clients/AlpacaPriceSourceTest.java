@@ -1,6 +1,7 @@
 package com.neueda.tradeexecutor.clients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -66,20 +67,30 @@ class AlpacaPriceSourceTest {
     }
 
     @Test
-    void unusableQuoteFallsBackToDailyClose() {
+    void unusableQuoteGivesNoPriceRatherThanTheDailyClose() {
         alpacaQuotes("313.32", "347.03");   // real after-hours quote, ~10% spread
-        when(fallback.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(DAILY_CLOSE));
 
-        assertEquals(DAILY_CLOSE, priceSource.getPrice(AAPL, OrderSide.BUY).orElseThrow());
+        assertTrue(priceSource.getPrice(AAPL, OrderSide.BUY).isEmpty());
+        verifyNoInteractions(fallback);
     }
 
     @Test
-    void alpacaErrorFallsBackToDailyClose() {
+    void staleQuoteGivesNoPrice() {
+        when(alpaca.isConfigured()).thenReturn(true);
+        when(alpaca.latestQuotes(List.of("AAPL"))).thenReturn(Map.of("AAPL",
+                new AlpacaQuote(new BigDecimal("150.00"), new BigDecimal("150.10"), NOW.minusSeconds(3600))));
+
+        assertTrue(priceSource.getPrice(AAPL, OrderSide.BUY).isEmpty());
+        verifyNoInteractions(fallback);
+    }
+
+    @Test
+    void alpacaErrorGivesNoPrice() {
         when(alpaca.isConfigured()).thenReturn(true);
         when(alpaca.latestQuotes(List.of("AAPL"))).thenThrow(new ResourceAccessException("timed out"));
-        when(fallback.getPrice(AAPL, OrderSide.BUY)).thenReturn(Optional.of(DAILY_CLOSE));
 
-        assertEquals(DAILY_CLOSE, priceSource.getPrice(AAPL, OrderSide.BUY).orElseThrow());
+        assertTrue(priceSource.getPrice(AAPL, OrderSide.BUY).isEmpty());
+        verifyNoInteractions(fallback);
     }
 
     @Test
