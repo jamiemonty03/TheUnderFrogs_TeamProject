@@ -78,6 +78,16 @@
   }
 }
 
+.dashboard__insights {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .dashboard__tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

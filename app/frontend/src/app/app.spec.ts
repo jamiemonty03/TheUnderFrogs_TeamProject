@@ -35,6 +35,17 @@ describe('App', () => {
     expect(TestBed.createComponent(App).componentInstance).toBeTruthy();
   });
 
+  it('shows no shell, and so loads no news, until the first page has been decided', () => {
+    const getNews = vi.spyOn(TestBed.inject(Instruments), 'getNews');
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const page = fixture.nativeElement as HTMLElement;
+    expect(page.querySelector('app-navigation-bar')).toBeNull();
+    expect(page.querySelector('app-news-footer')).toBeNull();
+    expect(getNews).not.toHaveBeenCalled();
+  });
+
   it('shows the navigation bar and page padding on normal pages', async () => {
     const page = await open('/dashboard');
 

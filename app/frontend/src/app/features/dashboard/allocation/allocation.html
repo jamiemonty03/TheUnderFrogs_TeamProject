@@ -1,0 +1,46 @@
+@if (segments().length === 0) {
+  <p class="allocation__empty">Nothing priced to show yet.</p>
+} @else {
+  <div class="allocation__bar" role="img" [attr.aria-label]="'Portfolio weighting: ' + summary()">
+    @for (segment of segments(); track segment.key) {
+      <div
+        class="allocation__segment"
+        [style.flex-grow]="segment.weight"
+        [style.background]="segment.colour"
+        [class.allocation__segment--dim]="active() !== null && active() !== segment.key"
+        (mouseenter)="active.set(segment.key)"
+        (mouseleave)="active.set(null)"
+      >
+        @if (active() === segment.key) {
+          <div class="allocation__tooltip" role="tooltip">
+            <strong>{{ segment.label }}</strong>
+            @if (segment.name) {
+              <span class="allocation__tooltip-name">{{ segment.name }}</span>
+            }
+            <span class="allocation__mono">
+              {{ segment.weight | number: '1.1-1' }}% · {{ segment.value | currency: 'USD' }}
+            </span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <ul class="allocation__legend">
+    @for (segment of segments(); track segment.key) {
+      <li
+        class="allocation__item"
+        [class.allocation__item--dim]="active() !== null && active() !== segment.key"
+        (mouseenter)="active.set(segment.key)"
+        (mouseleave)="active.set(null)"
+      >
+        <span class="allocation__swatch" [style.background]="segment.colour" aria-hidden="true"></span>
+        <span class="allocation__symbol" [title]="segment.name">{{ segment.label }}</span>
+      </li>
+    }
+  </ul>
+
+  @if (unpriced() > 0) {
+    <p class="allocation__hint">Excludes {{ unpriced() }} unpriced</p>
+  }
+}
