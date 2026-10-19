@@ -17,6 +17,7 @@ import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolio
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
 import { Positions } from '../../../services/positions';
+import { Allocation } from '../../dashboard/allocation/allocation';
 import { summarise, toHoldings } from '../../dashboard/portfolio';
 
 export const ALL_HOLDINGS = 'ALL';
@@ -28,6 +29,7 @@ type SortKey = keyof HoldingRow;
 
 @Component({
   imports: [
+    Allocation,
     CurrencyPipe,
     DatePipe,
     DecimalPipe,
@@ -101,7 +103,7 @@ export class PositionsList implements OnInit {
   private readonly heldPositions = computed(() => this.positions().filter((p) => p.quantity > 0));
 
   // The dashboard's own calculations, so both pages show the same numbers
-  private readonly holdings = computed(() =>
+  protected readonly holdings = computed(() =>
     toHoldings(this.heldPositions(), this.prices(), this.livePrices()),
   );
 
