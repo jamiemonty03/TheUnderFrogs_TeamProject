@@ -15,6 +15,7 @@ import { BaseChartDirective, provideCharts } from 'ng2-charts';
 import { Observable, catchError, combineLatest, distinctUntilChanged, filter, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
+import { Theme } from '../../../services/theme';
 import { PricePoint } from '../../../services/interfaces/instruments.interfaces';
 import { ClientTradeResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
@@ -214,6 +215,7 @@ export class Performance {
   private readonly orders = inject(Orders);
   private readonly instruments = inject(Instruments);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly themes = inject(Theme);
 
   readonly positions = input<Position[]>([]);
   readonly positionsLoading = input(false);
@@ -271,6 +273,7 @@ export class Performance {
   protected readonly tableRows = computed(() => [...this.visible()].reverse());
 
   readonly data = computed<ChartData<'line', number[], string>>(() => {
+    this.themes.theme();
     const shown = this.visible();
     const colour = SERIES[0].colour;
     return {
@@ -294,6 +297,7 @@ export class Performance {
   });
 
   readonly options = computed<ChartConfiguration<'line'>['options']>(() => {
+    this.themes.theme();
     const muted = token('--ts-text-muted', '#9db5a7');
     const grid = token('--ts-divider', '#1a2c21');
     const font = {

@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   computed,
+  inject,
   input,
   linkedSignal,
   signal,
@@ -27,6 +28,7 @@ import {
 } from 'chart.js';
 import { BaseChartDirective, provideCharts } from 'ng2-charts';
 import { LivePrice, PricePoint } from '../../../services/interfaces/instruments.interfaces';
+import { Theme } from '../../../services/theme';
 
 export type RangeKey = '1M' | '3M' | '6M' | '1Y';
 export type ChartMode = 'line' | 'candles';
@@ -325,6 +327,12 @@ export class PriceChart {
   private readonly activeIndex = signal<number | null>(null);
   private readonly hoverIndex = signal<number | null>(null);
   private readonly chart = viewChild(BaseChartDirective);
+  private readonly themes = inject(Theme);
+
+  private readonly candleColours = computed(() => {
+    this.themes.theme();
+    return { up: token('--ts-up', UP), down: token('--ts-down', DOWN) };
+  });
   private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
 
   private readonly all = computed(() =>
@@ -399,13 +407,17 @@ export class PriceChart {
   readonly lastPrice = computed<LastPrice | null>(() => {
     const latest = this.all().at(-1);
     return this.chartType() === 'bar' && latest
-      ? { price: latest.close, colour: isUp(latest) ? UP : DOWN }
+      ? {
+          price: latest.close,
+          colour: isUp(latest) ? this.candleColours().up : this.candleColours().down,
+        }
       : null;
   });
 
-  readonly data = computed<ChartData<ChartType, unknown[], string>>(() =>
-    this.chartType() === 'bar' ? this.candleData() : this.lineData(),
-  );
+  readonly data = computed<ChartData<ChartType, unknown[], string>>(() => {
+    this.themes.theme();
+    return this.chartType() === 'bar' ? this.candleData() : this.lineData();
+  });
 
   private lineData(): ChartData<'line', (number | null)[], string> {
     const shown = this.visible();
@@ -434,7 +446,8 @@ export class PriceChart {
 
   private candleData(): ChartData<ChartType, unknown[], string> {
     const shown = this.visible();
-    const colours = shown.map((p) => (isUp(p) ? UP : DOWN));
+    const { up, down } = this.candleColours();
+    const colours = shown.map((p) => (isUp(p) ? up : down));
     return {
       labels: shown.map((p) => p.date),
       datasets: [
@@ -490,6 +503,7 @@ export class PriceChart {
   }
 
   readonly options = computed<ChartConfiguration['options']>(() => {
+    this.themes.theme();
     const muted = token('--ts-text-muted', '#9db5a7');
     const grid = token('--ts-divider', '#1a2c21');
     const font = {

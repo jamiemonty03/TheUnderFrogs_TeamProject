@@ -2,6 +2,7 @@ import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LivePrice, PricePoint } from '../../../services/interfaces/instruments.interfaces';
 import { DOWN, MIN_DAYS, PriceChart, UP, tradingDay } from './price-chart';
+import { Theme } from '../../../services/theme';
 
 const POINTS: PricePoint[] = Array.from({ length: 300 }, (_, i) => ({
   date: new Date(Date.UTC(2025, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
@@ -204,6 +205,26 @@ describe('PriceChart', () => {
           .data()
           .datasets.map((d) => d.label),
       ).toEqual(['20-day average', '50-day average', 'Body', 'Wick', 'Volume']);
+    });
+
+    it("redraws the candles in the new theme's colours when the theme changes", () => {
+      showCandles();
+      const bodyColours = () =>
+        chart()
+          .data()
+          .datasets.find((d) => d.label === 'Body')!.backgroundColor as string[];
+      expect(bodyColours().at(-2)).toBe(UP);
+
+      document.documentElement.style.setProperty('--ts-up', '#15803d');
+      try {
+        TestBed.inject(Theme).set('light');
+        fixture.detectChanges();
+
+        expect(bodyColours().at(-2)).toBe('#15803d');
+      } finally {
+        document.documentElement.style.removeProperty('--ts-up');
+        localStorage.clear();
+      }
     });
 
     it('colours rising days green and falling days red', () => {
