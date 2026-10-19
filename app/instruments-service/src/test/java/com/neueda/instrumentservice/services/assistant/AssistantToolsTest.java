@@ -3,6 +3,7 @@ package com.neueda.instrumentservice.services.assistant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -22,7 +23,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.neueda.instrumentservice.clients.AlpacaNewsClient;
 import com.neueda.instrumentservice.dtos.ai.AssistantSource;
 import com.neueda.instrumentservice.dtos.ai.ToolCall;
 import com.neueda.instrumentservice.dtos.ai.ToolDefinition;
@@ -53,7 +53,7 @@ class AssistantToolsTest {
     @Mock private StockService stockService;
     @Mock private EtfService etfService;
     @Mock private BondService bondService;
-    @Mock private AlpacaNewsClient newsClient;
+    @Mock private NewsCache newsCache;
     @Mock private TrackedTickerMapper trackedTickerMapper;
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -62,7 +62,7 @@ class AssistantToolsTest {
     @BeforeEach
     void setUp() {
         tools = new AssistantTools(instrumentService, priceSnapshotService, priceHistoryService, stockService,
-                etfService, bondService, newsClient, trackedTickerMapper, mapper);
+                etfService, bondService, newsCache, trackedTickerMapper, mapper);
     }
 
     private static ToolCall call(String name, String arguments) {
@@ -144,7 +144,7 @@ class AssistantToolsTest {
     void returnsNewsWithSummariesAndLinksAsSources() throws Exception {
         Instant published = Instant.parse("2026-10-19T13:05:00Z");
         when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("MSFT", "AAPL"));
-        when(newsClient.getNews(5, List.of("MSFT"))).thenReturn(List.of(new NewsResponse(
+        when(newsCache.getNews("MSFT", 5)).thenReturn(List.of(new NewsResponse(
                 "Azure growth slows", "https://news.example.com/azure", published, null, List.of("MSFT"),
                 "Cloud growth came in below estimates.", "benzinga")));
 
@@ -161,11 +161,11 @@ class AssistantToolsTest {
     @Test
     void capsTheNumberOfNewsArticles() {
         when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("MSFT"));
-        when(newsClient.getNews(anyInt(), any())).thenReturn(List.of());
+        when(newsCache.getNews(anyString(), anyInt())).thenReturn(List.of());
 
         tools.execute(call("get_news", "{\"symbol\":\"MSFT\",\"limit\":50}"));
 
-        verify(newsClient).getNews(AssistantTools.MAX_NEWS_LIMIT, List.of("MSFT"));
+        verify(newsCache).getNews("MSFT", AssistantTools.MAX_NEWS_LIMIT);
     }
 
     @Test
@@ -175,13 +175,13 @@ class AssistantToolsTest {
         ToolResult result = tools.execute(call("get_news", "{\"symbol\":\"MSFT\"}"));
 
         assertThat(content(result).get("error").asText()).isEqualTo("NOT_TRACKED");
-        verifyNoInteractions(newsClient);
+        verifyNoInteractions(newsCache);
     }
 
     @Test
     void reportsWhenTheNewsProviderIsDown() throws Exception {
         when(trackedTickerMapper.findActiveSymbols()).thenReturn(List.of("MSFT"));
-        when(newsClient.getNews(5, List.of("MSFT"))).thenThrow(
+        when(newsCache.getNews("MSFT", 5)).thenThrow(
                 new AlpacaNewsException(HttpStatus.TOO_MANY_REQUESTS, "NEWS-429", "rate limited"));
 
         assertThat(content(tools.execute(call("get_news", "{\"symbol\":\"MSFT\"}")))

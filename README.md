@@ -91,6 +91,7 @@ Environment variables:
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
 | `AI_API_KEY` | instruments-service | Your own free [Groq](https://console.groq.com) key for the AI assistant; blank = assistant unavailable |
 | `AI_BASE_URL`, `AI_MODEL`, `AI_FALLBACK_MODEL` | instruments-service | AI provider (any OpenAI-compatible API) and models. Defaults: Groq, `openai/gpt-oss-120b`, falling back to `openai/gpt-oss-20b` |
+| `AI_QUESTIONS_PER_MINUTE`, `AI_NEWS_CACHE_SECONDS` | instruments-service | Assistant questions allowed per user per minute (default 5) and how long news is reused (default 300 seconds) |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
 
 ### 3) Log in and call the APIs

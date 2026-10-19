@@ -15,7 +15,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.neueda.instrumentservice.clients.AlpacaNewsClient;
 import com.neueda.instrumentservice.dtos.ai.AssistantSource;
 import com.neueda.instrumentservice.dtos.ai.ToolCall;
 import com.neueda.instrumentservice.dtos.ai.ToolDefinition;
@@ -63,13 +62,13 @@ public class AssistantTools {
     private final StockService stockService;
     private final EtfService etfService;
     private final BondService bondService;
-    private final AlpacaNewsClient newsClient;
+    private final NewsCache newsCache;
     private final TrackedTickerMapper trackedTickerMapper;
     private final ObjectMapper json;
 
     public AssistantTools(InstrumentService instrumentService, PriceSnapshotService priceSnapshotService,
             PriceHistoryService priceHistoryService, StockService stockService, EtfService etfService,
-            BondService bondService, AlpacaNewsClient newsClient, TrackedTickerMapper trackedTickerMapper,
+            BondService bondService, NewsCache newsCache, TrackedTickerMapper trackedTickerMapper,
             ObjectMapper mapper) {
         this.instrumentService = instrumentService;
         this.priceSnapshotService = priceSnapshotService;
@@ -77,7 +76,7 @@ public class AssistantTools {
         this.stockService = stockService;
         this.etfService = etfService;
         this.bondService = bondService;
-        this.newsClient = newsClient;
+        this.newsCache = newsCache;
         this.trackedTickerMapper = trackedTickerMapper;
         this.json = mapper.copy().enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
     }
@@ -172,7 +171,7 @@ public class AssistantTools {
         }
         List<NewsResponse> articles;
         try {
-            articles = newsClient.getNews(Math.max(1, Math.min(requestedLimit, MAX_NEWS_LIMIT)), List.of(symbol));
+            articles = newsCache.getNews(symbol, Math.max(1, Math.min(requestedLimit, MAX_NEWS_LIMIT)));
         } catch (AlpacaNewsException ex) {
             return failure(GET_NEWS, "NEWS_UNAVAILABLE", "News is unavailable right now");
         }

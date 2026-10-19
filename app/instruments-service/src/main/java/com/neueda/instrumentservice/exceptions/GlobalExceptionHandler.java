@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("AI-503", ex.getMessage()));
     }
 
+    @ExceptionHandler(AssistantRateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleAssistantRateLimit(AssistantRateLimitException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse("AI-429", ex.getMessage()));
+    }
+
     @ExceptionHandler(InstrumentNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInstrumentNotFound(InstrumentNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

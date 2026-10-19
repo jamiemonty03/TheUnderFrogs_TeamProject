@@ -39,3 +39,5 @@ ai:
   model: ${AI_MODEL:openai/gpt-oss-120b}
   fallback-model: ${AI_FALLBACK_MODEL:openai/gpt-oss-20b}
   retry-backoff-ms: ${AI_RETRY_BACKOFF_MS:2000}
+  questions-per-minute: ${AI_QUESTIONS_PER_MINUTE:5}
+  news-cache-seconds: ${AI_NEWS_CACHE_SECONDS:300}
