@@ -32,14 +32,14 @@ export const SERIES = [
 const money = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-function token(name: string, fallback: string): string {
+export function token(name: string, fallback: string): string {
   if (typeof document === 'undefined') {
     return fallback;
   }
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-const crosshair: Plugin<'line'> = {
+export const crosshair: Plugin<'line'> = {
   id: 'crosshair',
   afterDatasetsDraw(chart) {
     const active = chart.tooltip?.getActiveElements();

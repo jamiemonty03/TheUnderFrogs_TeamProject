@@ -40,6 +40,11 @@
     "secure": false,
     "changeOrigin": true
   },
+  "/api/client-trades": {
+    "target": "http://localhost:8083",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/api/positions": {
     "target": "http://localhost:8084",
     "secure": false,
