@@ -552,4 +552,63 @@ describe('Auth', () => {
       consoleSpies.forEach((spy) => expect(spy).not.toHaveBeenCalled());
     });
   });
+
+  describe('edge cases', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('logout() with nobody logged in just makes sure the session is clear', async () => {
+      setUp();
+
+      await firstValueFrom(auth.logout());
+
+      http.expectNone('/auth/logout');
+      expect(auth.isAuthenticated()).toBe(false);
+    });
+
+    it('refresh() fails, rather than restoring a session, if you log out while it is in flight', async () => {
+      setUp();
+      await logInAsDemo(jwt(-60));
+
+      const result = firstValueFrom(auth.refresh());
+      auth.clearSession();
+      http
+        .expectOne('/auth/refresh')
+        .flush({ accessToken: jwt(900), refreshToken: 'refresh-2', expiresIn: 900 });
+
+      await expect(result).rejects.toBeInstanceOf(NoRefreshTokenError);
+      expect(auth.isAuthenticated()).toBe(false);
+    });
+
+    describe('when the browser blocks sessionStorage', () => {
+      const blocked = () => {
+        throw new DOMException('Storage is disabled', 'SecurityError');
+      };
+
+      beforeEach(() => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+        vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(blocked);
+      });
+
+      it('still logs in, keeping the session in memory for this page', async () => {
+        setUp();
+
+        await logInAsDemo();
+
+        expect(auth.isAuthenticated()).toBe(true);
+        expect(auth.currentUser()).toEqual(demo);
+      });
+
+      it('still logs out', async () => {
+        setUp();
+        await logInAsDemo();
+
+        const result = firstValueFrom(auth.logout());
+        http.expectOne('/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+        await result;
+
+        expect(auth.isAuthenticated()).toBe(false);
+      });
+    });
+  });
 });

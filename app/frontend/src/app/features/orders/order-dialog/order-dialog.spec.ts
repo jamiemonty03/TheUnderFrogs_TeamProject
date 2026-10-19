@@ -292,6 +292,65 @@ describe('OrderDialog', () => {
     component.close();
     expect(dialogRef.close).toHaveBeenCalledOnce();
   });
+
+  describe('leaving the instrument box', () => {
+    it('switches to an instrument typed out in full, in any case', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      component.buyInstrumentStep.controls.instrumentInput.setValue(' tsla ');
+      component.onBuyBlur();
+      expect(component.selectedBuyInstrument()).toEqual(TSLA);
+
+      component.selectSellInstrument(optionEvent('AAPL') as never);
+      component.sellInstrumentStep.controls.instrumentInput.setValue('tsla');
+      component.onSellBlur();
+      expect(component.selectedSellInstrument()).toEqual(TSLA);
+    });
+
+    it('leaves part of a name alone while it still matches something to pick', () => {
+      component.buyInstrumentStep.controls.instrumentInput.setValue('te');
+      component.onBuyBlur();
+      expect(component.buyInstrumentStep.controls.instrumentInput.value).toBe('te');
+
+      component.sellInstrumentStep.controls.instrumentInput.setValue('te');
+      component.onSellBlur();
+      expect(component.sellInstrumentStep.controls.instrumentInput.value).toBe('te');
+    });
+
+    it('keeps the instrument that was picked', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      component.onBuyBlur();
+      expect(component.selectedBuyInstrument()).toEqual(AAPL);
+
+      component.selectSellInstrument(optionEvent('AAPL') as never);
+      component.onSellBlur();
+      expect(component.selectedSellInstrument()).toEqual(AAPL);
+    });
+  });
+
+  it("says when the user has no trading account, without asking for one's cash", () => {
+    accounts.getAccount.mockClear();
+    user.set({ ...currentUser, accountId: null });
+
+    component.ngOnInit();
+
+    expect(accounts.getAccount).not.toHaveBeenCalled();
+    expect(component.accountLoadError()).toBe('No trading account is linked to this user.');
+  });
+
+  it('still gives each order a unique key in browsers without crypto.randomUUID', () => {
+    vi.stubGlobal('crypto', {});
+    try {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      component.placeBuyOrder();
+      component.placeBuyOrder();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    const [first, second] = orders.placeOrder.mock.calls.map(([order]) => order.idempotencyKey);
+    expect(first).toMatch(/^\d+-[a-z0-9]+$/);
+    expect(second).not.toBe(first);
+  });
 });
 
 describe('OrderDialog portfolio choice', () => {
