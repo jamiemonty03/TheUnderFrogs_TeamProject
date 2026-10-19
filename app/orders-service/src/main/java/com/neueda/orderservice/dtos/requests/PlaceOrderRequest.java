@@ -16,7 +16,7 @@ public record PlaceOrderRequest(
     @NotNull(message = "Order side (BUY/SELL) is required") OrderSide side,
     @NotNull(message = "Quantity is required") @DecimalMin(value = "0.01", message = "Quantity must be greater than 0") BigDecimal quantity,
     @Schema(description = "Worst price per share you accept: the most you pay on a BUY, the least you receive on a SELL. "
-            + "The order fills at the market price once the market reaches this limit, and stays NEW until then.", example = "190.00")
+            + "The order fills at the live market price once the market is open and reaches this limit, and stays NEW until then.", example = "190.00")
     @NotNull(message = "Price limit is required") @DecimalMin(value = "0.01", message = "Price limit must be greater than 0") BigDecimal priceLimit,
     @NotBlank(message = "Idempotency key is required") String idempotencyKey,
     @Schema(description = "Optional. The portfolio to buy into or sell from. Without it, the account's Main portfolio.",

@@ -3,6 +3,7 @@ package com.neueda.tradeexecutor.services;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,6 +34,7 @@ class OrderExecutionServiceTest {
     @Mock private InstrumentsClient instrumentsClient;
     @Mock private PriceSource priceSource;
     @Mock private SettlementService settlementService;
+    @Mock private MarketHours marketHours;
 
     private OrderExecutionService executionService;
 
@@ -40,7 +42,9 @@ class OrderExecutionServiceTest {
 
     @BeforeEach
     void setUp() {
-        executionService = new OrderExecutionService(ordersClient, instrumentsClient, priceSource, settlementService);
+        executionService = new OrderExecutionService(ordersClient, instrumentsClient, priceSource, settlementService,
+                marketHours);
+        lenient().when(marketHours.isOpen()).thenReturn(true);
     }
 
     private static OrderDto buyOrder(OrderStatus status) {
@@ -125,6 +129,29 @@ class OrderExecutionServiceTest {
         executionService.execute("ORD-1");
 
         verifyNoInteractions(settlementService);
+    }
+
+    @Test
+    void waitsForTheOpenWithoutPricingWhenTheMarketIsClosed() {
+        when(ordersClient.getOrder("ORD-1")).thenReturn(buyOrder(OrderStatus.NEW));
+        when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.of(AAPL));
+        when(marketHours.isOpen()).thenReturn(false);
+
+        executionService.execute("ORD-1");
+
+        verifyNoInteractions(priceSource, settlementService);
+    }
+
+    @Test
+    void stillRejectsAnUnknownSymbolWhileTheMarketIsClosed() {
+        OrderDto order = buyOrder(OrderStatus.NEW);
+        when(ordersClient.getOrder("ORD-1")).thenReturn(order);
+        when(instrumentsClient.getInstrument("AAPL")).thenReturn(Optional.empty());
+        lenient().when(marketHours.isOpen()).thenReturn(false);
+
+        executionService.execute("ORD-1");
+
+        verify(settlementService).settle(order, FillDecision.reject("Unknown symbol AAPL"));
     }
 
     @Test

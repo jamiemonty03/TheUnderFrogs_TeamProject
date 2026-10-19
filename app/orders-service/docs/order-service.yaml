@@ -540,7 +540,7 @@ components:
           format: decimal
           description: >
             Worst price per share you accept: the most you pay on a BUY, the least you receive on a SELL.
-            The order fills at the market price once the market reaches this limit, and stays NEW until then.
+            The order fills at the live market price once the market is open and reaches this limit, and stays NEW until then.
           example: 190.00
         idempotencyKey:
           type: string

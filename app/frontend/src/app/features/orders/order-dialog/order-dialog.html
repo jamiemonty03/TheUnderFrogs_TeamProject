@@ -114,7 +114,9 @@
                 <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
                   {{ market.source === 'live' ? 'Live ask' : 'Close' }}
                 </span>
-                @if (!buyFillsNow()) {
+                @if (market.source === 'close') {
+                  <span class="order-dialog__market-note">Market closed. The order waits until it opens.</span>
+                } @else if (!buyFillsNow()) {
                   <span class="order-dialog__market-note">Waits until the price drops to your limit</span>
                 }
               </p>
@@ -294,7 +296,9 @@
                 <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
                   {{ market.source === 'live' ? 'Live bid' : 'Close' }}
                 </span>
-                @if (!sellFillsNow()) {
+                @if (market.source === 'close') {
+                  <span class="order-dialog__market-note">Market closed. The order waits until it opens.</span>
+                } @else if (!sellFillsNow()) {
                   <span class="order-dialog__market-note">Waits until the price rises to your limit</span>
                 }
               </p>

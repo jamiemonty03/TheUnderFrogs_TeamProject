@@ -23,15 +23,17 @@ public class OrderExecutionService {
     private final InstrumentsClient instrumentsClient;
     private final PriceSource priceSource;
     private final SettlementService settlementService;
+    private final MarketHours marketHours;
     // Orders being executed right now: a new order and a price re-check can arrive together
     private final Set<String> inFlight = ConcurrentHashMap.newKeySet();
 
     public OrderExecutionService(OrdersClient ordersClient, InstrumentsClient instrumentsClient,
-            PriceSource priceSource, SettlementService settlementService) {
+            PriceSource priceSource, SettlementService settlementService, MarketHours marketHours) {
         this.ordersClient = ordersClient;
         this.instrumentsClient = instrumentsClient;
         this.priceSource = priceSource;
         this.settlementService = settlementService;
+        this.marketHours = marketHours;
     }
 
     public void execute(String orderId) {
@@ -75,6 +77,9 @@ public class OrderExecutionService {
         }
         if (!instrument.get().tradable()) {
             return FillDecision.reject("Instrument " + order.symbol() + " is not tradable");
+        }
+        if (!marketHours.isOpen()) {
+            return FillDecision.rest("Market is closed; waits for the open");
         }
 
         BigDecimal marketPrice = priceSource.getPrice(instrument.get(), order.side()).orElse(null);

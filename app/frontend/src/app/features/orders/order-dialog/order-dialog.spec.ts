@@ -298,6 +298,23 @@ describe('OrderDialog', () => {
       expect(component.sellFillsNow()).toBe(true);
     });
 
+    it('says the market is closed while there is only a close price', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      fixture.detectChanges();
+
+      const rendered = text('buy-market-price');
+      expect(rendered).toContain('Close');
+      expect(rendered).toContain('Market closed. The order waits until it opens.');
+    });
+
+    it('drops the market closed note once live quotes arrive', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+      fixture.detectChanges();
+
+      expect(text('buy-market-price')).not.toContain('Market closed');
+    });
+
     it('leaves out the waiting note when the BUY limit fills straight away', () => {
       component.selectBuyInstrument(optionEvent('AAPL') as never);
       pushQuote(quote(101, 102));
