@@ -1,11 +1,12 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
+import { LivePriceFeed } from '../../../services/interfaces/instruments.interfaces';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
@@ -194,6 +195,36 @@ describe('PositionsList (Portfolios page)', () => {
     expect(column('price')).toEqual(['$130.00 Live']);
     expect(column('pnl')).toEqual(['$300.00']);
     expect(liveFeed.watch).toHaveBeenLastCalledWith(['AAPL']);
+  });
+
+  it('flashes P&L, P&L % and day change, not the price, as a live price moves', async () => {
+    const feed = new Subject<LivePriceFeed>();
+    liveFeed.watch.mockReturnValue(feed.asObservable());
+    positions.getPositions.mockReturnValue(of([position('PF0011', 'AAPL', 10, 100)]));
+    await click('portfolio-PF0011');
+    const tick = (price: number) => {
+      feed.next({ prices: new Map([['AAPL', { symbol: 'AAPL', price, bid: null, ask: null, quoteTime: '' }]]), stale: false });
+      fixture.detectChanges();
+    };
+    const row = () => fixture.nativeElement.querySelector('tr.mat-mdc-row') as HTMLElement;
+    const flashing = (direction: 'up' | 'down') =>
+      Array.from(row().querySelectorAll(`.price-flash--${direction}`)).map((el) => (el.closest('td') as HTMLElement).className);
+
+    tick(130);
+    const firstRow = row();
+    tick(131);
+
+    expect(row()).toBe(firstRow); // the row is updated in place, not rebuilt
+    expect(flashing('up')).toEqual([
+      expect.stringContaining('mat-column-pnl '),
+      expect.stringContaining('mat-column-pnlPercent'),
+      expect.stringContaining('mat-column-dayChange'),
+    ]);
+    expect(row().querySelector('td.mat-column-price .price-flash')).toBeNull();
+
+    tick(129);
+    expect(flashing('down')).toHaveLength(3);
+    expect(flashing('up')).toHaveLength(0);
   });
 
   it('colours gains green and losses red', () => {

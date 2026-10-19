@@ -258,6 +258,7 @@
             [matSortDirection]="sort().direction"
             (matSortChange)="sort.set($event)"
             [dataSource]="rows()"
+            [trackBy]="trackRow"
             class="holdings-table"
             data-testid="holdings-table"
           >
@@ -373,7 +374,9 @@
                 Unrealised P&amp;L
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.pnl)">
-                {{ row.pnl === null ? '-' : (row.pnl | currency: 'USD') }}
+                <span class="price-flash" [appPriceFlash]="row.price">{{
+                  row.pnl === null ? '-' : (row.pnl | currency: 'USD')
+                }}</span>
               </td>
               <td mat-footer-cell *matFooterCellDef [class]="'num ' + tone(pnl())">
                 {{ pnl() | currency: 'USD' }}
@@ -391,7 +394,9 @@
                 P&amp;L %
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.pnlPercent)">
-                {{ row.pnlPercent === null ? '-' : (row.pnlPercent | number: '1.2-2') + '%' }}
+                <span class="price-flash" [appPriceFlash]="row.price">{{
+                  row.pnlPercent === null ? '-' : (row.pnlPercent | number: '1.2-2') + '%'
+                }}</span>
               </td>
               <td mat-footer-cell *matFooterCellDef></td>
             </ng-container>
@@ -407,7 +412,9 @@
                 Day
               </th>
               <td mat-cell *matCellDef="let row" [class]="'num ' + tone(row.dayPercent)">
-                {{ row.dayPercent === null ? '-' : (row.dayPercent | number: '1.2-2') + '%' }}
+                <span class="price-flash" [appPriceFlash]="row.price">{{
+                  row.dayPercent === null ? '-' : (row.dayPercent | number: '1.2-2') + '%'
+                }}</span>
               </td>
               <td mat-footer-cell *matFooterCellDef [class]="'num ' + tone(dayPercent())">
                 {{ dayPercent() === null ? '' : (dayPercent() | number: '1.2-2') + '%' }}

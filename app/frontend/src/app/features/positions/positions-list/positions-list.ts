@@ -16,6 +16,7 @@ import { LivePrices } from '../../../services/live-prices';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
+import { PriceFlash } from '../../../shared/price-flash/price-flash';
 import { Positions } from '../../../services/positions';
 import { summarise, toHoldings } from '../../dashboard/portfolio';
 
@@ -39,6 +40,7 @@ type SortKey = keyof HoldingRow;
     MatSelectModule,
     MatSortModule,
     MatTableModule,
+    PriceFlash,
   ],
   selector: 'app-positions-list',
   styleUrl: './positions-list.scss',
@@ -129,6 +131,9 @@ export class PositionsList implements OnInit {
       weight: h.weight,
     }));
   });
+
+  // Keep each row's DOM across live ticks, so its price flash can see the change
+  protected readonly trackRow = (_: number, row: HoldingRow) => `${row.portfolioId ?? 'MAIN'}:${row.symbol}`;
 
   protected readonly rows = computed<HoldingRow[]>(() => {
     const { active, direction } = this.sort();
