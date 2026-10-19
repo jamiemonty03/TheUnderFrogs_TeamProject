@@ -332,6 +332,30 @@ describe('PositionsList (Portfolios page)', () => {
     expect(el('portfolio-PF0012')!.getAttribute('aria-pressed')).toBe('true');
   });
 
+  describe('allocation', () => {
+    const weighting = () =>
+      el('allocation')!.querySelector('[role="img"]')!.getAttribute('aria-label');
+
+    it('shows how all holdings are weighted, with AAPL from both portfolios as one', () => {
+      expect(weighting()).toBe('Portfolio weighting: AAPL 65.1%, NVDA 34.9%');
+      expect(el('allocation')!.querySelectorAll('li')).toHaveLength(2);
+    });
+
+    it("follows the selected portfolio's holdings", async () => {
+      await click('portfolio-PF0012');
+
+      expect(weighting()).toBe('Portfolio weighting: NVDA 65.2%, AAPL 34.8%');
+    });
+
+    it('is hidden when there is nothing held', async () => {
+      positions.getPositions.mockReturnValue(of([]));
+
+      await click('portfolio-PF0011');
+
+      expect(el('allocation')).toBeNull();
+    });
+  });
+
   it('shows an empty state when a portfolio has no holdings', async () => {
     positions.getPositions.mockReturnValue(of([]));
 

@@ -112,7 +112,11 @@ export interface InstrumentSummary {
 
 export interface PricePoint {
 	date: string;
+	open?: number | null;
+	high?: number | null;
+	low?: number | null;
 	close: number;
+	volume?: number | null;
 	movingAvg20: number | null;
 	movingAvg50: number | null;
 }

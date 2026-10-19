@@ -1,0 +1,133 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.recent__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--ts-divider);
+
+  &:first-child {
+    padding-top: 0;
+  }
+}
+
+.recent__side {
+  flex: none;
+  width: 3rem;
+  padding: 0.3rem 0;
+  border-radius: 8px;
+  background: var(--ts-success-bg);
+  color: var(--ts-frog);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+
+  &--sell {
+    background: var(--ts-danger-bg);
+    color: var(--ts-sell);
+  }
+}
+
+.recent__main,
+.recent__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.recent__main {
+  flex: 1;
+}
+
+.recent__meta {
+  align-items: flex-end;
+}
+
+.recent__symbol {
+  color: var(--ts-text);
+  font-weight: 700;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--ts-frog);
+  }
+}
+
+.recent__detail,
+.recent__time {
+  color: var(--ts-text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.recent__status-pill {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ts-neutral-bg);
+  color: var(--ts-text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+
+  &--filled {
+    background: var(--ts-success-bg);
+    color: var(--ts-frog);
+  }
+
+  &--new {
+    background: var(--ts-info-bg);
+    color: var(--ts-info);
+  }
+
+  &--rejected {
+    background: var(--ts-danger-bg);
+    color: var(--ts-danger-text);
+  }
+}
+
+.recent__all {
+  align-self: flex-start;
+  color: var(--ts-frog);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.recent__status,
+.recent__empty p {
+  margin: 0;
+  color: var(--ts-text-muted);
+  font-size: 0.875rem;
+}
+
+.recent__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  a {
+    color: var(--ts-frog);
+    font-weight: 600;
+    text-decoration: none;
+  }
+}

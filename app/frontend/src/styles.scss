@@ -171,6 +171,30 @@ html {
   color: var(--ts-loss);
 }
 
+.inline-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border: 1px solid var(--ts-danger-border);
+  border-radius: 12px;
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+
+  button {
+    padding: 0.35rem 0.75rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
 .button--danger {
   color: var(--ts-danger-text);
 }

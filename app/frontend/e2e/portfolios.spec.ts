@@ -35,6 +35,7 @@ test('create a portfolio, buy into it, then delete it and the holding moves to M
 
   await page.getByTestId('nav-portfolios').click();
   await page.getByTestId(`portfolio-${portfolioId}`).click();
+  await expect(page.getByTestId('portfolios-title')).toHaveText(name);
   await expect(page.getByTestId('holding-AAPL').getByTestId('holding-quantity')).toHaveText('1');
 
   await page.getByTestId('delete-portfolio').click();
