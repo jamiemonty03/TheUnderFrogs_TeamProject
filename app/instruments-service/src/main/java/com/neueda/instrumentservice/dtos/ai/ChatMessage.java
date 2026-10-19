@@ -22,6 +22,10 @@ public record ChatMessage(
         return new ChatMessage("user", content, null, null, null);
     }
 
+    public static ChatMessage assistant(String content) {
+        return new ChatMessage("assistant", content == null ? "" : content, null, null, null);
+    }
+
     public static ChatMessage toolResult(ToolCall call, String content) {
         return new ChatMessage("tool", content, null, call.id(), call.function().name());
     }

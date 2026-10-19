@@ -208,7 +208,8 @@ class AssistantToolsTest {
         assertThat(out.get("change20DayPercent").decimalValue()).isEqualByComparingTo("3.09");
         assertThat(out.get("closeVsMovingAvg20Percent").decimalValue()).isEqualByComparingTo("0.58");
         assertThat(out.get("closeVsMovingAvg50Percent").decimalValue()).isEqualByComparingTo("-1.82");
-        assertThat(out.get("averageVolume20Day").decimalValue()).isEqualByComparingTo("1000000");
+        assertThat(out.get("latestVolume").asText()).isEqualTo("2.50 million");
+        assertThat(out.get("averageVolume20Day").asText()).isEqualTo("1.00 million");
         assertThat(out.get("volumeVsAverage").decimalValue()).isEqualByComparingTo("2.50");
         assertThat(result.sources().get(0).asOf()).isEqualTo(Instant.parse("2026-10-16T20:00:00Z"));
     }

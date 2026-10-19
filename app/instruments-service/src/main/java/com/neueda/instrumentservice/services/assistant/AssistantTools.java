@@ -213,8 +213,8 @@ public class AssistantTools {
         out.put("closeVsMovingAvg20Percent", percentChange(latest.close(), latest.movingAvg20()));
         out.put("closeVsMovingAvg50Percent", percentChange(latest.close(), latest.movingAvg50()));
         BigDecimal averageVolume = averageVolumeBefore(days);
-        out.put("latestVolume", latest.volume());
-        out.put("averageVolume20Day", averageVolume);
+        out.put("latestVolume", latest.volume() == null ? null : readable(BigDecimal.valueOf(latest.volume())));
+        out.put("averageVolume20Day", readable(averageVolume));
         out.put("volumeVsAverage", latest.volume() == null || averageVolume == null || averageVolume.signum() == 0
                 ? null
                 : BigDecimal.valueOf(latest.volume()).divide(averageVolume, 2, RoundingMode.HALF_UP));

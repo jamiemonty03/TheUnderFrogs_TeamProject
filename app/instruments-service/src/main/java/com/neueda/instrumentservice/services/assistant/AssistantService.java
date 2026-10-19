@@ -9,12 +9,15 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.neueda.instrumentservice.clients.AssistantModelClient;
+import com.neueda.instrumentservice.dtos.ai.AssistantAnswer;
 import com.neueda.instrumentservice.dtos.ai.AssistantRun;
+import com.neueda.instrumentservice.dtos.ai.AssistantSource;
 import com.neueda.instrumentservice.dtos.ai.ChatMessage;
 import com.neueda.instrumentservice.dtos.ai.ModelReply;
 import com.neueda.instrumentservice.dtos.ai.ToolCall;
 import com.neueda.instrumentservice.dtos.ai.ToolDefinition;
 import com.neueda.instrumentservice.dtos.ai.ToolResult;
+import com.neueda.instrumentservice.exceptions.AssistantUnavailableException;
 
 @Service
 public class AssistantService {
@@ -58,28 +61,66 @@ public class AssistantService {
             Answer in plain English, in under 150 words, using short paragraphs or bullet points.
             """;
 
+    static final String REVISION_PROMPT = """
+            Your previous answer failed our data checks:
+            %s
+            Rewrite the answer so that every figure and link comes from the tool results above, or leave it \
+            out. Do not add anything new and do not call any tools.
+            """;
+
     private static final DateTimeFormatter PROMPT_TIME = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy, HH:mm 'UTC'");
 
     private final AssistantModelClient modelClient;
     private final AssistantTools tools;
+    private final ReplyVerifier verifier;
     private final Clock clock;
 
     @Autowired
-    public AssistantService(AssistantModelClient modelClient, AssistantTools tools) {
-        this(modelClient, tools, Clock.systemUTC());
+    public AssistantService(AssistantModelClient modelClient, AssistantTools tools, ReplyVerifier verifier) {
+        this(modelClient, tools, verifier, Clock.systemUTC());
     }
 
-    AssistantService(AssistantModelClient modelClient, AssistantTools tools, Clock clock) {
+    AssistantService(AssistantModelClient modelClient, AssistantTools tools, ReplyVerifier verifier, Clock clock) {
         this.modelClient = modelClient;
         this.tools = tools;
+        this.verifier = verifier;
         this.clock = clock;
     }
 
-    public AssistantRun answer(String question) {
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(ChatMessage.system(systemPrompt()));
-        messages.add(ChatMessage.user(question.strip()));
+    public AssistantAnswer respond(String question) {
         List<ToolResult> results = new ArrayList<>();
+        String now = now();
+        AssistantRun run;
+        try {
+            run = run(question, now, results);
+        } catch (AssistantUnavailableException ex) {
+            return fallback(results, List.of(ex.getMessage()));
+        }
+        if (!run.hasReply()) {
+            return fallback(results, List.of("The AI did not produce an answer"));
+        }
+        List<String> trusted = List.of(question, now);
+        ReplyVerifier.Verification first = verifier.verify(run.reply(), results, trusted);
+        if (first.passed()) {
+            return answer(run, false, results);
+        }
+        AssistantRun revised;
+        try {
+            revised = revise(run, first.problems());
+        } catch (AssistantUnavailableException ex) {
+            return fallback(results, first.problems());
+        }
+        ReplyVerifier.Verification second = verifier.verify(revised.reply(), results, trusted);
+        if (second.passed()) {
+            return answer(revised, true, results);
+        }
+        return fallback(results, second.problems());
+    }
+
+    AssistantRun run(String question, String now, List<ToolResult> results) {
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(ChatMessage.system(SYSTEM_PROMPT.formatted(now)));
+        messages.add(ChatMessage.user(question.strip()));
         List<ToolDefinition> definitions = tools.definitions();
 
         for (int round = 0; round <= MAX_TOOL_ROUNDS; round++) {
@@ -87,7 +128,8 @@ public class AssistantService {
             ModelReply reply = modelClient.chat(List.copyOf(messages), lastRound ? List.of() : definitions);
             ChatMessage message = reply.message();
             if (!message.hasToolCalls() || lastRound) {
-                return new AssistantRun(message.content(), reply.model(), List.copyOf(results));
+                messages.add(ChatMessage.assistant(message.content()));
+                return new AssistantRun(message.content(), reply.model(), List.copyOf(results), List.copyOf(messages));
             }
             messages.add(new ChatMessage("assistant", message.content() == null ? "" : message.content(),
                     message.toolCalls(), null, null));
@@ -106,7 +148,36 @@ public class AssistantService {
         throw new IllegalStateException("The assistant loop ended without a reply");
     }
 
+    AssistantRun revise(AssistantRun run, List<String> problems) {
+        List<ChatMessage> messages = new ArrayList<>(run.conversation());
+        messages.add(ChatMessage.system(REVISION_PROMPT.formatted("- " + String.join("\n- ", problems))));
+        ModelReply reply = modelClient.chat(List.copyOf(messages), List.of());
+        return new AssistantRun(reply.message().content(), reply.model(), run.toolResults(), List.copyOf(messages));
+    }
+
+    private static AssistantAnswer answer(AssistantRun run, boolean revised, List<ToolResult> results) {
+        return new AssistantAnswer(run.reply().strip(), true, true, revised, run.model(), List.of(),
+                sources(results), List.copyOf(results));
+    }
+
+    private static AssistantAnswer fallback(List<ToolResult> results, List<String> problems) {
+        return new AssistantAnswer(RawDataAnswer.from(results), false, false, false, null, List.copyOf(problems),
+                sources(results), List.copyOf(results));
+    }
+
+    private static List<AssistantSource> sources(List<ToolResult> results) {
+        return results.stream()
+                .filter(r -> !r.failed())
+                .flatMap(r -> r.sources().stream())
+                .distinct()
+                .toList();
+    }
+
+    String now() {
+        return ZonedDateTime.now(clock).withZoneSameInstant(ZoneOffset.UTC).format(PROMPT_TIME);
+    }
+
     String systemPrompt() {
-        return SYSTEM_PROMPT.formatted(ZonedDateTime.now(clock).withZoneSameInstant(ZoneOffset.UTC).format(PROMPT_TIME));
+        return SYSTEM_PROMPT.formatted(now());
     }
 }
