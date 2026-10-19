@@ -90,7 +90,7 @@
             }
             @case ('ready') {
               @if (history().length) {
-                <app-price-chart [points]="history()" />
+                <app-price-chart [points]="history()" [live]="live()" />
               } @else {
                 <p class="instrument__muted" data-testid="history-empty">No price history yet.</p>
               }

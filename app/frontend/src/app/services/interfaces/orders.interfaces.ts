@@ -11,6 +11,20 @@ export interface PlaceOrderRequest {
   portfolioId?: string;
 }
 
+export interface ClientTradeResponse {
+  tradeId: number;
+  accountId: string;
+  symbol: string;
+  tradeType: ApiOrderSide;
+  quantity: number;
+  price: number;
+  tradeDate: string;
+  version: number;
+  createdAt: string;
+  lastUpdated: string | null;
+  updatedBy: string | null;
+}
+
 export interface OrderResponse {
   orderId: string;
   accountId: string;

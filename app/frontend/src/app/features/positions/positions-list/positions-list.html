@@ -235,6 +235,13 @@
       </div>
     </div>
 
+    @if (rows().length > 0) {
+      <section class="holdings-card" aria-labelledby="allocation-title" data-testid="allocation">
+        <h2 class="holdings-card__title" id="allocation-title">Allocation</h2>
+        <app-allocation [holdings]="holdings()" />
+      </section>
+    }
+
     <div class="holdings-card">
       <h2 class="holdings-card__title">Holdings</h2>
 

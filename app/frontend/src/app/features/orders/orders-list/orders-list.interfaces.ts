@@ -3,6 +3,7 @@ export type OrderSide = 'BUY' | 'SELL';
 export type OrderFilter = 'ALL' | OrderStatus;
 
 export interface OrderRow {
+  id: string;
   placed: string;
   symbol: string;
   side: OrderSide;
