@@ -1,0 +1,116 @@
+<div class="chart">
+  <div class="chart__views" role="group" aria-label="Performance view">
+    @for (v of views; track v.key) {
+      <button
+        type="button"
+        class="chart__range"
+        [class.chart__range--active]="view() === v.key"
+        [attr.aria-pressed]="view() === v.key"
+        (click)="setView(v.key)"
+        [attr.data-testid]="'performance-view-' + v.key"
+      >
+        {{ v.label }}
+      </button>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="chart__status">Loading your performance…</p>
+  } @else if (error(); as message) {
+    <div class="inline-error" role="alert">
+      <span>{{ message }}</span>
+      <button type="button" (click)="retry()">Try again</button>
+    </div>
+  } @else if (empty()) {
+    <p class="chart__status">
+      @if (view() === 'trades') {
+        No trades yet. Your performance shows up here after your first order fills.
+      } @else {
+        You don't hold anything yet.
+      }
+    </p>
+  } @else {
+    <div class="chart__controls">
+      <div class="chart__ranges" role="group" aria-label="Chart range">
+        @for (r of ranges(); track r.key) {
+          <button
+            type="button"
+            class="chart__range"
+            [class.chart__range--active]="range() === r.key"
+            [attr.aria-pressed]="range() === r.key"
+            (click)="range.set(r.key)"
+            [attr.data-testid]="'performance-range-' + r.key"
+          >
+            {{ r.key }}
+          </button>
+        }
+      </div>
+      @if (change(); as c) {
+        <p
+          class="chart__change"
+          [class.pos]="c.amount > 0"
+          [class.neg]="c.amount < 0"
+          data-testid="performance-change"
+        >
+          {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }}
+          @if (c.percent !== null) {
+            ({{ c.percent > 0 ? '+' : '' }}{{ c.percent | number: '1.2-2' }}%)
+          }
+          {{ range() === 'All' ? 'all time' : 'over ' + range() }}
+        </p>
+      }
+    </div>
+
+    @if (visible().length < 2) {
+      <p class="chart__status">Not enough history to chart yet. Check back after the next market close.</p>
+    } @else {
+      <div
+        class="chart__plot"
+        role="img"
+        [attr.aria-label]="
+          view() === 'trades'
+            ? 'Total return on your trades ' + (range() === 'All' ? 'since your first trade' : 'over ' + range())
+            : 'Value of your current holdings at each daily close over ' + range()
+        "
+        data-testid="performance-chart"
+      >
+        <canvas baseChart type="line" [data]="data()" [options]="options()" [plugins]="plugins"></canvas>
+      </div>
+
+      <details class="chart__table">
+        <summary>Show as a table</summary>
+        <table data-testid="performance-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Holdings value</th>
+              @if (view() === 'trades') {
+                <th scope="col">Total return</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of tableRows(); track p.date) {
+              <tr>
+                <td>{{ p.date | date: 'd MMM y' }}</td>
+                <td>{{ p.value | currency: 'USD' }}</td>
+                @if (view() === 'trades') {
+                  <td>{{ p.y > 0 ? '+' : '' }}{{ p.y | currency: 'USD' }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </details>
+    }
+
+    <p class="chart__hint">
+      @if (view() === 'trades') {
+        Gain or loss from price moves across all portfolios since your first trade on
+        {{ firstTradeDate() | date: 'd MMM y' }}. Buying and selling don't move the line.
+      } @else {
+        Today's holdings valued at each day's closing price.
+      }
+    </p>
+  }
+</div>

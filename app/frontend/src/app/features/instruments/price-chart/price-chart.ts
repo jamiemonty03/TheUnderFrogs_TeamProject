@@ -92,7 +92,6 @@ export interface SessionRange {
   low: number;
 }
 
-
 export function withLive(
   points: Required<PricePoint>[],
   quote: LivePrice | null,
@@ -140,7 +139,7 @@ const money = (value: number) =>
 const compact = (value: number) =>
   value.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 2 });
 
-function token(name: string, fallback: string): string {
+export function token(name: string, fallback: string): string {
   if (typeof document === 'undefined') {
     return fallback;
   }
@@ -188,7 +187,7 @@ export interface LastPrice {
 }
 
 /** The crosshair, plus a line at the latest price when `last` gives one. */
-const crosshair = (last: () => LastPrice | null): Plugin => ({
+export const crosshairWith = (last: () => LastPrice | null): Plugin => ({
   id: 'crosshair',
   afterEvent(chart, args) {
     const { event, inChartArea } = args;
@@ -264,6 +263,9 @@ const crosshair = (last: () => LastPrice | null): Plugin => ({
   },
 });
 
+/** The plain crosshair, for charts with no latest-price line. */
+export const crosshair = crosshairWith(() => null);
+
 @Component({
   imports: [BaseChartDirective, CurrencyPipe, DatePipe, DecimalPipe],
   providers: [
@@ -314,7 +316,7 @@ export class PriceChart {
   protected readonly modes = MODES;
   protected readonly series = SERIES;
   protected readonly averages = AVERAGES;
-  protected readonly plugins = [crosshair(() => this.lastPrice())];
+  protected readonly plugins = [crosshairWith(() => this.lastPrice())];
 
   readonly mode = signal<ChartMode>('line');
   /** The moving averages drawn over the price; none until you switch them on. */

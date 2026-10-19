@@ -1,0 +1,38 @@
+@if (loading()) {
+  <p class="recent__status">Loading your orders…</p>
+} @else if (error(); as message) {
+  <div class="inline-error" role="alert">
+    <span>{{ message }}</span>
+    <button type="button" (click)="load()">Try again</button>
+  </div>
+} @else if (orders().length === 0) {
+  <div class="recent__empty">
+    <p>No orders yet.</p>
+    <a routerLink="/orders" [queryParams]="{ new: true }">Place your first order</a>
+  </div>
+} @else {
+  <ul class="recent__list">
+    @for (order of orders(); track order.orderId) {
+      <li class="recent__item" data-testid="recent-order">
+        <span class="recent__side" [class.recent__side--sell]="order.side === 'SELL'">
+          {{ order.side === 'BUY' ? 'Buy' : 'Sell' }}
+        </span>
+        <div class="recent__main">
+          <a class="recent__symbol" [routerLink]="['/instruments', order.symbol]">{{ order.symbol }}</a>
+          <span class="recent__detail">
+            {{ order.quantity | number }} &#64; {{ order.priceLimit | currency: 'USD' }}
+          </span>
+        </div>
+        <div class="recent__meta">
+          <span [class]="'recent__status-pill recent__status-pill--' + order.orderStatus.toLowerCase()">
+            {{ order.orderStatus }}
+          </span>
+          <time class="recent__time" [attr.datetime]="order.createdAt">
+            {{ order.createdAt | date: 'd MMM, HH:mm' }}
+          </time>
+        </div>
+      </li>
+    }
+  </ul>
+  <a class="recent__all" routerLink="/orders">View all orders →</a>
+}
