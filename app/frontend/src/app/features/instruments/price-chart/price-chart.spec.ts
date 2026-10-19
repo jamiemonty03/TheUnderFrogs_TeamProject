@@ -1,7 +1,7 @@
 import { Component, signal, viewChild } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { PricePoint } from '../../../services/interfaces/instruments.interfaces';
-import { DOWN, MIN_DAYS, PriceChart, UP } from './price-chart';
+import { LivePrice, PricePoint } from '../../../services/interfaces/instruments.interfaces';
+import { DOWN, MIN_DAYS, PriceChart, UP, tradingDay } from './price-chart';
 
 const POINTS: PricePoint[] = Array.from({ length: 300 }, (_, i) => ({
   date: new Date(Date.UTC(2025, 0, 1) + i * 86_400_000).toISOString().slice(0, 10),
@@ -12,10 +12,11 @@ const POINTS: PricePoint[] = Array.from({ length: 300 }, (_, i) => ({
 
 @Component({
   imports: [PriceChart],
-  template: `<app-price-chart [points]="points()" />`,
+  template: `<app-price-chart [points]="points()" [live]="live()" />`,
 })
 class Host {
   readonly points = signal(POINTS);
+  readonly live = signal<LivePrice | null>(null);
   readonly chart = viewChild.required(PriceChart);
 }
 
@@ -241,6 +242,102 @@ describe('PriceChart', () => {
 
       expect(chart().data().datasets).toHaveLength(1);
       expect(el('chart-ohlc')).toBeNull();
+    });
+  });
+
+  describe('live prices', () => {
+    const OHLC: PricePoint[] = POINTS.map((p, i) => ({
+      ...p,
+      open: i % 2 ? p.close + 2 : p.close - 2,
+      high: p.close + 5,
+      low: p.close - 5,
+      volume: 1_000_000 + i,
+    }));
+    const quote = (price: number, quoteTime: string): LivePrice => ({
+      symbol: 'AAPL',
+      price,
+      bid: null,
+      ask: null,
+      quoteTime,
+    });
+    const tick = (price: number, quoteTime: string) => {
+      fixture.componentInstance.live.set(quote(price, quoteTime));
+      fixture.detectChanges();
+    };
+    const body = () =>
+      chart()
+        .data()
+        .datasets.find((d) => d.label === 'Body')!
+        .data.at(-1);
+    const wick = () =>
+      chart()
+        .data()
+        .datasets.find((d) => d.label === 'Wick')!
+        .data.at(-1);
+
+    beforeEach(() => {
+      fixture.componentInstance.points.set(OHLC);
+      fixture.detectChanges();
+      el('mode-candles')!.click();
+      fixture.detectChanges();
+    });
+
+    it('dates quotes by the New York trading day', () => {
+      expect(tradingDay('2025-10-27T15:00:00Z')).toBe('2025-10-27');
+      expect(tradingDay('2025-10-28T02:00:00Z')).toBe('2025-10-27');
+    });
+
+    it("moves today's candle with each quote, stretching the high and low", () => {
+      tick(406, '2025-10-27T15:00:00Z');
+      expect(body()).toEqual([401, 406]);
+      expect(wick()).toEqual([394, 406]);
+
+      tick(390, '2025-10-27T16:00:00Z');
+      expect(body()).toEqual([401, 390]);
+      expect(wick()).toEqual([390, 406]);
+      expect(chart().data().labels).toHaveLength(252);
+      expect(text('chart-live')).toBe('Live');
+    });
+
+    it("opens a new candle at the previous close when today isn't in the history yet", () => {
+      tick(402, '2025-10-28T14:00:00Z');
+      tick(397, '2025-10-28T15:00:00Z');
+
+      const labels = chart().data().labels as string[];
+      expect(labels.at(-1)).toBe('2025-10-28');
+      expect(labels).toHaveLength(252);
+      expect(body()).toEqual([399, 397]);
+      expect(wick()).toEqual([397, 402]);
+      expect(chart().lastPrice()).toEqual({ price: 397, colour: DOWN });
+      expect(text('chart-ohlc')).toContain('O399.00H402.00L397.00C397.00');
+    });
+
+    it('a new day starts its high and low afresh', () => {
+      tick(410, '2025-10-27T15:00:00Z');
+      tick(400, '2025-10-28T15:00:00Z');
+
+      expect(wick()).toEqual([399, 400]);
+    });
+
+    it('ignores a quote whose time is unreadable', () => {
+      tick(500, 'not a time');
+
+      expect(body()).toEqual([401, 399]);
+      expect(el('chart-live')).toBeNull();
+    });
+
+    it('ignores quotes older than the history', () => {
+      tick(500, '2025-10-26T15:00:00Z');
+
+      expect(body()).toEqual([401, 399]);
+      expect(el('chart-live')).toBeNull();
+    });
+
+    it('moves the line too', () => {
+      el('mode-line')!.click();
+      tick(420, '2025-10-27T15:00:00Z');
+
+      expect(chart().data().datasets[0].data.at(-1)).toBe(420);
     });
   });
 

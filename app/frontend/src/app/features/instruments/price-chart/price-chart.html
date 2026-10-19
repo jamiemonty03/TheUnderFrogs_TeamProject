@@ -63,17 +63,28 @@
         </button>
       }
     </div>
-    @if (change(); as c) {
-      <p
-        class="chart__change"
-        [class.pos]="c.amount > 0"
-        [class.neg]="c.amount < 0"
-        data-testid="chart-change"
-      >
-        {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{ c.percent > 0 ? '+' : ''
-        }}{{ c.percent | number: '1.2-2' }}%) over {{ period() }}
-      </p>
-    }
+    <div class="chart__status">
+      @if (isLive()) {
+        <span
+          class="chart__live"
+          title="Today's candle moves with each live quote"
+          data-testid="chart-live"
+          >Live</span
+        >
+      }
+      @if (change(); as c) {
+        <p
+          class="chart__change"
+          [class.pos]="c.amount > 0"
+          [class.neg]="c.amount < 0"
+          data-testid="chart-change"
+        >
+          {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{
+            c.percent > 0 ? '+' : ''
+          }}{{ c.percent | number: '1.2-2' }}%) over {{ period() }}
+        </p>
+      }
+    </div>
   </div>
 
   @if (chartType() === 'bar') {

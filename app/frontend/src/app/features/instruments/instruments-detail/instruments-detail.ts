@@ -54,7 +54,7 @@ export class InstrumentsDetail {
   protected readonly historyStatus = signal<'loading' | 'ready' | 'error'>('loading');
   protected readonly news = signal<NewsArticle[]>([]);
   protected readonly newsStatus = signal<'loading' | 'ready' | 'error'>('loading');
-  private readonly live = signal<LivePrice | null>(null);
+  protected readonly live = signal<LivePrice | null>(null);
   private readonly positions = signal<Position[]>([]);
   private readonly portfolios = signal<Portfolio[]>([]);
 

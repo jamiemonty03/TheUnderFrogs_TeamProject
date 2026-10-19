@@ -290,3 +290,41 @@
   color: var(--ts-text-muted);
   font-size: 0.75rem;
 }
+
+.chart__status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.chart__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ts-frog);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  &::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: chart-live-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes chart-live-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart__live::before {
+    animation: none;
+  }
+}

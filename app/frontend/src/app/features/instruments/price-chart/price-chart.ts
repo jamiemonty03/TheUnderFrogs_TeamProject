@@ -1,5 +1,13 @@
 import { CurrencyPipe, DatePipe, DecimalPipe, formatDate } from '@angular/common';
-import { Component, ElementRef, computed, input, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  input,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import {
   BarController,
   BarElement,
@@ -18,7 +26,7 @@ import {
   Tooltip,
 } from 'chart.js';
 import { BaseChartDirective, provideCharts } from 'ng2-charts';
-import { PricePoint } from '../../../services/interfaces/instruments.interfaces';
+import { LivePrice, PricePoint } from '../../../services/interfaces/instruments.interfaces';
 
 export type RangeKey = '1M' | '3M' | '6M' | '1Y';
 export type ChartMode = 'line' | 'candles';
@@ -65,6 +73,66 @@ const withNulls = (p: PricePoint): Required<PricePoint> => ({
 const isCandle = (p: PricePoint): p is Candle => p.open != null && p.high != null && p.low != null;
 
 const isUp = (p: PricePoint) => (p.open ?? p.close) <= p.close;
+
+const NEW_YORK_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+export function tradingDay(time: string | null | undefined): string | null {
+  const date = new Date(time ?? '');
+  return Number.isNaN(date.getTime()) ? null : NEW_YORK_DAY.format(date);
+}
+
+export interface SessionRange {
+  date: string;
+  high: number;
+  low: number;
+}
+
+
+export function withLive(
+  points: Required<PricePoint>[],
+  quote: LivePrice | null,
+  session: SessionRange | null,
+): Required<PricePoint>[] {
+  const last = points.at(-1);
+  if (!quote || !last) {
+    return points;
+  }
+  const day = tradingDay(quote.quoteTime);
+  if (day === null || day < last.date) {
+    return points;
+  }
+  const seen = session?.date === day ? session : { high: quote.price, low: quote.price };
+  if (day === last.date) {
+    return [
+      ...points.slice(0, -1),
+      {
+        ...last,
+        close: quote.price,
+        high: Math.max(last.high ?? last.close, seen.high, quote.price),
+        low: Math.min(last.low ?? last.close, seen.low, quote.price),
+      },
+    ];
+  }
+  const open = last.close;
+  return [
+    ...points,
+    {
+      date: day,
+      open,
+      high: Math.max(open, seen.high, quote.price),
+      low: Math.min(open, seen.low, quote.price),
+      close: quote.price,
+      volume: null,
+      movingAvg20: null,
+      movingAvg50: null,
+    },
+  ];
+}
 
 const money = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -219,6 +287,28 @@ const crosshair = (last: () => LastPrice | null): Plugin => ({
 })
 export class PriceChart {
   readonly points = input.required<PricePoint[]>();
+  readonly live = input<LivePrice | null>(null);
+
+  private readonly session = linkedSignal<LivePrice | null, SessionRange | null>({
+    source: this.live,
+    computation: (quote, previous) => {
+      if (!quote) {
+        return null;
+      }
+      const date = tradingDay(quote.quoteTime);
+      if (date === null) {
+        return null;
+      }
+      const seen = previous?.value;
+      return seen?.date === date
+        ? {
+            date,
+            high: Math.max(seen.high, quote.price),
+            low: Math.min(seen.low, quote.price),
+          }
+        : { date, high: quote.price, low: quote.price };
+    },
+  });
 
   protected readonly ranges = RANGES;
   protected readonly modes = MODES;
@@ -235,7 +325,16 @@ export class PriceChart {
   private readonly chart = viewChild(BaseChartDirective);
   private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
 
-  private readonly all = computed(() => this.points().map(withNulls));
+  private readonly all = computed(() =>
+    withLive(this.points().map(withNulls), this.live(), this.session()),
+  );
+
+  readonly isLive = computed(() => {
+    const quote = this.live();
+    const last = this.points().at(-1);
+    const day = quote ? tradingDay(quote.quoteTime) : null;
+    return day !== null && !!last && day >= last.date;
+  });
 
   private readonly zoom = signal<{ start: number; end: number } | null>(null);
   private drag: { x: number; start: number; end: number } | null = null;
