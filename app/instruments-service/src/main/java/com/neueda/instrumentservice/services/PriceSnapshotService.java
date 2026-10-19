@@ -77,7 +77,7 @@ public class PriceSnapshotService {
                 .divide(previousClose, 2, RoundingMode.HALF_UP);
     }
 
-    private static Instant closeOf(LocalDate day) {
+    public static Instant closeOf(LocalDate day) {
         return day.atTime(MARKET_CLOSE).atZone(MARKET_ZONE).toInstant();
     }
 }

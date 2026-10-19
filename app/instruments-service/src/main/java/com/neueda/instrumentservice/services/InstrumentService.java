@@ -46,8 +46,7 @@ public class InstrumentService {
         if (query == null || query.isBlank()) {
             return List.of();
         }
-        String symbol = query.replaceAll("[\\s$]", "").toUpperCase(Locale.ROOT);
-        Optional<Instrument> exact = instrumentMapper.findBySymbol(symbol);
+        Optional<Instrument> exact = instrumentMapper.findBySymbol(cleanSymbol(query));
         if (exact.isPresent()) {
             return List.of(toResponse(exact.get()));
         }
@@ -61,6 +60,10 @@ public class InstrumentService {
                 .limit(MAX_TICKER_MATCHES)
                 .map(InstrumentService::toResponse)
                 .toList();
+    }
+
+    public static String cleanSymbol(String symbol) {
+        return symbol == null ? "" : symbol.replaceAll("[\\s$]", "").toUpperCase(Locale.ROOT);
     }
 
     /**
