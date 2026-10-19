@@ -2,12 +2,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
 import { Auth, CurrentUser } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
-import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
+import { LivePrice, LivePriceFeed, TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
+import { LivePrices } from '../../../services/live-prices';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
@@ -68,6 +69,14 @@ const ORDER: OrderResponse = {
   updatedBy: null,
 };
 
+// Stands in for the live-price WebSocket: tests push quotes into it
+let liveFeed: Subject<LivePriceFeed>;
+const fakeLivePrices = () => ({ watch: () => liveFeed.asObservable() });
+
+function pushQuote(quote: LivePrice): void {
+  liveFeed.next({ prices: new Map([[quote.symbol, quote]]), stale: false });
+}
+
 function optionEvent(symbol: string): { option: { value: string } } {
   return { option: { value: symbol } };
 }
@@ -93,6 +102,7 @@ describe('OrderDialog', () => {
     orders = { placeOrder: vi.fn(() => of(ORDER)) };
     positions = { getPosition: vi.fn(() => of(AAPL_POSITION)) };
     dialogRef = { close: vi.fn() };
+    liveFeed = new Subject<LivePriceFeed>();
 
     await TestBed.configureTestingModule({
       imports: [OrderDialog],
@@ -102,6 +112,7 @@ describe('OrderDialog', () => {
         { provide: Instruments, useValue: instruments },
         { provide: Orders, useValue: orders },
         { provide: Positions, useValue: positions },
+        { provide: LivePrices, useValue: fakeLivePrices() },
         { provide: Portfolios, useValue: { getPortfolios: vi.fn(() => of([MAIN, GOLDEN_APPLE])) } },
         { provide: MatDialogRef, useValue: dialogRef },
       ],
@@ -218,8 +229,145 @@ describe('OrderDialog', () => {
     expect(component.buyResultMessage()).toBe('Could not reach the order service.');
   });
 
-  it('places a SELL order and reports success', () => {
+  describe('market price beside the limit', () => {
+    const page = () => fixture.nativeElement as HTMLElement;
+    const text = (testId: string) =>
+      page().querySelector(`[data-testid="${testId}"]`)?.textContent?.replace(/\s+/g, ' ').trim();
+    const quote = (bid: number, ask: number): LivePrice => ({
+      symbol: 'AAPL',
+      price: (bid + ask) / 2,
+      bid,
+      ask,
+      quoteTime: '2026-10-19T14:30:00Z',
+    });
+
+    it('shows nothing until an instrument is picked', () => {
+      expect(component.buyMarket()).toBeNull();
+      expect(component.sellMarket()).toBeNull();
+    });
+
+    it('falls back to the last close before any live quote arrives', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+
+      expect(component.buyMarket()).toEqual({ price: 100, source: 'close' });
+    });
+
+    it('uses the live ask for a BUY and the live bid for a SELL', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      component.selectSellInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+
+      expect(component.buyMarket()).toEqual({ price: 102, source: 'live' });
+      expect(component.sellMarket()).toEqual({ price: 101, source: 'live' });
+    });
+
+    it('updates as new quotes arrive', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+      pushQuote(quote(103, 104));
+
+      expect(component.buyMarket()?.price).toBe(104);
+    });
+
+    it('says whether a BUY fills straight away or waits', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+
+      component.buyOrderStep.controls.priceLimit.setValue(102);
+      expect(component.buyFillsNow()).toBe(true);
+
+      component.buyOrderStep.controls.priceLimit.setValue(101.99);
+      expect(component.buyFillsNow()).toBe(false);
+    });
+
+    it('says whether a SELL fills straight away or waits', () => {
+      component.selectSellInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+
+      component.sellOrderStep.controls.priceLimit.setValue(101);
+      expect(component.sellFillsNow()).toBe(true);
+
+      component.sellOrderStep.controls.priceLimit.setValue(101.01);
+      expect(component.sellFillsNow()).toBe(false);
+    });
+
+    it('falls back to the last close for a SELL, which fills at a limit of the close', () => {
+      component.selectSellInstrument(optionEvent('AAPL') as never);
+
+      expect(component.sellMarket()).toEqual({ price: 100, source: 'close' });
+      expect(component.sellFillsNow()).toBe(true);
+    });
+
+    it('says the market is closed while there is only a close price', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      fixture.detectChanges();
+
+      const rendered = text('buy-market-price');
+      expect(rendered).toContain('Close');
+      expect(rendered).toContain('Market closed. The order waits until it opens.');
+    });
+
+    it('drops the market closed note once live quotes arrive', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+      fixture.detectChanges();
+
+      expect(text('buy-market-price')).not.toContain('Market closed');
+    });
+
+    it('leaves out the waiting note when the BUY limit fills straight away', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+      component.buyOrderStep.controls.priceLimit.setValue(102);
+      fixture.detectChanges();
+
+      expect(text('buy-market-price')).toBe('Market now: $102.00 Live ask');
+    });
+
+    it('renders the live price and fill note on the BUY details step', () => {
+      component.selectBuyInstrument(optionEvent('AAPL') as never);
+      pushQuote(quote(101, 102));
+      component.buyOrderStep.controls.priceLimit.setValue(100);
+      fixture.detectChanges();
+
+      const rendered = text('buy-market-price');
+      expect(rendered).toContain('Market now: $102.00');
+      expect(rendered).toContain('Live ask');
+      expect(rendered).toContain('Waits until the price drops to your limit');
+    });
+  });
+
+  it('selects a SELL instrument and defaults its price limit to market price', () => {
     component.selectSellInstrument(optionEvent('AAPL') as never);
+
+    expect(component.sellOrderStep.controls.priceLimit.value).toBe(100);
+  });
+
+  it('keeps a SELL price limit the user already entered', () => {
+    component.sellOrderStep.controls.priceLimit.setValue(120);
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+
+    expect(component.sellOrderStep.controls.priceLimit.value).toBe(120);
+  });
+
+  it('blocks BUY continuation without a positive price limit', () => {
+    component.availableCash.set(1000);
+    component.selectBuyInstrument(optionEvent('AAPL') as never);
+    component.buyOrderStep.controls.priceLimit.setValue(0);
+
+    expect(component.buyDetailsInvalid()).toBe(true);
+  });
+
+  it('blocks SELL continuation without a positive price limit', () => {
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+    component.sellOrderStep.controls.priceLimit.setValue(0);
+
+    expect(component.sellDetailsInvalid()).toBe(true);
+  });
+
+  it('places a SELL order at its price limit and reports success', () => {
+    component.selectSellInstrument(optionEvent('AAPL') as never);
+    component.sellOrderStep.controls.priceLimit.setValue(105);
     component.placeSellOrder();
 
     expect(orders.placeOrder).toHaveBeenCalledWith(
@@ -228,7 +376,7 @@ describe('OrderDialog', () => {
         symbol: 'AAPL',
         side: 'SELL',
         quantity: 10,
-        priceLimit: 0.01,
+        priceLimit: 105,
       }),
     );
     expect(component.sellResponse()).toEqual(ORDER);
@@ -393,6 +541,7 @@ describe('OrderDialog portfolio choice', () => {
         },
         { provide: Orders, useValue: orders },
         { provide: Positions, useValue: positions },
+        { provide: LivePrices, useValue: fakeLivePrices() },
         { provide: Portfolios, useValue: portfolios },
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
         { provide: MAT_DIALOG_DATA, useValue: data },

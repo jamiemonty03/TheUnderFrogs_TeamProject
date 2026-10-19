@@ -9,5 +9,8 @@ export interface OrderRow {
   side: OrderSide;
   quantity: number;
   price: string;
+  // true when price is a live quote (ask for BUY, bid for SELL); false when it's the daily close
+  live?: boolean;
+  limit: string;
   status: OrderStatus;
 }

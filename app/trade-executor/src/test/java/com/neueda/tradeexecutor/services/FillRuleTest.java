@@ -25,6 +25,7 @@ class FillRuleTest {
         FillDecision decision = FillRule.decide(order(OrderSide.BUY, "150.00"), new BigDecimal("148.50"));
 
         assertTrue(decision.filled());
+        assertFalse(decision.resting());
         assertEquals(new BigDecimal("148.50"), decision.fillPrice());
         assertNull(decision.reason());
     }
@@ -38,10 +39,11 @@ class FillRuleTest {
     }
 
     @Test
-    void buyRejectsWhenMarketIsAboveLimit() {
+    void buyRestsWhenMarketIsAboveLimit() {
         FillDecision decision = FillRule.decide(order(OrderSide.BUY, "150.00"), new BigDecimal("150.01"));
 
         assertFalse(decision.filled());
+        assertTrue(decision.resting());
         assertNull(decision.fillPrice());
         assertEquals("Market price 150.01 is above BUY limit 150.00", decision.reason());
     }
@@ -66,10 +68,11 @@ class FillRuleTest {
     }
 
     @Test
-    void sellRejectsWhenMarketIsBelowLimit() {
+    void sellRestsWhenMarketIsBelowLimit() {
         FillDecision decision = FillRule.decide(order(OrderSide.SELL, "150.00"), new BigDecimal("149.99"));
 
         assertFalse(decision.filled());
+        assertTrue(decision.resting());
         assertNull(decision.fillPrice());
         assertEquals("Market price 149.99 is below SELL limit 150.00", decision.reason());
     }
@@ -77,26 +80,26 @@ class FillRuleTest {
     // Missing or invalid market price
 
     @Test
-    void rejectsWhenMarketPriceIsMissing() {
+    void restsWhenMarketPriceIsMissing() {
         FillDecision decision = FillRule.decide(order(OrderSide.BUY, "150.00"), null);
 
-        assertFalse(decision.filled());
+        assertTrue(decision.resting());
         assertEquals("No valid market price for AAPL", decision.reason());
     }
 
     @Test
-    void rejectsWhenMarketPriceIsZero() {
+    void restsWhenMarketPriceIsZero() {
         FillDecision decision = FillRule.decide(order(OrderSide.SELL, "150.00"), BigDecimal.ZERO);
 
-        assertFalse(decision.filled());
+        assertTrue(decision.resting());
         assertEquals("No valid market price for AAPL", decision.reason());
     }
 
     @Test
-    void rejectsWhenMarketPriceIsNegative() {
+    void restsWhenMarketPriceIsNegative() {
         FillDecision decision = FillRule.decide(order(OrderSide.BUY, "150.00"), new BigDecimal("-1.00"));
 
-        assertFalse(decision.filled());
+        assertTrue(decision.resting());
         assertEquals("No valid market price for AAPL", decision.reason());
     }
 }

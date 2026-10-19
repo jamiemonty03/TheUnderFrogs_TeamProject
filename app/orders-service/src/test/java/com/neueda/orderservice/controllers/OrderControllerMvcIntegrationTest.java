@@ -28,6 +28,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestTemplate;
@@ -93,6 +94,27 @@ class OrderControllerMvcIntegrationTest {
                 .andExpect(jsonPath("$[0].accountId").value("ACC0001"))
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"))
                 .andExpect(jsonPath("$[0].orderStatus").value("FILLED"));
+    }
+
+    @Test
+    void getOpenOrdersReturnsNewOrdersForTheSymbolToAService() throws Exception {
+        order.setOrderStatus(OrderStatus.NEW);
+        when(orderRepository.findByOrderStatusAndSymbolOrderByCreatedAtAsc(OrderStatus.NEW, "AAPL"))
+                .thenReturn(List.of(order));
+
+        mockMvc.perform(get("/orders/open").param("symbol", "AAPL")
+                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_SERVICE"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].orderId").value("order-1"))
+                .andExpect(jsonPath("$[0].orderStatus").value("NEW"));
+    }
+
+    @Test
+    void getOpenOrdersIsForbiddenToAUser() throws Exception {
+        mockMvc.perform(get("/orders/open").param("symbol", "AAPL").with(owner()))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(orderRepository);
     }
 
     @Test

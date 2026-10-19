@@ -5,7 +5,20 @@
   role="status"
 >
   <span class="order-snackbar__message">
-    Order {{ data.orderId }} {{ data.status === 'FILLED' ? 'filled' : 'rejected' }}
+    @switch (data.status) {
+      @case ('FILLED') {
+        Order {{ data.orderId }} filled
+      }
+      @case ('REJECTED') {
+        Order {{ data.orderId }} rejected
+      }
+      @case ('NEW') {
+        Order {{ data.orderId }} placed, waiting for {{ data.priceLimit | currency: 'USD' }}
+      }
+      @case ('CANCELLED') {
+        Order {{ data.orderId }} cancelled
+      }
+    }
     @if (data.reason) {
       <span>: {{ data.reason }}</span>
     }
