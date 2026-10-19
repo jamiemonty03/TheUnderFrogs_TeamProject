@@ -160,6 +160,7 @@ export class OrdersList implements OnInit {
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
+      id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,

@@ -131,6 +131,14 @@ describe('OrdersList', () => {
     expect(orders.getOrdersByAccount).toHaveBeenCalledTimes(2);
   });
 
+  it('tags each row with its order ID, so an order can be found in the table', () => {
+    const rows = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tr[data-testid^="order-"]'),
+    ).map((row) => row.getAttribute('data-testid'));
+
+    expect(rows).toEqual(['order-ORDER-1', 'order-ORDER-2']);
+  });
+
   it('shows N/A for an order without a matching instrument price', () => {
     orders.getOrdersByAccount.mockReturnValueOnce(of([{ ...BUY_ORDER, symbol: 'UNKNOWN' }]));
     component.ngOnInit();
