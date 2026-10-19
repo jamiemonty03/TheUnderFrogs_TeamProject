@@ -1,9 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, input, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { Mock, vi } from 'vitest';
 import { Account, Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice, LivePrice, LivePriceFeed } from '../../../services/instruments';
@@ -11,22 +11,7 @@ import { LivePrices } from '../../../services/live-prices';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position, Positions } from '../../../services/positions';
 import { Portfolios } from '../../../services/portfolios';
-import { MarketOverview } from '../../instruments/market-overview/market-overview';
-import { Performance } from '../performance/performance';
-import { RecentOrders } from '../recent-orders/recent-orders';
 import { Dashboard } from './dashboard';
-
-@Component({ selector: 'app-market-overview', template: '' })
-class MarketOverviewStub {}
-
-@Component({ selector: 'app-performance', template: '' })
-class PerformanceStub {
-  readonly positions = input<Position[]>();
-  readonly positionsLoading = input<boolean>();
-}
-
-@Component({ selector: 'app-recent-orders', template: '' })
-class RecentOrdersStub {}
 
 const ACCOUNT: Account = { accountId: 'ACC0013', holderName: 'Kermit Frog', cashBalance: 12480, status: 'ACTIVE' };
 const POSITIONS: Position[] = [
@@ -69,6 +54,7 @@ interface Calls {
   balance?: Observable<number>;
   positions?: Observable<Position[]>;
   prices?: Observable<Map<string, LatestPrice>>;
+  loading?: { account?: boolean; balance?: boolean; positions?: boolean };
 }
 
 const live = (symbol: string, price: number): LivePrice => ({
@@ -85,6 +71,10 @@ describe('Dashboard', () => {
   // Stands in for the live-price WebSocket: tests push feeds into it.
   let liveFeed: Subject<LivePriceFeed>;
   let watch: Mock<(symbols?: string[]) => Observable<LivePriceFeed>>;
+  let getAccount: Mock<() => Observable<Account>>;
+  let getBalance: Mock<() => Observable<number>>;
+  let getPositions: Mock<() => Observable<Position[]>>;
+  let getLatestPrices: Mock<() => Observable<Map<string, LatestPrice>>>;
 
   // The real services track loading/error themselves; these fakes do the same for errors.
   async function setUp(calls: Calls = {}) {
@@ -105,6 +95,9 @@ describe('Dashboard', () => {
 
     liveFeed = new Subject<LivePriceFeed>();
     watch = vi.fn(() => liveFeed.asObservable());
+    getAccount = vi.fn(() => failWith(accountError, calls.account ?? of(ACCOUNT)));
+    getBalance = vi.fn(() => failWith(balanceError, calls.balance ?? of(ACCOUNT.cashBalance)));
+    getPositions = vi.fn(() => failWith(positionsError, calls.positions ?? of(POSITIONS)));
 
     await TestBed.configureTestingModule({
       imports: [Dashboard],
@@ -113,18 +106,18 @@ describe('Dashboard', () => {
         {
           provide: Accounts,
           useValue: {
-            account: { loading: signal(false), error: accountError },
-            balance: { loading: signal(false), error: balanceError },
-            getAccount: () => failWith(accountError, calls.account ?? of(ACCOUNT)),
-            getBalance: () => failWith(balanceError, calls.balance ?? of(ACCOUNT.cashBalance)),
+            account: { loading: signal(!!calls.loading?.account), error: accountError },
+            balance: { loading: signal(!!calls.loading?.balance), error: balanceError },
+            getAccount,
+            getBalance,
           },
         },
         {
           provide: Positions,
           useValue: {
-            loading: signal(false),
+            loading: signal(!!calls.loading?.positions),
             error: positionsError,
-            getPositions: () => failWith(positionsError, calls.positions ?? of(POSITIONS)),
+            getPositions,
           },
         },
         { provide: Portfolios, useValue: { getPortfolios: () => of(PORTFOLIOS) } },
@@ -132,14 +125,10 @@ describe('Dashboard', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
       ],
-    })
-      .overrideComponent(Dashboard, {
-        remove: { imports: [MarketOverview, Performance, RecentOrders] },
-        add: { imports: [MarketOverviewStub, PerformanceStub, RecentOrdersStub] },
-      })
-      .compileComponents();
+    }).compileComponents();
     const instruments = TestBed.inject(Instruments);
-    vi.spyOn(instruments, 'getLatestPrices').mockImplementation(() => calls.prices ?? of(PRICES));
+    getLatestPrices = vi.fn(() => calls.prices ?? of(PRICES));
+    vi.spyOn(instruments, 'getLatestPrices').mockImplementation(getLatestPrices);
     fixture = TestBed.createComponent(Dashboard);
     page = fixture.nativeElement;
     fixture.detectChanges();
@@ -287,6 +276,122 @@ describe('Dashboard', () => {
     expect(card('pnl-label').textContent).toContain('Unavailable');
     expect(card('count-label').textContent).toContain('2');
   });
+
+  const retry = (container: Element) => {
+    container.querySelector<HTMLButtonElement>('[role="alert"] button')!.click();
+    fixture.detectChanges();
+  };
+
+  describe('loading states', () => {
+    it('shows a spinner while the account loads', async () => {
+      await setUp({ loading: { account: true } });
+
+      expect(text('.dashboard__welcome .dashboard__status')).toBe('Loading your account…');
+      expect(page.querySelector('.dashboard__greeting')).toBeNull();
+    });
+
+    it('shows loading on the portfolio and cash cards while the balance loads', async () => {
+      await setUp({ loading: { balance: true } });
+
+      expect(text('[aria-labelledby="portfolio-label"] .dashboard__status')).toBe('Loading…');
+      expect(text('[aria-labelledby="cash-label"] .dashboard__status')).toBe('Loading…');
+    });
+
+    it('shows loading on every valuation card while prices are in flight', async () => {
+      await setUp({ prices: NEVER });
+
+      for (const id of ['portfolio-label', 'invested-label', 'pnl-label', 'allocation-title']) {
+        expect(card(id).querySelector('.dashboard__status'), id).toBeTruthy();
+      }
+      expect(text('[aria-labelledby="positions-title"] .dashboard__status')).toBe('Loading your positions…');
+      expect(page.querySelector('table')).toBeNull();
+    });
+
+    it('shows loading on the positions count while positions load', async () => {
+      await setUp({ loading: { positions: true } });
+
+      expect(text('[aria-labelledby="count-label"] .dashboard__status')).toBe('Loading…');
+    });
+  });
+
+  describe('errors and retries', () => {
+    it('retries the account call from the welcome banner', async () => {
+      await setUp({ account: throwError(() => new Error('Account service is down')) });
+
+      retry(page.querySelector('.dashboard__welcome')!);
+
+      expect(getAccount).toHaveBeenCalledTimes(2);
+    });
+
+    it('marks cash unavailable and retries when the balance call fails', async () => {
+      await setUp({ balance: throwError(() => new Error('Balance service is down')) });
+
+      expect(card('portfolio-label').querySelector('[role="alert"]')?.textContent).toContain('Balance service is down');
+      expect(card('cash-label').textContent).toContain('Unavailable');
+
+      retry(card('portfolio-label'));
+
+      expect(getBalance).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries only the failed positions call from the portfolio card', async () => {
+      await setUp({ positions: throwError(() => new Error("Couldn't load your positions.")) });
+
+      retry(card('portfolio-label'));
+
+      expect(getPositions).toHaveBeenCalledTimes(2);
+      expect(getLatestPrices).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries only the failed prices call from the portfolio card', async () => {
+      await setUp({ prices: throwError(() => new Error('503')) });
+
+      retry(card('portfolio-label'));
+
+      expect(getLatestPrices).toHaveBeenCalledTimes(2);
+      expect(getPositions).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries positions from the positions table', async () => {
+      await setUp({ positions: throwError(() => new Error("Couldn't load your positions.")) });
+
+      retry(card('positions-title'));
+
+      expect(getPositions).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries prices from the positions table', async () => {
+      await setUp({ prices: throwError(() => new Error('503')) });
+
+      retry(card('positions-title'));
+
+      expect(getLatestPrices).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('notes holdings left out of the totals when they have no price', async () => {
+    await setUp({ prices: of(new Map([['AAPL', latest('AAPL', 'Apple Inc.', 189.84)]])) });
+
+    expect(card('portfolio-label').textContent).toContain('Excludes 1 unpriced');
+    expect(card('invested-label').textContent).toContain('excludes 1 unpriced');
+    expect(cells(rows()[1])[4]).toBe('—');
+  });
+
+  it('filters by portfolio when one is picked from the dropdown', async () => {
+    await setUp();
+
+    page.querySelector<HTMLElement>('[data-testid="dashboard-portfolio-filter"] .mat-mdc-select-trigger')!.click();
+    fixture.detectChanges();
+    const growth = Array.from(document.querySelectorAll<HTMLElement>('mat-option')).find((o) =>
+      o.textContent?.includes('Growth'),
+    )!;
+    growth.click();
+    fixture.detectChanges();
+
+    expect(rows().map((r) => cells(r)[0])).toEqual(['TSLA']);
+    expect(watch).toHaveBeenLastCalledWith(['TSLA']);
+  });
+
   describe('live prices', () => {
     const push = (quotes: LivePrice[], stale = false) => {
       liveFeed.next({ prices: new Map(quotes.map((q) => [q.symbol, q])), stale });
@@ -298,7 +403,7 @@ describe('Dashboard', () => {
       await setUp();
       push([live('AAPL', 200)]);
 
-      expect(watch).toHaveBeenLastCalledWith(['AAPL', 'TSLA']);
+      expect(watch).toHaveBeenCalledWith(['AAPL', 'TSLA']);
       expect(priceCell(0).textContent).toContain('$200.00');
       expect(priceCell(0).querySelector('.price-tag--live')?.textContent?.trim()).toBe('Live');
       expect(priceCell(1).querySelector('.price-tag')?.textContent?.trim()).toBe('Close');
@@ -340,7 +445,7 @@ describe('Dashboard', () => {
     it('asks for no symbols when the user holds nothing', async () => {
       await setUp({ positions: of([]) });
 
-      expect(watch).toHaveBeenLastCalledWith([]);
+      expect(watch).toHaveBeenCalledWith([]);
     });
   });
 });
