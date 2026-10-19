@@ -118,4 +118,52 @@ public class InstrumentServiceTest {
         verify(instrumentMapper, never()).delete(any());
         verify(trackedTickerMapper, never()).deactivate(anyString());
     }
+
+    @Test
+    @DisplayName("resolveTicker: Cleans spaces, dollar signs and case before matching a symbol exactly")
+    public void testResolveTickerCleansTheSymbol() {
+        Instrument microsoft = new Instrument("MSFT", "Microsoft Corporation", "EQUITY", "USD", "NASDAQ", true);
+        when(instrumentMapper.findBySymbol("MSFT")).thenReturn(Optional.of(microsoft));
+
+        assertEquals(List.of("MSFT"), symbols(instrumentService.resolveTicker("MSF T")));
+        assertEquals(List.of("MSFT"), symbols(instrumentService.resolveTicker(" $msft ")));
+        verify(instrumentMapper, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("resolveTicker: Falls back to a case-insensitive name search, sorted and capped")
+    public void testResolveTickerSearchesNames() {
+        when(instrumentMapper.findAll()).thenReturn(List.of(
+                new Instrument("GOOGL", "Alphabet Inc. Class A", "EQUITY", "USD", "NASDAQ", true),
+                new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true),
+                new Instrument("GOOG", "Alphabet Inc. Class C", "EQUITY", "USD", "NASDAQ", true)));
+
+        assertEquals(List.of("GOOG", "GOOGL"), symbols(instrumentService.resolveTicker("alphabet")));
+    }
+
+    @Test
+    @DisplayName("resolveTicker: Returns at most five name matches")
+    public void testResolveTickerCapsMatches() {
+        when(instrumentMapper.findAll()).thenReturn(List.of("A", "B", "C", "D", "E", "F").stream()
+                .map(s -> new Instrument(s, "Index Fund " + s, "ETF", "USD", "NYSE", true))
+                .toList());
+
+        assertEquals(InstrumentService.MAX_TICKER_MATCHES, instrumentService.resolveTicker("index fund").size());
+    }
+
+    @Test
+    @DisplayName("resolveTicker: Returns nothing for blank, too-short or unknown queries")
+    public void testResolveTickerNoMatch() {
+        when(instrumentMapper.findAll()).thenReturn(List.of(
+                new Instrument("AAPL", "Apple Inc.", "EQUITY", "USD", "NASDAQ", true)));
+
+        assertTrue(instrumentService.resolveTicker(null).isEmpty());
+        assertTrue(instrumentService.resolveTicker("  ").isEmpty());
+        assertTrue(instrumentService.resolveTicker("zz").isEmpty());
+        assertTrue(instrumentService.resolveTicker("Nonexistent Corp").isEmpty());
+    }
+
+    private static List<String> symbols(List<InstrumentResponse> instruments) {
+        return instruments.stream().map(InstrumentResponse::symbol).toList();
+    }
 }

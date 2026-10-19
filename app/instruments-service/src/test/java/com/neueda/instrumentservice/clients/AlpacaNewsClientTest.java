@@ -1,6 +1,7 @@
 package com.neueda.instrumentservice.clients;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -56,6 +57,46 @@ class AlpacaNewsClientTest {
                         """, MediaType.APPLICATION_JSON));
 
         assertEquals("Storage & Peripherals: what's next", client.getNews(5).get(0).headline());
+    }
+
+    @Test
+    void mapsTheSummaryAndSourceAndDecodesHtmlInTheSummary() {
+        MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
+        AlpacaNewsClient client = new AlpacaNewsClient(new RestTemplateBuilder(customizer),
+                "PKTESTKEY", "test-secret", AlpacaNewsClient.DEFAULT_NEWS_URL);
+        MockRestServiceServer alpaca = customizer.getServer();
+
+        alpaca.expect(requestTo(AlpacaNewsClient.DEFAULT_NEWS_URL + "?limit=5&sort=desc"))
+                .andRespond(withSuccess("""
+                        {"news":[{"headline":"Apple beats","url":"https://example.com/a",
+                        "created_at":"2026-10-14T08:00:00Z","updated_at":"2026-10-14T08:05:00Z","symbols":["AAPL"],
+                        "summary":"  Revenue &amp; margins rose  ","source":"benzinga"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        NewsResponse article = client.getNews(5).get(0);
+
+        assertEquals("Revenue & margins rose", article.summary());
+        assertEquals("benzinga", article.source());
+    }
+
+    @Test
+    void leavesABlankOrMissingSummaryAndSourceAsNull() {
+        MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
+        AlpacaNewsClient client = new AlpacaNewsClient(new RestTemplateBuilder(customizer),
+                "PKTESTKEY", "test-secret", AlpacaNewsClient.DEFAULT_NEWS_URL);
+        MockRestServiceServer alpaca = customizer.getServer();
+
+        alpaca.expect(requestTo(AlpacaNewsClient.DEFAULT_NEWS_URL + "?limit=5&sort=desc"))
+                .andRespond(withSuccess("""
+                        {"news":[{"headline":"Apple beats","url":"https://example.com/a",
+                        "created_at":"2026-10-14T08:00:00Z","updated_at":"2026-10-14T08:05:00Z","symbols":["AAPL"],
+                        "summary":"   "}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        NewsResponse article = client.getNews(5).get(0);
+
+        assertNull(article.summary());
+        assertNull(article.source());
     }
 
     @Test

@@ -77,7 +77,12 @@ public class AlpacaNewsClient {
 
     private static NewsResponse toNewsResponse(AlpacaNewsArticle article) {
         return new NewsResponse(HtmlUtils.htmlUnescape(article.headline()), article.url(), article.publishedAt(),
-                article.updatedAt(), article.symbols() == null ? List.of() : article.symbols());
+                article.updatedAt(), article.symbols() == null ? List.of() : article.symbols(),
+                blankToNull(article.summary()), blankToNull(article.source()));
+    }
+
+    private static String blankToNull(String text) {
+        return text == null || text.isBlank() ? null : HtmlUtils.htmlUnescape(text.strip());
     }
 
     private static AlpacaNewsException unavailable(String code, String message) {
@@ -91,5 +96,7 @@ public class AlpacaNewsClient {
             String url,
             @JsonProperty("created_at") Instant publishedAt,
             @JsonProperty("updated_at") Instant updatedAt,
-            List<String> symbols) {}
+            List<String> symbols,
+            String summary,
+            String source) {}
 }
