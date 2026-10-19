@@ -39,16 +39,23 @@ export async function sellFromHolding(page: Page, symbol: string, quantity: numb
 }
 
 async function placeOrder(page: Page, placeTestId: string): Promise<string> {
-  const placed = page.waitForResponse(
-    (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
-  );
-  await page.getByTestId(placeTestId).click();
+  let orderId: string | undefined;
+  await page.route('**/api/orders', async (route) => {
+    if (route.request().method() !== 'POST') {
+      return route.continue();
+    }
+    const response = await route.fetch();
+    expect(response.ok()).toBe(true);
+    orderId = (await response.json()).orderId;
+    await route.fulfill({ response });
+  });
 
-  const response = await placed;
-  expect(response.ok()).toBe(true);
-  const { orderId } = await response.json();
+  await page.getByTestId(placeTestId).click();
+  await expect.poll(() => orderId).toBeTruthy();
+  await page.unroute('**/api/orders');
+
   await expect(page.getByTestId('close-order-dialog')).toHaveCount(0);
-  return orderId;
+  return orderId!;
 }
 
 export async function waitForOrderStatus(page: Page, orderId: string, status: string) {
