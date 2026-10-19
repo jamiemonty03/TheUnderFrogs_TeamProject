@@ -6,6 +6,7 @@ import { Instruments, LatestPrice, LivePriceFeed } from '../../../services/instr
 import { LivePrices } from '../../../services/live-prices';
 
 import { AuthLayout, AuthTab } from './auth-layout';
+import { Theme } from '../../../services/theme';
 
 @Component({
   imports: [AuthLayout],
@@ -85,6 +86,24 @@ describe('AuthLayout', () => {
     expect(headline.textContent).toContain('Leap ahead');
     expect(headline.querySelector('br')).not.toBeNull();
     expect(headline.querySelector('.auth__headline-accent')?.textContent).toBe('market.');
+  });
+
+  it('uses the frog mark drawn for the light or dark background', () => {
+    const mark = () =>
+      page.querySelector<HTMLImageElement>('.auth__brand-mark')!.getAttribute('src');
+    const theme = TestBed.inject(Theme);
+    try {
+      theme.set('dark');
+      fixture.detectChanges();
+      expect(mark()).toBe('/brand/toadstock-mark.svg');
+
+      theme.set('light');
+      fixture.detectChanges();
+      expect(mark()).toBe('/brand/toadstock-mark-light.svg');
+    } finally {
+      localStorage.clear();
+      delete document.documentElement.dataset['theme'];
+    }
   });
 
   it('shows the heading and subheading it is given, with the page form in the panel', () => {

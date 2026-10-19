@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, map, of } from 'rxjs';
 import { Instruments, LatestPrice, LivePrice, dayChange } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
+import { Theme } from '../../../services/theme';
 
 export type AuthTab = 'login' | 'register';
 
@@ -19,6 +20,13 @@ export class AuthLayout {
   readonly heading = input.required<string>();
   readonly subheading = input.required<string>();
   readonly activeTab = input.required<AuthTab>();
+
+  private readonly themes = inject(Theme);
+  readonly mark = computed(() =>
+    this.themes.theme() === 'light'
+      ? '/brand/toadstock-mark-light.svg'
+      : '/brand/toadstock-mark.svg',
+  );
 
   private readonly prices = toSignal(
     inject(Instruments)

@@ -7,6 +7,7 @@ import { Router, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { NavigationBar } from './navigation-bar';
 import { WalletDialog } from '../../features/wallet/wallet-dialog/wallet-dialog';
+import { Theme } from '../../services/theme';
 import { ProfileDialog } from '../../features/profile/profile-dialog/profile-dialog';
 import { Auth, SESSION_KEY, authGuard, authInterceptor, guestGuard } from '../../services/auth';
 import { CurrentUser } from '../../services/interfaces/auth.interfaces';
@@ -249,7 +250,7 @@ describe('NavigationBar', () => {
     const walletItem = () =>
       document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');
 
-    it('has Edit profile, Wallet and Log out, in that order, in the account menu', async () => {
+    it('has Edit profile, Wallet, the theme switch and Log out, in that order, in the account menu', async () => {
       await setUp();
 
       await openMenu();
@@ -257,7 +258,7 @@ describe('NavigationBar', () => {
       const items = Array.from(
         document.querySelectorAll('.cdk-overlay-container [mat-menu-item]'),
       ).map((item) => item.textContent?.trim());
-      expect(items).toEqual(['Edit profile', 'Wallet', 'Log out']);
+      expect(items).toEqual(['Edit profile', 'Wallet', 'Light mode', 'Log out']);
     });
 
     it('opens the wallet dialog', async () => {
@@ -289,6 +290,49 @@ describe('NavigationBar', () => {
     });
   });
 
+  describe('light and dark mode', () => {
+    const themeItem = () =>
+      document.querySelector<HTMLButtonElement>(
+        '.cdk-overlay-container [data-testid="theme-toggle"]',
+      );
+
+    beforeEach(() => {
+      localStorage.clear();
+      delete document.documentElement.dataset['theme'];
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+      delete document.documentElement.dataset['theme'];
+    });
+
+    it('shows the white wordmark in dark mode and the dark green one in light mode', async () => {
+      await setUp();
+      const logo = () =>
+        page.querySelector<HTMLImageElement>('.nav-bar__brand-mark')!.getAttribute('src');
+      expect(logo()).toBe('/brand/toadstock-logo-dark.svg');
+
+      TestBed.inject(Theme).set('light');
+      fixture.detectChanges();
+      expect(logo()).toBe('/brand/toadstock-logo-light.svg');
+    });
+
+    it('offers to switch to light mode from the dark theme, and then back', async () => {
+      await setUp();
+      await openMenu();
+      expect(themeItem()?.textContent?.trim()).toBe('Light mode');
+
+      themeItem()!.click();
+      fixture.detectChanges();
+
+      expect(document.documentElement.dataset['theme']).toBe('light');
+      expect(TestBed.inject(Theme).theme()).toBe('light');
+
+      await openMenu();
+      expect(themeItem()?.textContent?.trim()).toBe('Dark mode');
+    });
+  });
+
   describe('main links', () => {
     it('shows Dashboard, Orders and Portfolios, with no Markets link', async () => {
       await setUp();
@@ -301,4 +345,3 @@ describe('NavigationBar', () => {
     });
   });
 });
-
