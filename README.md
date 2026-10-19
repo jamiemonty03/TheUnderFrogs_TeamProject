@@ -89,6 +89,8 @@ Environment variables:
 | `HTTPS_ENABLED` | auth-service | `true` adds the HTTPS-only security headers (HSTS and `upgrade-insecure-requests`). Leave it unset while auth-service is served over plain http, or browsers can't load Swagger |
 | `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | trade-executor | Your own Alpaca paper keys; blank = daily close only |
 | `MARKET_DATA_POLL_INTERVAL_MS` | trade-executor | How often quotes are polled for `market-data` |
+| `AI_API_KEY` | instruments-service | Your own free [Groq](https://console.groq.com) key for the AI assistant; blank = assistant unavailable |
+| `AI_BASE_URL`, `AI_MODEL`, `AI_FALLBACK_MODEL` | instruments-service | AI provider (any OpenAI-compatible API) and models. Defaults: Groq, `openai/gpt-oss-120b`, falling back to `openai/gpt-oss-20b` |
 | `ETL_INTERVAL_SECONDS` | trade-analytics-service | How often the analytics ETL runs |
 
 ### 3) Log in and call the APIs

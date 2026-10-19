@@ -18,6 +18,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(ex.errorCode(), ex.getMessage()));
     }
 
+    @ExceptionHandler(AssistantUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAssistantUnavailable(AssistantUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new ErrorResponse("AI-503", ex.getMessage()));
+    }
+
     @ExceptionHandler(InstrumentNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleInstrumentNotFound(InstrumentNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
