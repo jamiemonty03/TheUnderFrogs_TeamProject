@@ -11,6 +11,11 @@ export async function buyFromOrdersPage(
 
   await page.getByTestId('buy-instrument').fill(symbol);
   await page.getByTestId(`buy-option-${symbol}`).click();
+  return finishBuy(page, quantity, portfolioId);
+}
+
+export async function finishBuy(page: Page, quantity: number, portfolioId?: string) {
+  await expect(page.getByTestId('buy-instrument-next')).toBeEnabled();
   await page.getByTestId('buy-instrument-next').click();
 
   if (portfolioId) {
