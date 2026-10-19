@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { DEMO_USER, logIn, useSavedLogin } from './fixtures';
+import { DEMO_USER, useSavedLogin } from './fixtures';
 
 test.describe('Logging in', () => {
   test('the login page loads', async ({ page }) => {

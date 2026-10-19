@@ -21,10 +21,7 @@ export async function buyFromOrdersPage(
   const priceLimit = Number(await page.getByTestId('buy-price-limit').inputValue());
   await page.getByTestId('buy-details-next').click();
 
-  await page.getByTestId('place-buy-order').click();
-  const orderId = await readOrderId(page, 'buy-result');
-
-  await page.getByTestId('close-order-dialog').click();
+  const orderId = await placeOrder(page, 'place-buy-order');
   return { orderId, priceLimit };
 }
 
@@ -38,17 +35,20 @@ export async function sellFromHolding(page: Page, symbol: string, quantity: numb
   await page.getByTestId('sell-quantity').fill(String(quantity));
   await page.getByTestId('sell-details-next').click();
 
-  await page.getByTestId('place-sell-order').click();
-  const orderId = await readOrderId(page, 'sell-result');
-
-  await page.getByTestId('close-order-dialog').click();
-  return orderId;
+  return placeOrder(page, 'place-sell-order');
 }
 
-async function readOrderId(page: Page, resultTestId: string): Promise<string> {
-  const message = page.getByTestId(resultTestId);
-  await expect(message).toContainText('was placed');
-  return (await message.textContent())!.trim().split(' ')[1];
+async function placeOrder(page: Page, placeTestId: string): Promise<string> {
+  const placed = page.waitForResponse(
+    (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
+  );
+  await page.getByTestId(placeTestId).click();
+
+  const response = await placed;
+  expect(response.ok()).toBe(true);
+  const { orderId } = await response.json();
+  await expect(page.getByTestId('close-order-dialog')).toHaveCount(0);
+  return orderId;
 }
 
 export async function waitForOrderStatus(page: Page, orderId: string, status: string) {
