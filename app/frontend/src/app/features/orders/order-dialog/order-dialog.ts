@@ -18,6 +18,7 @@ import { Auth } from '../../../services/auth/auth';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Accounts } from '../../../services/accounts';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { TradingInstrument } from '../../../services/interfaces/instruments.interfaces';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
@@ -28,6 +29,12 @@ import { Positions } from '../../../services/positions';
 import { map, startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
+
+/** The price an order would trade at right now: the live ask for a BUY, the live bid for a SELL, else the last close. */
+export interface MarketQuote {
+  price: number;
+  source: 'live' | 'close';
+}
 
 export interface OrderDialogData {
   side?: 'BUY' | 'SELL';
@@ -64,6 +71,7 @@ export class OrderDialog implements OnInit {
   private readonly ordersApi = inject(Orders);
   private readonly positionsApi = inject(Positions);
   private readonly portfoliosApi = inject(Portfolios);
+  private readonly liveFeed = inject(LivePrices);
   readonly data = inject<OrderDialogData | null>(MAT_DIALOG_DATA, { optional: true });
 
   readonly selectedTab = signal(0);
@@ -149,6 +157,13 @@ export class OrderDialog implements OnInit {
     { initialValue: this.buyOrderStep.controls.priceLimit.value || 0 },
   );
 
+  readonly sellPriceLimitInput = toSignal(
+    this.sellOrderStep.controls.priceLimit.valueChanges.pipe(
+      startWith(this.sellOrderStep.controls.priceLimit.value || 0),
+    ),
+    { initialValue: this.sellOrderStep.controls.priceLimit.value || 0 },
+  );
+
   readonly sellQuantityInput = toSignal(
     this.sellOrderStep.controls.quantity.valueChanges.pipe(
       startWith(this.sellOrderStep.controls.quantity.value || 0),
@@ -178,6 +193,24 @@ export class OrderDialog implements OnInit {
   readonly sellMatches = computed(() =>
     this.filterInstruments(String(this.sellInstrumentInput() || '')),
   );
+
+  private readonly livePrices = toSignal(this.liveFeed.watch(), {
+    initialValue: { prices: new Map(), stale: false },
+  });
+
+  readonly buyMarket = computed(() => this.marketQuote(this.selectedBuyInstrument(), 'BUY'));
+  readonly sellMarket = computed(() => this.marketQuote(this.selectedSellInstrument(), 'SELL'));
+
+  /** Whether the limit is already marketable, so the order should fill as soon as it's placed. */
+  readonly buyFillsNow = computed(() => {
+    const market = this.buyMarket();
+    return market !== null && Number(this.buyPriceLimitInput() || 0) >= market.price;
+  });
+  readonly sellFillsNow = computed(() => {
+    const market = this.sellMarket();
+    const limit = Number(this.sellPriceLimitInput() || 0);
+    return market !== null && limit > 0 && limit <= market.price;
+  });
 
   readonly buyEstimate = computed(() => {
     const qty = Number(this.buyQuantityInput() || 0);
@@ -422,6 +455,18 @@ export class OrderDialog implements OnInit {
 
   close(): void {
     this.dialogRef.close();
+  }
+
+  private marketQuote(instrument: Instrument | null, side: 'BUY' | 'SELL'): MarketQuote | null {
+    if (!instrument) {
+      return null;
+    }
+    const live = this.livePrices().prices.get(instrument.symbol);
+    const livePrice = side === 'BUY' ? (live?.ask ?? live?.price) : (live?.bid ?? live?.price);
+    if (livePrice != null && livePrice > 0) {
+      return { price: livePrice, source: 'live' };
+    }
+    return instrument.marketPrice > 0 ? { price: instrument.marketPrice, source: 'close' } : null;
   }
 
   private filterInstruments(query: string): Instrument[] {

@@ -108,6 +108,18 @@
               <mat-hint>Buys once the market reaches this price or lower</mat-hint>
             </mat-form-field>
 
+            @if (buyMarket(); as market) {
+              <p class="order-dialog__market" data-testid="buy-market-price">
+                Market now: <strong>{{ market.price | currency }}</strong>
+                <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
+                  {{ market.source === 'live' ? 'Live ask' : 'Close' }}
+                </span>
+                @if (!buyFillsNow()) {
+                  <span class="order-dialog__market-note">Waits until the price drops to your limit</span>
+                }
+              </p>
+            }
+
             <p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
             @if (insufficientCash()) {
               <p class="order-dialog__validation-error" role="alert">
@@ -275,6 +287,18 @@
               />
               <mat-hint>Sells once the market reaches this price or higher</mat-hint>
             </mat-form-field>
+
+            @if (sellMarket(); as market) {
+              <p class="order-dialog__market" data-testid="sell-market-price">
+                Market now: <strong>{{ market.price | currency }}</strong>
+                <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
+                  {{ market.source === 'live' ? 'Live bid' : 'Close' }}
+                </span>
+                @if (!sellFillsNow()) {
+                  <span class="order-dialog__market-note">Waits until the price rises to your limit</span>
+                }
+              </p>
+            }
 
             <p class="order-dialog__estimate">
               Market value estimate: {{ sellEstimate() | currency }}
