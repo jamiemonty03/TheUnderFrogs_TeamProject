@@ -411,6 +411,25 @@ describe('Dashboard', () => {
       expect(card('invested-label').textContent).toContain('$10,865.00');
     });
 
+    it('flashes P&L and P&L %, not the price, as a live price moves, keeping the row in place', async () => {
+      await setUp();
+      push([live('AAPL', 200)]);
+      const firstRow = rows()[0];
+      const flashing = (direction: 'up' | 'down') =>
+        Array.from(rows()[0].querySelectorAll('td')).flatMap((td, i) =>
+          td.querySelector(`.price-flash--${direction}`) ? [i] : [],
+        );
+
+      push([live('AAPL', 201)]);
+      expect(rows()[0]).toBe(firstRow);
+      expect(flashing('up')).toEqual([6, 7]); // P&L and P&L %
+      expect(priceCell(0).querySelector('.price-flash')).toBeNull();
+
+      push([live('AAPL', 199)]);
+      expect(flashing('down')).toEqual([6, 7]);
+      expect(flashing('up')).toEqual([]);
+    });
+
     it('updates the page on every pushed quote', async () => {
       await setUp();
       push([live('AAPL', 200)]);

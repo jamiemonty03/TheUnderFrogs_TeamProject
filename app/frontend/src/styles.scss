@@ -255,3 +255,28 @@ html {
   border: 1px solid var(--ts-border);
 }
 
+
+// A price that has just ticked: a soft tint that fades out over FLASH_MS (see shared/price-flash).
+.price-flash {
+  display: inline-block;
+  margin: -0.35rem -0.65rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+}
+
+.price-flash--up {
+  --price-flash-tint: color-mix(in srgb, var(--ts-frog) 14%, transparent);
+  animation: price-flash 3s ease-out;
+}
+
+.price-flash--down {
+  --price-flash-tint: color-mix(in srgb, var(--ts-loss) 14%, transparent);
+  animation: price-flash 3s ease-out;
+}
+
+@keyframes price-flash {
+  from {
+    background-color: var(--price-flash-tint);
+    box-shadow: 0 0 12px 4px var(--price-flash-tint);
+  }
+}
