@@ -10,6 +10,18 @@ test.describe('Logging in', () => {
     await expect(page.getByTestId('login-submit')).toBeEnabled();
   });
 
+  test("the app's stylesheet applies, rather than staying print-only", async ({ page }) => {
+    await page.goto('/login');
+
+    await expect(page.locator('link[rel="stylesheet"][media="print"]')).toHaveCount(0);
+    const loaded = await page.evaluate(() =>
+      Array.from(document.styleSheets).some((sheet) =>
+        Array.from(sheet.cssRules).some((rule) => rule.cssText.startsWith('.pos')),
+      ),
+    );
+    expect(loaded).toBe(true);
+  });
+
   test('a wrong password shows an error and stays on the login page', async ({ page }) => {
     await page.goto('/login');
     await page.getByTestId('login-username').fill(DEMO_USER.username);
