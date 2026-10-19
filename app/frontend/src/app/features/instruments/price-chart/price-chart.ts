@@ -216,7 +216,7 @@ export const crosshairWith = (last: () => LastPrice | null): Plugin => ({
         ctx.moveTo(chartArea.left, y);
         ctx.lineTo(chartArea.right, y);
         ctx.stroke();
-        tag(ctx, money(price), chartArea.right, y, colour, '#ffffff', fontFamily);
+        tag(ctx, money(price), chartArea.right, y, colour, token('--ts-bg', '#07110b'), fontFamily);
         ctx.restore();
       }
     }

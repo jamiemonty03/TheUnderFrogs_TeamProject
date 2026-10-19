@@ -71,6 +71,29 @@ describe('PriceChart', () => {
     ).toEqual(['Close']);
   });
 
+  it('fills under the close with green that fades out towards the bottom', () => {
+    const fill = chart().data().datasets[0].backgroundColor as (context: unknown) => unknown;
+    const stops: [number, string][] = [];
+    const gradient = {
+      addColorStop: (offset: number, colour: string) => stops.push([offset, colour]),
+    };
+    const createLinearGradient = vi.fn(() => gradient);
+
+    expect(fill({ chart: { chartArea: undefined, ctx: { createLinearGradient } } })).toBe(
+      'transparent',
+    );
+
+    const result = fill({
+      chart: { chartArea: { top: 10, bottom: 210 }, ctx: { createLinearGradient } },
+    });
+    expect(result).toBe(gradient);
+    expect(createLinearGradient).toHaveBeenCalledWith(0, 10, 0, 210);
+    expect(stops).toEqual([
+      [0, '#18a95740'],
+      [1, '#18a95700'],
+    ]);
+  });
+
   it('draws the close and both averages as Chart.js line series', () => {
     showAverages();
     const { labels, datasets } = chart().data();
