@@ -16,7 +16,18 @@ export interface AllocationSegment {
 }
 
 export function toSegments(holdings: Holding[]): AllocationSegment[] {
-  const priced = holdings.filter((holding) => holding.marketValue !== null && holding.marketValue > 0);
+  const bySymbol = new Map<string, Holding>();
+  for (const holding of holdings) {
+    if (holding.marketValue === null || holding.marketValue <= 0) {
+      continue;
+    }
+    const seen = bySymbol.get(holding.symbol);
+    bySymbol.set(
+      holding.symbol,
+      seen ? { ...seen, marketValue: seen.marketValue! + holding.marketValue } : holding,
+    );
+  }
+  const priced = [...bySymbol.values()];
   const total = priced.reduce((sum, holding) => sum + holding.marketValue!, 0);
   if (total === 0) {
     return [];

@@ -34,6 +34,14 @@ describe('toSegments', () => {
     expect(segments[0]).toMatchObject({ label: 'AAPL', weight: 100 });
   });
 
+  it('makes one segment of an instrument held in several portfolios', () => {
+    const segments = toSegments([holding('AAPL', 100), holding('TSLA', 200), holding('AAPL', 100)]);
+
+    expect(segments.map((segment) => segment.label)).toEqual(['AAPL', 'TSLA']);
+    expect(segments.map((segment) => segment.value)).toEqual([200, 200]);
+    expect(segments.map((segment) => segment.weight)).toEqual([50, 50]);
+  });
+
   it('keeps a colour on its symbol when prices reorder the bar', () => {
     const before = toSegments([holding('AAPL', 300), holding('TSLA', 100)]);
     const after = toSegments([holding('AAPL', 100), holding('TSLA', 300)]);
@@ -49,7 +57,11 @@ describe('toSegments', () => {
     const segments = toSegments(holdings);
 
     expect(segments).toHaveLength(8);
-    expect(segments.at(-1)).toMatchObject({ label: 'Other', name: '3 more holdings', value: 93 + 92 + 91 });
+    expect(segments.at(-1)).toMatchObject({
+      label: 'Other',
+      name: '3 more holdings',
+      value: 93 + 92 + 91,
+    });
   });
 
   it('returns nothing when no holding has a value', () => {
