@@ -55,8 +55,13 @@
 					<td mat-cell *matCellDef="let order" class="orders-table__qty">{{ order.quantity }}</td>
 				</ng-container>
 
+				<ng-container matColumnDef="limit">
+					<th mat-header-cell *matHeaderCellDef>LIMIT</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__price" data-testid="order-limit">{{ order.limit }}</td>
+				</ng-container>
+
 				<ng-container matColumnDef="price">
-					<th mat-header-cell *matHeaderCellDef>PRICE</th>
+					<th mat-header-cell *matHeaderCellDef>MARKET</th>
 					<td mat-cell *matCellDef="let order" class="orders-table__price">{{ order.price }}</td>
 				</ng-container>
 
@@ -73,6 +78,24 @@
 						>
 							{{ order.status }}
 						</span>
+					</td>
+				</ng-container>
+
+				<ng-container matColumnDef="actions">
+					<th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+					<td mat-cell *matCellDef="let order" class="orders-table__actions">
+						@if (order.status === 'NEW') {
+							<button
+								mat-stroked-button
+								type="button"
+								(click)="cancelOrder(order.id)"
+								[disabled]="cancelling() === order.id"
+								[attr.aria-label]="'Cancel order for ' + order.symbol"
+								data-testid="cancel-order"
+							>
+								{{ cancelling() === order.id ? 'Cancelling…' : 'Cancel' }}
+							</button>
+						}
 					</td>
 				</ng-container>
 

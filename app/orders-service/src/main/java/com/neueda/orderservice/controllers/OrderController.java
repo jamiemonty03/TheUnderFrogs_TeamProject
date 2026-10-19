@@ -35,6 +35,7 @@ import com.neueda.orderservice.exceptions.PortfolioServiceUnavailableException;
 import com.neueda.orderservice.exceptions.TradingException;
 import com.neueda.orderservice.services.OrderCancellationService;
 import com.neueda.orderservice.dtos.requests.UpdateOrderStatusRequest;
+import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.exceptions.OrderStatusConflictException;
 import com.neueda.orderservice.services.OrderStatusService;
 import com.neueda.orderservice.utils.AuthorizationUtils;
@@ -75,6 +76,19 @@ public class OrderController {
     public ResponseEntity<List<OrderResponse>> getAllOrders() {
         List<Order> orders = orderRepository.findAllByOrderByCreatedAtDesc();
         List<OrderResponse> responses = orders.stream()
+            .map(this::toOrderResponse)
+            .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    /** Resting limit orders for one symbol, oldest first. Spans all accounts, so services and admins only. */
+    @GetMapping("/open")
+    public ResponseEntity<List<OrderResponse>> getOpenOrders(@RequestParam String symbol) throws AccountAuthorizationException {
+        if (!AuthorizationUtils.isService() && !AuthorizationUtils.isAdmin()) {
+            throw new AccountAuthorizationException("Only services can list open orders across accounts");
+        }
+        List<OrderResponse> responses = orderRepository.findByOrderStatusAndSymbolOrderByCreatedAtAsc(OrderStatus.NEW, symbol)
+            .stream()
             .map(this::toOrderResponse)
             .toList();
         return ResponseEntity.ok(responses);

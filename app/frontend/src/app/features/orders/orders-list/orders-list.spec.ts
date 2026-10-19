@@ -57,7 +57,7 @@ describe('OrdersList', () => {
   let component: OrdersList;
   let user: ReturnType<typeof signal<CurrentUser | null>>;
   let instruments: { getAllTradableInstruments: ReturnType<typeof vi.fn> };
-  let orders: { getOrdersByAccount: ReturnType<typeof vi.fn> };
+  let orders: { getOrdersByAccount: ReturnType<typeof vi.fn>; cancelOrder: ReturnType<typeof vi.fn> };
   let dialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -68,7 +68,10 @@ describe('OrdersList', () => {
       accountId: ACCOUNT,
     });
     instruments = { getAllTradableInstruments: vi.fn(() => of([AAPL, TSLA])) };
-    orders = { getOrdersByAccount: vi.fn(() => of([BUY_ORDER, SELL_ORDER])) };
+    orders = {
+      getOrdersByAccount: vi.fn(() => of([BUY_ORDER, SELL_ORDER])),
+      cancelOrder: vi.fn(() => of(undefined)),
+    };
     dialog = { open: vi.fn(() => closedDialog) };
 
     await TestBed.configureTestingModule({
@@ -153,6 +156,78 @@ describe('OrdersList', () => {
     expect(component.orders()).toEqual([]);
     expect(component.isLoading()).toBe(false);
     expect(component.loadError()).toBe('Could not load orders from backend.');
+  });
+
+  describe('limit orders', () => {
+    const page = () => fixture.nativeElement as HTMLElement;
+    const row = (orderId: string) => page().querySelector(`[data-testid="order-${orderId}"]`)!;
+    let snackBar: MatSnackBar;
+
+    beforeEach(() => {
+      // MatSnackBarModule gives the component its own MatSnackBar, so spy on that one
+      snackBar = fixture.debugElement.injector.get(MatSnackBar);
+      vi.spyOn(snackBar, 'openFromComponent');
+      vi.spyOn(snackBar, 'open');
+      fixture.detectChanges();
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it("shows each order's limit price next to the market price", () => {
+      expect(row('ORDER-1').querySelector('[data-testid="order-limit"]')?.textContent?.trim()).toBe('$180.00');
+      expect(component.orders()[0]).toEqual(expect.objectContaining({ limit: '$180.00', price: '$182.40' }));
+    });
+
+    it('offers Cancel only on NEW orders', () => {
+      expect(row('ORDER-1').querySelector('[data-testid="cancel-order"]')).toBeNull();
+      expect(row('ORDER-2').querySelector('[data-testid="cancel-order"]')).not.toBeNull();
+    });
+
+    it('cancels a NEW order, confirms it and reloads the list', () => {
+      orders.getOrdersByAccount.mockClear();
+
+      row('ORDER-2').querySelector<HTMLButtonElement>('[data-testid="cancel-order"]')!.click();
+
+      expect(orders.cancelOrder).toHaveBeenCalledWith('ORDER-2');
+      expect(snackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: { orderId: 'ORDER-2', status: 'CANCELLED' } }),
+      );
+      expect(orders.getOrdersByAccount).toHaveBeenCalledOnce();
+      expect(component.cancelling()).toBeNull();
+    });
+
+    it('explains a failed cancel and reloads, as the order may have filled', () => {
+      orders.cancelOrder.mockReturnValueOnce(throwError(() => new Error('409')));
+      orders.getOrdersByAccount.mockClear();
+
+      component.cancelOrder('ORDER-2');
+
+      expect(snackBar.open).toHaveBeenCalledWith(
+        "Couldn't cancel the order. It may already have filled.",
+        'Dismiss',
+        { duration: 7000 },
+      );
+      expect(orders.getOrdersByAccount).toHaveBeenCalledOnce();
+      expect(component.cancelling()).toBeNull();
+    });
+
+    it('tells the user a just-placed order is waiting for its price once polling gives up', () => {
+      vi.useFakeTimers();
+      const resting = { ...SELL_ORDER, priceLimit: 350 };
+      orders.getOrdersByAccount.mockReturnValue(of([resting]));
+      dialog.open.mockReturnValueOnce({ afterClosed: () => of(resting) });
+
+      component.openOrderDialog();
+      vi.advanceTimersByTime(10 * 500);
+
+      expect(orders.getOrdersByAccount).toHaveBeenCalledTimes(1 + 11);
+      expect(snackBar.openFromComponent).toHaveBeenCalledOnce();
+      expect(snackBar.openFromComponent).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ data: { orderId: 'ORDER-2', status: 'NEW', priceLimit: 350 } }),
+      );
+    });
   });
 
   it('does not request orders without an account', () => {

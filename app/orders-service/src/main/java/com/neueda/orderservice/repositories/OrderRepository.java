@@ -7,12 +7,14 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.models.Order;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, String> {
     List<Order> findAllByOrderByCreatedAtDesc();
     List<Order> findByAccountIdOrderByCreatedAtDesc(String accountId);
+    List<Order> findByOrderStatusAndSymbolOrderByCreatedAtAsc(OrderStatus orderStatus, String symbol);
     boolean existsByIdempotencyKey(String idempotencyKey);
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
 

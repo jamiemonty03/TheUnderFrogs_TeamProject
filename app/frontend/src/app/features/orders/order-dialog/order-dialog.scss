@@ -50,6 +50,41 @@
 		color: var(--ts-text-secondary);
 	}
 
+	&__market {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--ts-text-secondary);
+
+		strong {
+			color: var(--ts-text);
+		}
+
+		.price-tag {
+			display: inline-block;
+			margin-left: 0.4rem;
+			padding: 0.1rem 0.4rem;
+			border-radius: 999px;
+			background: var(--ts-neutral-bg);
+			color: var(--ts-neutral);
+			font-size: 0.65rem;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			vertical-align: middle;
+		}
+
+		.price-tag--live {
+			background: var(--ts-success-bg);
+			color: var(--ts-frog);
+		}
+	}
+
+	&__market-note {
+		display: block;
+		margin-top: 0.15rem;
+		font-size: 0.8rem;
+	}
+
 	&__estimate {
 		margin: 0;
 		font-size: 1rem;

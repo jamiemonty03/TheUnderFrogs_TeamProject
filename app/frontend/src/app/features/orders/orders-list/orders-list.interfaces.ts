@@ -9,5 +9,6 @@ export interface OrderRow {
   side: OrderSide;
   quantity: number;
   price: string;
+  limit: string;
   status: OrderStatus;
 }

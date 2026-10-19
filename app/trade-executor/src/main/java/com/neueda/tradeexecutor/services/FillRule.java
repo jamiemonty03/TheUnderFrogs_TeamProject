@@ -11,7 +11,7 @@ public final class FillRule {
 
     public static FillDecision decide(OrderDto order, BigDecimal marketPrice) {
         if (marketPrice == null || marketPrice.signum() <= 0) {
-            return FillDecision.reject("No valid market price for " + order.symbol());
+            return FillDecision.rest("No valid market price for " + order.symbol());
         }
 
         BigDecimal limit = order.priceLimit();
@@ -20,12 +20,12 @@ public final class FillRule {
             if (marketPrice.compareTo(limit) <= 0) {
                 return FillDecision.fill(marketPrice);
             }
-            return FillDecision.reject("Market price " + marketPrice + " is above BUY limit " + limit);
+            return FillDecision.rest("Market price " + marketPrice + " is above BUY limit " + limit);
         }
 
         if (marketPrice.compareTo(limit) >= 0) {
             return FillDecision.fill(marketPrice);
         }
-        return FillDecision.reject("Market price " + marketPrice + " is below SELL limit " + limit);
+        return FillDecision.rest("Market price " + marketPrice + " is below SELL limit " + limit);
     }
 }

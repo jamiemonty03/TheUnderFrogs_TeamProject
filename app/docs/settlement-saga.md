@@ -39,6 +39,14 @@ message. Steps that already happened are skipped, missing steps are completed, a
 | FILL + BUY | debit cash | add position | `NEW → FILLED` | publish `ORDER_FILLED` |
 | FILL + SELL | reduce position | credit cash | `NEW → FILLED` | publish `ORDER_FILLED` |
 | REJECT | reverse anything an earlier attempt moved (normally a no-op) | | `NEW → REJECTED` | publish `ORDER_REJECTED` |
+| REST | nothing (the saga doesn't run) | | stays `NEW` | re-checked when the symbol's price next changes |
+
+**Limit orders rest.** When the market hasn't reached the order's limit (or there's no price yet), `FillRule` returns REST
+and the order stays NEW. Each time `MarketDataPoller` publishes a new price it raises an in-process `PriceChanged`
+event; `RestingOrderMatcher` then loads that symbol's NEW orders (`GET /orders/open?symbol=`) and runs each through
+`OrderExecutionService.execute` again. `execute` skips an order that is already being executed, so a new order and a
+price re-check can't settle it twice. Cash is not held while an order rests: if it's gone when the price matches, the
+debit fails and the order is REJECTED as usual.
 
 The amount is `fillPrice × quantity`, rounded to 2 decimal places.
 

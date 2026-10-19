@@ -43,7 +43,8 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'price', 'status'];
+  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'limit', 'price', 'status', 'actions'];
+  readonly cancelling = signal<string | null>(null);
 
   readonly visibleOrders = computed(() => {
     const filter = this.activeFilter();
@@ -97,6 +98,26 @@ export class OrdersList implements OnInit {
       ...(data ? { data } : {}),
     }).afterClosed().subscribe((order: OrderResponse | undefined) => {
       this.loadOrders(order?.orderId);
+    });
+  }
+
+  cancelOrder(orderId: string): void {
+    this.cancelling.set(orderId);
+    this.ordersApi.cancelOrder(orderId).subscribe({
+      next: () => {
+        this.cancelling.set(null);
+        this.snackBar.openFromComponent(OrderSnackbar, {
+          data: { orderId, status: 'CANCELLED' },
+          duration: 5000,
+          panelClass: ['order-snackbar-panel'],
+        });
+        this.loadOrders();
+      },
+      error: () => {
+        this.cancelling.set(null);
+        this.snackBar.open("Couldn't cancel the order. It may already have filled.", 'Dismiss', { duration: 7000 });
+        this.loadOrders();
+      },
     });
   }
 
@@ -155,6 +176,12 @@ export class OrdersList implements OnInit {
         duration: 7000,
         panelClass: ['order-snackbar-panel'],
       });
+    } else if (order.orderStatus === 'NEW') {
+      this.snackBar.openFromComponent(OrderSnackbar, {
+        data: { orderId: order.orderId, status: 'NEW', priceLimit: order.priceLimit },
+        duration: 7000,
+        panelClass: ['order-snackbar-panel'],
+      });
     }
   }
 
@@ -166,6 +193,7 @@ export class OrdersList implements OnInit {
       side: order.side,
       quantity: order.quantity,
       price: this.formatPrice(marketPrices.get(order.symbol)),
+      limit: this.formatPrice(order.priceLimit),
       status: order.orderStatus,
     };
   }

@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
+
 import { OrderResponse, PlaceOrderRequest } from './interfaces/orders.interfaces';
 import { Orders } from './orders';
 
@@ -33,7 +34,7 @@ describe('Orders', () => {
 
   afterEach(() => http.verify());
 
-  it("loads an account's orders with a GET", async () => {
+it("loads an account's orders with a GET", async () => {
     const result = firstValueFrom(service.getOrdersByAccount('ACC0011'));
 
     const request = http.expectOne('/api/orders/account/ACC0011');
@@ -70,5 +71,15 @@ describe('Orders', () => {
     request.flush(ORDER);
 
     expect(await result).toEqual(ORDER);
+  });
+
+  it('cancels an order with a DELETE', async () => {
+    const result = firstValueFrom(service.cancelOrder('ORDER-1'));
+
+    const request = http.expectOne('/api/orders/ORDER-1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await expect(result).resolves.toBeNull();
   });
 });
