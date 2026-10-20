@@ -57,8 +57,9 @@ export class NavigationBar {
 
   readonly username = computed(() => this.auth.currentUser()?.username ?? '');
   readonly initial = computed(() => this.username().charAt(0).toUpperCase());
+  readonly isAdmin = computed(() => this.auth.currentUser()?.roles.includes('ADMIN') ?? false);
   readonly role = computed(() =>
-    this.auth.currentUser()?.roles.includes('ADMIN') ? 'Admin' : 'Trader',
+    this.isAdmin() ? 'Admin' : 'Trader',
   );
 
   toggleMenu(): void {

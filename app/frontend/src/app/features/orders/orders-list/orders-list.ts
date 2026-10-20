@@ -15,6 +15,7 @@ import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
 import { Orders } from '../../../services/orders';
+import { OrderNotifier } from '../../../services/order-notifier';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { OrderSnackbar } from '../order-snackbar/order-snackbar';
@@ -41,6 +42,7 @@ import { OrderFilter, OrderRow, OrderSideFilter } from './orders-list.interfaces
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly notifier = inject(OrderNotifier);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
@@ -157,7 +159,10 @@ export class OrdersList implements OnInit {
       panelClass: 'order-dialog-panel',
       ...(data ? { data } : {}),
     }).afterClosed().subscribe((order: OrderResponse | undefined) => {
-      this.loadOrders(order?.orderId);
+      this.loadOrders();
+      if (order) {
+        this.notifier.follow(order.orderId).subscribe(() => this.loadOrders());
+      }
     });
   }
 
@@ -181,7 +186,7 @@ export class OrdersList implements OnInit {
     });
   }
 
-  private loadOrders(orderIdToNotify?: string, attempt = 0): void {
+  private loadOrders(): void {
     const accountId = this.accountId();
     if (!accountId) {
       this.orders.set([]);
@@ -202,7 +207,6 @@ export class OrdersList implements OnInit {
         this.orders.set(newestFirst.map((row) => this.toOrderRow(row, marketPrices)));
         this.pageIndex.set(0);
         this.isLoading.set(false);
-        this.notifyForOrder(orders.find((order) => order.orderId === orderIdToNotify), orderIdToNotify, attempt);
       },
       error: () => {
         this.orders.set([]);
@@ -210,39 +214,6 @@ export class OrdersList implements OnInit {
         this.isLoading.set(false);
       },
     });
-  }
-
-  private notifyForOrder(order: OrderResponse | undefined, orderId: string | undefined, attempt: number): void {
-    if (!order || !orderId) {
-      return;
-    }
-    if (order.orderStatus === 'NEW' && attempt < 10) {
-      window.setTimeout(() => this.loadOrders(orderId, attempt + 1), 500);
-      return;
-    }
-    if (order.orderStatus === 'FILLED') {
-      this.snackBar.openFromComponent(OrderSnackbar, {
-        data: { orderId: order.orderId, status: 'FILLED' },
-        duration: 5000,
-        panelClass: ['order-snackbar-panel'],
-      });
-    } else if (order.orderStatus === 'REJECTED') {
-      this.snackBar.openFromComponent(OrderSnackbar, {
-        data: {
-          orderId: order.orderId,
-          status: 'REJECTED',
-          reason: order.rejectionReason,
-        },
-        duration: 7000,
-        panelClass: ['order-snackbar-panel'],
-      });
-    } else if (order.orderStatus === 'NEW') {
-      this.snackBar.openFromComponent(OrderSnackbar, {
-        data: { orderId: order.orderId, status: 'NEW', priceLimit: order.priceLimit },
-        duration: 7000,
-        panelClass: ['order-snackbar-panel'],
-      });
-    }
   }
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {

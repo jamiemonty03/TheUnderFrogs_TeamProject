@@ -294,3 +294,53 @@
     }
   }
 }
+
+@media (max-width: 600px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile {
+    padding: 0.85rem;
+  }
+
+  .mat-column-name,
+  .mat-column-assetClass,
+  .mat-column-portfolio,
+  .mat-column-quantity,
+  .mat-column-averageCost,
+  .mat-column-pnl,
+  .mat-column-dayChange,
+  .mat-column-weight {
+    display: none;
+  }
+}
+
+// Once the sidebar sits above the holdings, the portfolios become one swipeable row of names
+// instead of a column of cards, however many there are
+@media (max-width: 52rem) {
+  .portfolios-sidebar__list {
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding-bottom: 0.25rem;
+
+    li {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+  }
+
+  .portfolio-card {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    padding: 0.5rem 0.85rem;
+    white-space: nowrap;
+  }
+
+  .portfolio-card__meta,
+  .portfolio-card > .tag {
+    display: none;
+  }
+}

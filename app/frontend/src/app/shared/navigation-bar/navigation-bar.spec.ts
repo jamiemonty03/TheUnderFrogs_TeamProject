@@ -127,6 +127,30 @@ describe('NavigationBar', () => {
 
       expect(menuText('.nav-bar__account-role')).toBe('Admin');
     });
+
+    it('does not show admin dashboards to traders', async () => {
+      await setUp();
+
+      await openMenu();
+
+      expect(document.querySelector('[data-testid="grafana-dashboard"]')).toBeNull();
+      expect(document.querySelector('[data-testid="python-dashboard"]')).toBeNull();
+    });
+
+    it('shows both dashboards to admins', async () => {
+      await setUp({ ...demo, roles: ['ADMIN'] });
+
+      await openMenu();
+
+      const grafana = document.querySelector<HTMLAnchorElement>('[data-testid="grafana-dashboard"]');
+      const python = document.querySelector<HTMLAnchorElement>('[data-testid="python-dashboard"]');
+      expect(grafana?.getAttribute('href')).toBe(
+        'http://10.9.79.41:8080/d/dg1opelx7aqkgc/dashboard?from=now-6h&to=now&timezone=browser&var-service=$__all',
+      );
+      expect(python?.getAttribute('href')).toBe('http://10.9.79.41:8085');
+      expect(grafana?.target).toBe('_blank');
+      expect(python?.target).toBe('_blank');
+    });
   });
 
   describe('log out', () => {
@@ -249,6 +273,19 @@ describe('NavigationBar', () => {
   describe('wallet', () => {
     const walletItem = () =>
       document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');
+
+    it('also opens the account menu from the avatar beside the phone menu button', async () => {
+      await setUp();
+      const phoneAvatar = page.querySelector<HTMLButtonElement>('[data-testid="account-menu-mobile"]')!;
+      expect(phoneAvatar.textContent?.trim()).toBe('D');
+      expect(phoneAvatar.getAttribute('aria-label')).toBe('Account menu for demo');
+
+      phoneAvatar.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(document.querySelector('.cdk-overlay-container [data-testid="logout"]')).not.toBeNull();
+    });
 
     it('has Edit profile, Wallet, the theme switch and Log out, in that order, in the account menu', async () => {
       await setUp();
