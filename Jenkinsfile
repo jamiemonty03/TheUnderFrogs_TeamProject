@@ -4,6 +4,9 @@ pipeline {
         jdk 'JDK21'
         maven 'maven'
     }
+    environment {
+        npm_config_cache = "${WORKSPACE}/.npm-cache"
+    }
     stages {
         stage('Checkout') {
             steps {
