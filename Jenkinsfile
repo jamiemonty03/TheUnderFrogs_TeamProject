@@ -148,7 +148,7 @@ pipeline {
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: 'db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+                    junit allowEmptyResults: true, testResults: 'app/instruments-service/db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
                 }
             }
         }
