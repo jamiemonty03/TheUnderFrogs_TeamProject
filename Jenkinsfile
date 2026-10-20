@@ -194,58 +194,58 @@ pipeline {
             }
         }
 
-        // Sequential: waitForQualityGate checks the build's most recent analysis, so each gate must run right after its own scan.
-        stage('SonarQube Analysis') {
-            stages {
-                stage('Accounts Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service"'
-                        }
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+        // One stage per service, in order: waitForQualityGate checks the build's most recent analysis, so each gate must run right after its own scan.
+        stage('Sonar: Accounts Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service"'
                 }
-                stage('Instruments Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service"'
-                        }
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
-                stage('Orders Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service"'
-                        }
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+            }
+        }
+
+        stage('Sonar: Instruments Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service"'
                 }
-                stage('Positions Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service"'
-                        }
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
-                stage('Trade Executor') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor"'
-                        }
-                        timeout(time: 5, unit: 'MINUTES') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+            }
+        }
+
+        stage('Sonar: Orders Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service"'
+                }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Sonar: Positions Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service"'
+                }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Sonar: Trade Executor') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor"'
+                }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
