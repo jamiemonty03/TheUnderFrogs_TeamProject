@@ -39,6 +39,19 @@
 		object-fit: contain;
 	}
 
+	&__top-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	&__account-toggle {
+		@extend .nav-bar__avatar;
+		display: none;
+		width: 2.6rem;
+		height: 2.6rem;
+	}
+
 	&__menu-toggle {
 		display: none;
 		width: 2.6rem;
@@ -259,6 +272,14 @@
 
 		&__menu-toggle {
 			display: inline-flex;
+		}
+
+		&__account-toggle {
+			display: grid;
+		}
+
+		&__right .nav-bar__avatar {
+			display: none;
 		}
 
 		&__content {

@@ -4,18 +4,30 @@
       <img class="nav-bar__brand-mark" [src]="logo()" alt="UnderFrogs logo" />
     </a>
 
-    <button
-      mat-icon-button
-      type="button"
-      class="nav-bar__menu-toggle"
-      aria-label="Toggle navigation menu"
-      [attr.aria-expanded]="isMenuOpen"
-      (click)="toggleMenu()"
-    >
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-    </button>
+    <div class="nav-bar__top-actions">
+      <button
+        type="button"
+        class="nav-bar__account-toggle"
+        [matMenuTriggerFor]="accountMenu"
+        data-testid="account-menu-mobile"
+        [attr.aria-label]="'Account menu for ' + username()"
+      >
+        {{ initial() }}
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="nav-bar__menu-toggle"
+        aria-label="Toggle navigation menu"
+        [attr.aria-expanded]="isMenuOpen"
+        (click)="toggleMenu()"
+      >
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+      </button>
+    </div>
   </div>
 
   <div class="nav-bar__content" [class.nav-bar__content--open]="isMenuOpen">
