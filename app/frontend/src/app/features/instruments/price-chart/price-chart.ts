@@ -135,7 +135,7 @@ export function withLive(
   ];
 }
 
-const money = (value: number) =>
+export const money = (value: number) =>
   value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 const compact = (value: number) =>

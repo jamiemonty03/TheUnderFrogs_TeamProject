@@ -62,45 +62,56 @@
     </div>
 
     @if (visible().length < 2) {
-      <p class="chart__status">Not enough history to chart yet. Check back after the next market close.</p>
+      <p class="chart__status">
+        Not enough history to chart yet. Check back after the next market close.
+      </p>
     } @else {
       <div
         class="chart__plot"
         role="img"
         [attr.aria-label]="
           view() === 'trades'
-            ? 'Total return on your trades ' + (range() === 'All' ? 'since your first trade' : 'over ' + range())
+            ? 'Total return on your trades ' +
+              (range() === 'All' ? 'since your first trade' : 'over ' + range())
             : 'Value of your current holdings at each daily close over ' + range()
         "
         data-testid="performance-chart"
       >
-        <canvas baseChart type="line" [data]="data()" [options]="options()" [plugins]="plugins"></canvas>
+        <canvas
+          baseChart
+          type="line"
+          [data]="data()"
+          [options]="options()"
+          [plugins]="plugins"
+        ></canvas>
       </div>
 
       <details class="chart__table">
         <summary>Show as a table</summary>
-        <table data-testid="performance-table">
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Holdings value</th>
-              @if (view() === 'trades') {
-                <th scope="col">Total return</th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (p of tableRows(); track p.date) {
+        <div class="chart__table-scroll">
+          <table data-testid="performance-table">
+            <thead>
               <tr>
-                <td>{{ p.date | date: 'd MMM y' }}</td>
-                <td>{{ p.value | currency: 'USD' }}</td>
+                <th scope="col">Date</th>
+                <th scope="col">Holdings value</th>
                 @if (view() === 'trades') {
-                  <td>{{ p.y > 0 ? '+' : '' }}{{ p.y | currency: 'USD' }}</td>
+                  <th scope="col">Total return</th>
                 }
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (p of tableRows(); track p.date) {
+                <tr>
+                  <td>{{ p.date | date: 'd MMM y' }}</td>
+                  <td>{{ p.value | currency: 'USD' }}</td>
+                  @if (view() === 'trades') {
+                    <td>{{ p.y > 0 ? '+' : '' }}{{ p.y | currency: 'USD' }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </details>
     }
 

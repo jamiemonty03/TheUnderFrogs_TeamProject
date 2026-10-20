@@ -93,14 +93,6 @@
   color: var(--ts-text-secondary);
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
 
 .chart__candle {
   position: relative;
@@ -174,6 +166,11 @@
     outline-offset: 4px;
     border-radius: 4px;
   }
+}
+
+.chart__table-scroll {
+  position: relative;
+  overflow-x: auto;
 }
 
 .chart__table {

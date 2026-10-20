@@ -4,18 +4,30 @@
       <img class="nav-bar__brand-mark" [src]="logo()" alt="UnderFrogs logo" />
     </a>
 
-    <button
-      mat-icon-button
-      type="button"
-      class="nav-bar__menu-toggle"
-      aria-label="Toggle navigation menu"
-      [attr.aria-expanded]="isMenuOpen"
-      (click)="toggleMenu()"
-    >
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-    </button>
+    <div class="nav-bar__top-actions">
+      <button
+        type="button"
+        class="nav-bar__account-toggle"
+        [matMenuTriggerFor]="accountMenu"
+        data-testid="account-menu-mobile"
+        [attr.aria-label]="'Account menu for ' + username()"
+      >
+        {{ initial() }}
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="nav-bar__menu-toggle"
+        aria-label="Toggle navigation menu"
+        [attr.aria-expanded]="isMenuOpen"
+        (click)="toggleMenu()"
+      >
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+      </button>
+    </div>
   </div>
 
   <div class="nav-bar__content" [class.nav-bar__content--open]="isMenuOpen">
@@ -147,7 +159,13 @@
           </a>
         }
         @if (themes.theme() === 'dark') {
-          <button mat-menu-item type="button" (click)="themes.toggle()" data-testid="theme-toggle">
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
             <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="4" />
               <path
@@ -157,7 +175,13 @@
             <span>Light mode</span>
           </button>
         } @else {
-          <button mat-menu-item type="button" (click)="themes.toggle()" data-testid="theme-toggle">
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
             <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
             </svg>

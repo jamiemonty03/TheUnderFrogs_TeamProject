@@ -21,8 +21,12 @@ test('search for an instrument, read its chart, then buy it from its page', asyn
   await expect(page.getByTestId('chart-ohlc')).toContainText(/O[\d,.]+H[\d,.]+L[\d,.]+C[\d,.]+/);
 
   await page.getByTestId('instrument-buy').click();
-  await expect(page).toHaveURL(/\/orders\?new=true&symbol=AAPL&side=BUY$/);
+  await expect(page).toHaveURL(/\/instruments\/AAPL$/);
   await expect(page.getByTestId('buy-instrument')).toHaveValue(/AAPL/);
+  await expect(page.getByTestId('price-chart')).toBeInViewport();
+  const ticket = await page.locator('.order-ticket').boundingBox();
+  const chart = await page.getByTestId('price-chart').boundingBox();
+  expect(chart!.x + chart!.width).toBeLessThanOrEqual(ticket!.x);
 
   const { orderId, priceLimit } = await finishBuy(page, 1);
   await waitForOrderStatus(page, orderId, 'FILLED');

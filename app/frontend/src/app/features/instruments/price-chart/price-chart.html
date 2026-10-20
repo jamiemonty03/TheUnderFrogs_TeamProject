@@ -189,41 +189,43 @@
 
   <details class="chart__table">
     <summary>Show as a table</summary>
-    <table data-testid="chart-table">
-      <thead>
-        <tr>
-          <th scope="col">Date</th>
-          @if (hasCandles()) {
-            <th scope="col">Open</th>
-            <th scope="col">High</th>
-            <th scope="col">Low</th>
-          }
-          @for (s of series; track s.key) {
-            <th scope="col">{{ s.label }}</th>
-          }
-          @if (hasCandles()) {
-            <th scope="col">Volume</th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (p of tableRows(); track p.date) {
+    <div class="chart__table-scroll">
+      <table data-testid="chart-table">
+        <thead>
           <tr>
-            <td>{{ p.date | date: 'd MMM y' }}</td>
+            <th scope="col">Date</th>
             @if (hasCandles()) {
-              <td>{{ p.open === null ? '-' : (p.open | currency: 'USD') }}</td>
-              <td>{{ p.high === null ? '-' : (p.high | currency: 'USD') }}</td>
-              <td>{{ p.low === null ? '-' : (p.low | currency: 'USD') }}</td>
+              <th scope="col">Open</th>
+              <th scope="col">High</th>
+              <th scope="col">Low</th>
             }
-            <td>{{ p.close | currency: 'USD' }}</td>
-            <td>{{ p.movingAvg20 === null ? '-' : (p.movingAvg20 | currency: 'USD') }}</td>
-            <td>{{ p.movingAvg50 === null ? '-' : (p.movingAvg50 | currency: 'USD') }}</td>
+            @for (s of series; track s.key) {
+              <th scope="col">{{ s.label }}</th>
+            }
             @if (hasCandles()) {
-              <td>{{ p.volume === null ? '-' : (p.volume | number) }}</td>
+              <th scope="col">Volume</th>
             }
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (p of tableRows(); track p.date) {
+            <tr>
+              <td>{{ p.date | date: 'd MMM y' }}</td>
+              @if (hasCandles()) {
+                <td>{{ p.open === null ? '-' : (p.open | currency: 'USD') }}</td>
+                <td>{{ p.high === null ? '-' : (p.high | currency: 'USD') }}</td>
+                <td>{{ p.low === null ? '-' : (p.low | currency: 'USD') }}</td>
+              }
+              <td>{{ p.close | currency: 'USD' }}</td>
+              <td>{{ p.movingAvg20 === null ? '-' : (p.movingAvg20 | currency: 'USD') }}</td>
+              <td>{{ p.movingAvg50 === null ? '-' : (p.movingAvg50 | currency: 'USD') }}</td>
+              @if (hasCandles()) {
+                <td>{{ p.volume === null ? '-' : (p.volume | number) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </details>
 </div>

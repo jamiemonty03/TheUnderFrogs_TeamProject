@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EMPTY, Observable, catchError, forkJoin, map, of, switchMap, tap, throwError } from 'rxjs';
 import { Instruments, LivePrice, NewsArticle, dayChange } from '../../../services/instruments';
@@ -19,6 +20,9 @@ import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Position } from '../../../services/interfaces/positions.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Positions } from '../../../services/positions';
+import { OrderNotifier } from '../../../services/order-notifier';
+import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
+import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
 import { PriceChart } from '../price-chart/price-chart';
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
@@ -30,6 +34,16 @@ export interface Fact {
 }
 
 export const MISSING = '-';
+
+
+export const ORDER_TICKET: MatDialogConfig = {
+  width: '420px',
+  maxWidth: '100vw',
+  height: '100vh',
+  position: { top: '0', right: '0' },
+  hasBackdrop: false,
+  panelClass: ['order-dialog-panel', 'order-ticket'],
+};
 
 @Component({
   imports: [CurrencyPipe, DatePipe, DecimalPipe, MatButtonModule, PriceChart, RouterLink],
@@ -44,6 +58,11 @@ export class InstrumentsDetail {
   private readonly positionsService = inject(Positions);
   private readonly portfoliosService = inject(Portfolios);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly notifier = inject(OrderNotifier);
+
+  /** Whether the order ticket is open, so the page can make room for it. */
+  protected readonly ticketOpen = signal(false);
 
   protected readonly symbol = signal('');
   protected readonly status = signal<Status>('loading');
@@ -141,6 +160,45 @@ export class InstrumentsDetail {
       )
       .subscribe(({ prices }) => this.live.set(prices.get(this.symbol()) ?? null));
 
+    this.loadHoldings();
+  }
+
+  protected openOrder(
+    side: 'BUY' | 'SELL',
+    portfolioId?: string | null,
+    portfolioName?: string,
+  ): void {
+    const data: OrderDialogData = {
+      symbol: this.symbol(),
+      side,
+      ...(portfolioId ? { portfolioId, portfolioName } : {}),
+    };
+    this.dialog.closeAll();
+    this.ticketOpen.set(true);
+    this.dialog
+      .open(OrderDialog, { ...ORDER_TICKET, data })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((order: OrderResponse | undefined) => {
+        this.ticketOpen.set(false);
+        if (order) {
+          this.followOrder(order.orderId);
+        }
+      });
+  }
+
+  private followOrder(orderId: string): void {
+    this.notifier
+      .follow(orderId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((order) => {
+        if (order.orderStatus === 'FILLED') {
+          this.loadHoldings();
+        }
+      });
+  }
+
+  private loadHoldings(): void {
     forkJoin({
       positions: this.positionsService.getPositions(),
       portfolios: this.portfoliosService.getPortfolios(),

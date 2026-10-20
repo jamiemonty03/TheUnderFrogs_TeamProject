@@ -39,6 +39,18 @@
 		object-fit: contain;
 	}
 
+	&__top-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+	}
+
+	&__account-toggle {
+		@extend .nav-bar__avatar;
+		width: 2.6rem;
+		height: 2.6rem;
+	}
+
 	&__menu-toggle {
 		display: none;
 		width: 2.6rem;
@@ -60,14 +72,6 @@
 		height: 2px;
 		background: var(--ts-text);
 		border-radius: 1px;
-	}
-
-	&__brand-text {
-		font-size: 1.9rem;
-		line-height: 1;
-		font-weight: 700;
-		letter-spacing: -0.03em;
-		white-space: nowrap;
 	}
 
 	&__links {
@@ -221,6 +225,7 @@
 
 	&__profile,
 	&__wallet,
+	&__theme,
 	&__dashboard,
 	&__logout {
 		--mat-menu-item-label-text-weight: 600;
@@ -232,8 +237,8 @@
 	&__logout {
 		--mat-menu-item-label-text-color: var(--ts-danger-text);
 		--mat-menu-item-icon-color: var(--ts-danger-text);
-		--mat-menu-item-hover-state-layer-color: rgb(255 138 110 / 0.12);
-		--mat-menu-item-focus-state-layer-color: rgb(255 138 110 / 0.16);
+		--mat-menu-item-hover-state-layer-color: color-mix(in srgb, var(--ts-danger-text) 12%, transparent);
+		--mat-menu-item-focus-state-layer-color: color-mix(in srgb, var(--ts-danger-text) 16%, transparent);
 	}
 
 	&__menu-icon {
@@ -269,6 +274,10 @@
 			display: inline-flex;
 		}
 
+		&__right .nav-bar__avatar {
+			display: none;
+		}
+
 		&__content {
 			display: none;
 			flex-direction: column;
@@ -299,5 +308,15 @@
 			max-width: none;
 			width: 100%;
 		}
+	}
+}
+
+.nav-bar__top-actions .nav-bar__account-toggle {
+	display: none;
+}
+
+@media (max-width: 900px) {
+	.nav-bar__top-actions .nav-bar__account-toggle {
+		display: grid;
 	}
 }

@@ -274,6 +274,19 @@ describe('NavigationBar', () => {
     const walletItem = () =>
       document.querySelector<HTMLButtonElement>('.cdk-overlay-container [data-testid="wallet"]');
 
+    it('also opens the account menu from the avatar beside the phone menu button', async () => {
+      await setUp();
+      const phoneAvatar = page.querySelector<HTMLButtonElement>('[data-testid="account-menu-mobile"]')!;
+      expect(phoneAvatar.textContent?.trim()).toBe('D');
+      expect(phoneAvatar.getAttribute('aria-label')).toBe('Account menu for demo');
+
+      phoneAvatar.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(document.querySelector('.cdk-overlay-container [data-testid="logout"]')).not.toBeNull();
+    });
+
     it('has Edit profile, Wallet, the theme switch and Log out, in that order, in the account menu', async () => {
       await setUp();
 

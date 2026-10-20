@@ -66,6 +66,7 @@
 
 .orders-table-wrap {
 	overflow-x: auto;
+	position: relative;
 }
 
 mat-paginator {
@@ -106,10 +107,6 @@ mat-paginator {
 	.mdc-data-table__row,
 	.mat-mdc-header-row {
 		background: transparent;
-	}
-
-	&__id {
-		color: var(--ts-text-muted);
 	}
 
 	&__qty,
@@ -191,14 +188,6 @@ mat-paginator {
 	color: var(--ts-frog);
 }
 
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip: rect(0 0 0 0);
-	white-space: nowrap;
-}
 
 @media (max-width: 1024px) {
 	.orders-page {
@@ -243,5 +232,12 @@ mat-paginator {
 		th {
 			font-size: 0.9rem;
 		}
+	}
+}
+
+@media (max-width: 600px) {
+	.mat-column-limit,
+	.mat-column-price {
+		display: none;
 	}
 }

@@ -251,16 +251,6 @@ export class OrderDialog implements OnInit {
     );
   });
 
-  displayInstrument = (instrument: Instrument | string | null): string => {
-    if (!instrument) {
-      return '';
-    }
-    if (typeof instrument === 'string') {
-      return instrument;
-    }
-    return `${instrument.symbol} - ${instrument.name}`;
-  };
-
   setTab(index: number): void {
     this.selectedTab.set(index);
   }
