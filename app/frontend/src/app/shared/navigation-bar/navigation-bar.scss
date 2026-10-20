@@ -62,14 +62,6 @@
 		border-radius: 1px;
 	}
 
-	&__brand-text {
-		font-size: 1.9rem;
-		line-height: 1;
-		font-weight: 700;
-		letter-spacing: -0.03em;
-		white-space: nowrap;
-	}
-
 	&__links {
 		display: flex;
 		align-items: center;
@@ -221,6 +213,7 @@
 
 	&__profile,
 	&__wallet,
+	&__theme,
 	&__logout {
 		--mat-menu-item-label-text-weight: 600;
 		width: calc(100% - 0.8rem);
@@ -231,8 +224,8 @@
 	&__logout {
 		--mat-menu-item-label-text-color: var(--ts-danger-text);
 		--mat-menu-item-icon-color: var(--ts-danger-text);
-		--mat-menu-item-hover-state-layer-color: rgb(255 138 110 / 0.12);
-		--mat-menu-item-focus-state-layer-color: rgb(255 138 110 / 0.16);
+		--mat-menu-item-hover-state-layer-color: color-mix(in srgb, var(--ts-danger-text) 12%, transparent);
+		--mat-menu-item-focus-state-layer-color: color-mix(in srgb, var(--ts-danger-text) 16%, transparent);
 	}
 
 	&__menu-icon {

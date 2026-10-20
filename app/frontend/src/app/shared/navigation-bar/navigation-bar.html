@@ -118,7 +118,13 @@
           <span>Wallet</span>
         </button>
         @if (themes.theme() === 'dark') {
-          <button mat-menu-item type="button" (click)="themes.toggle()" data-testid="theme-toggle">
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
             <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="12" r="4" />
               <path
@@ -128,7 +134,13 @@
             <span>Light mode</span>
           </button>
         } @else {
-          <button mat-menu-item type="button" (click)="themes.toggle()" data-testid="theme-toggle">
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
             <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
             </svg>
