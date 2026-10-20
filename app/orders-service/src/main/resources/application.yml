@@ -30,6 +30,16 @@ server:
   servlet:
     context-path: /api/
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
+
 service:
   accounts:
     url: ${ACCOUNTS_SERVICE_URL:http://accounts-service:8081/api/accounts}

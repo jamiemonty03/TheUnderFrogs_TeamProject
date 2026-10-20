@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Instruments } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
@@ -14,6 +14,10 @@ import {
 } from '../../../services/interfaces/instruments.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Positions } from '../../../services/positions';
+import { MatDialog } from '@angular/material/dialog';
+import { OrderNotifier } from '../../../services/order-notifier';
+import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
+import { OrderDialog } from '../../orders/order-dialog/order-dialog';
 import { InstrumentsDetail, factsFor } from './instruments-detail';
 
 const summary = (
@@ -79,7 +83,16 @@ describe('InstrumentsDetail', () => {
     fixture.detectChanges();
   };
 
+  let ticketClosed: Subject<OrderResponse | undefined>;
+  let dialog: { open: ReturnType<typeof vi.fn>; closeAll: ReturnType<typeof vi.fn> };
+  let orderSettled: Subject<OrderResponse>;
+  let notifier: { follow: ReturnType<typeof vi.fn> };
+
   beforeEach(async () => {
+    ticketClosed = new Subject();
+    dialog = { open: vi.fn(() => ({ afterClosed: () => ticketClosed })), closeAll: vi.fn() };
+    orderSettled = new Subject();
+    notifier = { follow: vi.fn(() => orderSettled) };
     params = new BehaviorSubject(convertToParamMap({ id: 'aapl' }));
     live = new BehaviorSubject<{ prices: Map<string, LivePrice>; stale: boolean }>({
       prices: new Map<string, LivePrice>(),
@@ -163,6 +176,8 @@ describe('InstrumentsDetail', () => {
             ),
           },
         },
+        { provide: MatDialog, useValue: dialog },
+        { provide: OrderNotifier, useValue: notifier },
       ],
     }).compileComponents();
 
@@ -198,21 +213,92 @@ describe('InstrumentsDetail', () => {
     expect(fixture.nativeElement.textContent).toContain('Live');
   });
 
-  it('lists your holdings of it in each portfolio, with a Sell for each', () => {
+  it('lists your holdings of it in each portfolio, with a Sell for each from that portfolio', () => {
     expect(text('holding-Main')).toContain('12 at $345.92');
     expect(text('holding-Golden Apple')).toContain('2 at $300.00');
-    expect(el('holding-Main')!.querySelector('a')!.getAttribute('href')).toBe(
-      '/orders?new=true&symbol=AAPL&side=SELL&portfolioId=PF0011',
+
+    el('holding-Golden Apple')!.querySelector('button')!.click();
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      OrderDialog,
+      expect.objectContaining({
+        data: {
+          symbol: 'AAPL',
+          side: 'SELL',
+          portfolioId: 'PF0013',
+          portfolioName: 'Golden Apple',
+        },
+      }),
     );
   });
 
-  it('Buy and Sell open the order dialog for it, like the dashboard', () => {
-    expect(el('instrument-buy')!.getAttribute('href')).toBe(
-      '/orders?new=true&symbol=AAPL&side=BUY',
-    );
-    expect(el('instrument-sell')!.getAttribute('href')).toBe(
-      '/orders?new=true&symbol=AAPL&side=SELL',
-    );
+  describe('the order ticket', () => {
+    const page = () => el('instrument-page')!;
+    const ORDER = { orderId: 'ORDER-7', orderStatus: 'NEW' } as OrderResponse;
+
+    it('Buy and Sell open it on this page, beside the chart, rather than going to Orders', () => {
+      el('instrument-buy')!.click();
+      expect(dialog.open).toHaveBeenLastCalledWith(
+        OrderDialog,
+        expect.objectContaining({
+          position: { top: '0', right: '0' },
+          hasBackdrop: false,
+          data: { symbol: 'AAPL', side: 'BUY' },
+        }),
+      );
+
+      el('instrument-sell')!.click();
+      expect(dialog.open).toHaveBeenLastCalledWith(
+        OrderDialog,
+        expect.objectContaining({ data: { symbol: 'AAPL', side: 'SELL' } }),
+      );
+      // Only one ticket at a time
+      expect(dialog.closeAll).toHaveBeenCalledTimes(2);
+    });
+
+    it('makes room for the ticket while it is open', () => {
+      el('instrument-buy')!.click();
+      fixture.detectChanges();
+      expect(page().classList).toContain('instrument--with-ticket');
+
+      ticketClosed.next(undefined);
+      fixture.detectChanges();
+      expect(page().classList).not.toContain('instrument--with-ticket');
+    });
+
+    it('says nothing when the ticket is closed without an order', () => {
+      el('instrument-buy')!.click();
+      ticketClosed.next(undefined);
+
+      expect(notifier.follow).not.toHaveBeenCalled();
+    });
+
+    it('follows a placed order, and refreshes your holdings once it fills', () => {
+      const positions = TestBed.inject(Positions) as unknown as {
+        getPositions: ReturnType<typeof vi.fn>;
+      };
+      el('instrument-buy')!.click();
+      ticketClosed.next(ORDER);
+      expect(notifier.follow).toHaveBeenCalledWith('ORDER-7');
+      const loadsBefore = positions.getPositions.mock.calls.length;
+
+      orderSettled.next({ ...ORDER, orderStatus: 'FILLED' });
+
+      expect(positions.getPositions.mock.calls.length).toBe(loadsBefore + 1);
+    });
+
+    it('leaves your holdings alone when the order is rejected or still waiting', () => {
+      const positions = TestBed.inject(Positions) as unknown as {
+        getPositions: ReturnType<typeof vi.fn>;
+      };
+      el('instrument-buy')!.click();
+      ticketClosed.next(ORDER);
+      const loadsBefore = positions.getPositions.mock.calls.length;
+
+      orderSettled.next({ ...ORDER, orderStatus: 'REJECTED' });
+
+      expect(positions.getPositions.mock.calls.length).toBe(loadsBefore);
+    });
   });
 
   it("shows an ETF's key facts from the ETF endpoint", async () => {

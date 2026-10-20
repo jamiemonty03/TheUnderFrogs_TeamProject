@@ -2,6 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Instruments, NewsArticle } from '../../services/instruments';
 
+export const MAX_TICKERS = 4;
+
 @Component({
 	imports: [DatePipe],
 	selector: 'app-news-footer',
@@ -24,5 +26,11 @@ export class NewsFooter {
 			},
 			complete: () => this.loading.set(false),
 		});
+	}
+
+	tickers(symbols: string[]): string {
+		const shown = symbols.slice(0, MAX_TICKERS).join(' · ');
+		const more = symbols.length - MAX_TICKERS;
+		return more > 0 ? `${shown} +${more}` : shown;
 	}
 }

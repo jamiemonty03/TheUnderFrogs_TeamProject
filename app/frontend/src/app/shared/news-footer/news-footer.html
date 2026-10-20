@@ -23,10 +23,12 @@
             >
               <span>{{ article.headline }}</span>
               @if (article.symbols.length > 0) {
-                <span class="news-footer__symbols">{{ article.symbols.join(' · ') }}</span>
+                <span class="news-footer__symbols">{{ tickers(article.symbols) }}</span>
               }
               @if (article.publishedAt) {
-                <time [attr.datetime]="article.publishedAt">{{ article.publishedAt | date: 'MMM d' }}</time>
+                <time [attr.datetime]="article.publishedAt">{{
+                  article.publishedAt | date: 'MMM d'
+                }}</time>
               }
             </a>
           </li>

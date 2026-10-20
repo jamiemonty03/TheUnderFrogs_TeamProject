@@ -1,6 +1,7 @@
 export type OrderStatus = 'NEW' | 'FILLED' | 'REJECTED' | 'CANCELLED';
 export type OrderSide = 'BUY' | 'SELL';
 export type OrderFilter = 'ALL' | OrderStatus;
+export type OrderSideFilter = 'ALL' | OrderSide;
 
 export interface OrderRow {
   id: string;

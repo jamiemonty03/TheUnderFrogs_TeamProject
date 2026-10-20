@@ -12,4 +12,4 @@ INSERT INTO users (username, email, password_hash, full_name, roles, account_id,
 ('henry', 'henry.chen@example.com', '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Henry Chen', ARRAY['TRADER'], 'ACC0008', TRUE),
 ('isla', 'isla.brown@example.com', '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Isla Brown', ARRAY['TRADER'], 'ACC0009', TRUE),
 ('jack', 'jack.turner@example.com', '$2a$10$vUWfBQn8LxSy/meoJXppD.QSv4VmWbGMFiR5Do9.pBy0XLLTcLhKG', 'Jack Turner', ARRAY['TRADER'], 'ACC0010', TRUE),
-('demo', 'demo.trader@example.com', '$2a$10$tEN44im3u450Nu8rjYmV2./rNJUmlmQsl8jIAmoJjbOWRMXILuxfW', 'Demo Trader', ARRAY['TRADER'], 'ACC0011', TRUE);
+('demo', 'demo.trader@example.com', '$2a$10$tEN44im3u450Nu8rjYmV2./rNJUmlmQsl8jIAmoJjbOWRMXILuxfW', 'Demo Trader', ARRAY['TRADER', 'ADMIN'], 'ACC0011', TRUE);

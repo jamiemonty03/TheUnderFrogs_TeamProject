@@ -157,6 +157,7 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
 .market__table-scroll {
   overflow-x: auto;
+  position: relative;
 }
 
 .market__table {
@@ -273,11 +274,19 @@ $mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--ts-loss);
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+@media (max-width: 600px) {
+  .market__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .tile {
+    padding: 1rem;
+  }
+
+  .market__name,
+  .market__source,
+  .market__change {
+    display: none;
+  }
 }

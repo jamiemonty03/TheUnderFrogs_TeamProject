@@ -10,6 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../../services/auth';
 import { Instruments } from '../../services/instruments';
+import { Theme } from '../../services/theme';
 import { TradingInstrument } from '../../services/interfaces/instruments.interfaces';
 
 const MAX_SUGGESTIONS = 8;
@@ -29,6 +30,12 @@ export class NavigationBar {
 
   private readonly instruments = signal<TradingInstrument[]>([]);
   private instrumentsRequested = false;
+  protected readonly themes = inject(Theme);
+  protected readonly logo = computed(() =>
+    this.themes.theme() === 'light'
+      ? '/brand/toadstock-logo-light.svg'
+      : '/brand/toadstock-logo-dark.svg',
+  );
   readonly query = signal('');
 
   readonly suggestions = computed(() => {
@@ -50,8 +57,9 @@ export class NavigationBar {
 
   readonly username = computed(() => this.auth.currentUser()?.username ?? '');
   readonly initial = computed(() => this.username().charAt(0).toUpperCase());
+  readonly isAdmin = computed(() => this.auth.currentUser()?.roles.includes('ADMIN') ?? false);
   readonly role = computed(() =>
-    this.auth.currentUser()?.roles.includes('ADMIN') ? 'Admin' : 'Trader',
+    this.isAdmin() ? 'Admin' : 'Trader',
   );
 
   toggleMenu(): void {

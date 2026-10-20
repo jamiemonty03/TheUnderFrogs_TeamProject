@@ -22,6 +22,17 @@ export class RefreshTokensRepository {
     return this.repository.findOne({ where: { token_hash: tokenHash } });
   }
 
+  async countActiveUsers(): Promise<number> {
+    const result = await this.repository
+      .createQueryBuilder('refresh_token')
+      .select('COUNT(DISTINCT refresh_token.user_id)', 'count')
+      .where('refresh_token.revoked_at IS NULL')
+      .andWhere('refresh_token.expires_at > CURRENT_TIMESTAMP')
+      .getRawOne<{ count: string }>();
+
+    return Number(result?.count ?? 0);
+  }
+
   async rotate(currentId: number, next: NewRefreshToken): Promise<RefreshToken | null> {
     try {
       return await this.repository.manager.transaction(async (manager) => {
