@@ -258,6 +258,55 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    mem_limit: 256m
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    depends_on:
+      trade-executor:
+        condition: service_healthy
+      nginx-exporter:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9090/-/healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    mem_limit: 256m
+    restart: unless-stopped
+    ports:
+      - "8080:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
   auth-db:
     image: postgres:15-alpine
     container_name: auth-db
@@ -359,6 +408,17 @@ services:
       timeout: 5s
       retries: 6
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.2
+    container_name: nginx-exporter
+    mem_limit: 64m
+    restart: unless-stopped
+    command:
+      - -nginx.scrape-uri=http://frontend/nginx_status
+    depends_on:
+      frontend:
+        condition: service_healthy
+
   python:
     build:
       context: ./db
@@ -455,3 +515,5 @@ volumes:
   sonarqube_logs:
   trade_analytics_db_data:
   auth_db_data:
+  prometheus_data:
+  grafana_data:

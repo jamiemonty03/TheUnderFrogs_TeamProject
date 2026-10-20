@@ -22,6 +22,6 @@ import { JwksController } from './controllers/jwks.controller';
         loadSigningKey(configService.getOrThrow<string>('JWT_PRIVATE_KEY'), configService.getOrThrow<string>('JWT_KEY_ID')),
     },
   ],
-  exports: [RefreshTokensService, TokenService, SIGNING_KEY],
+    exports: [RefreshTokensService, RefreshTokensRepository, TokenService, SIGNING_KEY],
 })
 export class TokensModule {}

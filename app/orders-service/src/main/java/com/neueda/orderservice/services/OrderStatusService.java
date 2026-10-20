@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.neueda.orderservice.enums.OrderStatus;
 import com.neueda.orderservice.exceptions.OrderNotFoundException;
@@ -28,10 +29,18 @@ public class OrderStatusService {
 
     private final OrderRepository orderRepository;
     private final ClientTradeService clientTradeService;
+    private final OrderStatusMetrics statusMetrics;
 
     public OrderStatusService(OrderRepository orderRepository, ClientTradeService clientTradeService) {
+        this(orderRepository, clientTradeService, null);
+    }
+
+    @Autowired
+    public OrderStatusService(OrderRepository orderRepository, ClientTradeService clientTradeService,
+            OrderStatusMetrics statusMetrics) {
         this.orderRepository = orderRepository;
         this.clientTradeService = clientTradeService;
+        this.statusMetrics = statusMetrics;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -62,9 +71,15 @@ public class OrderStatusService {
         if (newStatus == OrderStatus.FILLED) {
             ClientTrade trade = clientTradeService.saveTrade(new ClientTrade(order.getAccountId(), order.getSymbol(),
                     order.getSide(), BigDecimal.valueOf(order.getQuantity()), fillPrice, LocalDate.now()));
+            if (statusMetrics != null) {
+                statusMetrics.recordTradeExecuted(order.getSymbol());
+            }
             log.info("Order {} recorded as client trade {} at {}", orderId, trade.getTradeId(), fillPrice);
         }
 
+        if (statusMetrics != null) {
+            statusMetrics.record(newStatus);
+        }
         log.info("Order {} status {} -> {} ({})", orderId, expectedStatus, newStatus, reason);
         return order;
     }

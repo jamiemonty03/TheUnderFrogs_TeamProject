@@ -10,6 +10,9 @@ import { AppModule } from './app.module';
 import { createValidationPipe } from './common/validation/validation.pipe';
 import { JsonBodyAdapter } from './common/validation/json-body.adapter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { collectDefaultMetrics } from 'prom-client';
+
+collectDefaultMetrics({ prefix: 'auth_service_' });
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, new JsonBodyAdapter());
