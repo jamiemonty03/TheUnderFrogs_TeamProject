@@ -324,3 +324,12 @@ html {
     box-shadow: 0 0 12px 4px var(--price-flash-tint);
   }
 }
+
+.order-ticket {
+  .mat-mdc-dialog-surface {
+    border-radius: 0;
+    border-left: 1px solid var(--ts-border);
+    box-shadow: -12px 0 32px rgb(0 0 0 / 0.25);
+    overflow-y: auto;
+  }
+}
