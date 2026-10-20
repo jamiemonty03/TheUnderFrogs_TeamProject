@@ -226,6 +226,7 @@
 	&__profile,
 	&__wallet,
 	&__theme,
+	&__dashboard,
 	&__logout {
 		--mat-menu-item-label-text-weight: 600;
 		width: calc(100% - 0.8rem);
@@ -310,8 +311,6 @@
 	}
 }
 
-// Only phones show the avatar beside the menu button. Kept apart and more specific than the
-// avatar's own display rule, which the @extend above would otherwise copy onto it.
 .nav-bar__top-actions .nav-bar__account-toggle {
 	display: none;
 }
