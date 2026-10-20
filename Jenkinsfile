@@ -44,37 +44,58 @@ pipeline {
             }
         }
 
-        stage('Unit Tests') {
-            parallel {
-                stage('Test Accounts Service') {
-                    steps {
-                        sh 'mvn -B -f app/accounts-service/pom.xml test'
-                    }
-                }
-                stage('Test Instruments Service') {
-                    steps {
-                        sh 'mvn -B -f app/instruments-service/pom.xml test'
-                    }
-                }
-                stage('Test Orders Service') {
-                    steps {
-                        sh 'mvn -B -f app/orders-service/pom.xml test'
-                    }
-                }
-                stage('Test Positions Service') {
-                    steps {
-                        sh 'mvn -B -f app/positions-service/pom.xml test'
-                    }
-                }
-                stage('Test Trade Executor') {
-                    steps {
-                        sh 'mvn -B -f app/trade-executor/pom.xml test'
-                    }
-                }
+        // One service at a time: five Spring Boot test JVMs plus Testcontainers at once runs the box out of memory.
+        stage('Test: Accounts Service') {
+            steps {
+                sh 'mvn -B -f app/accounts-service/pom.xml test'
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: 'app/*/target/surefire-reports/*.xml'
+                    junit allowEmptyResults: true, testResults: 'app/accounts-service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Test: Instruments Service') {
+            steps {
+                sh 'mvn -B -f app/instruments-service/pom.xml test'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'app/instruments-service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Test: Orders Service') {
+            steps {
+                sh 'mvn -B -f app/orders-service/pom.xml test'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'app/orders-service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Test: Positions Service') {
+            steps {
+                sh 'mvn -B -f app/positions-service/pom.xml test'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'app/positions-service/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Test: Trade Executor') {
+            steps {
+                sh 'mvn -B -f app/trade-executor/pom.xml test'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'app/trade-executor/target/surefire-reports/*.xml'
                 }
             }
         }
