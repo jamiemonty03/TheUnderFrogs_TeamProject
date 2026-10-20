@@ -5,19 +5,31 @@
     <resultMap id="PricePointResultMap" type="com.neueda.instrumentservice.dtos.responses.PricePointResponse">
         <constructor>
             <arg column="trade_date" javaType="java.time.LocalDate" />
+            <arg column="open_price" javaType="java.math.BigDecimal" />
+            <arg column="high_price" javaType="java.math.BigDecimal" />
+            <arg column="low_price" javaType="java.math.BigDecimal" />
             <arg column="close_price" javaType="java.math.BigDecimal" />
+            <arg column="volume" javaType="java.lang.Long" />
             <arg column="moving_avg_20" javaType="java.math.BigDecimal" />
             <arg column="moving_avg_50" javaType="java.math.BigDecimal" />
         </constructor>
     </resultMap>
 
     <select id="findRecent" resultMap="PricePointResultMap">
-        SELECT trade_date, close_price, moving_avg_20, moving_avg_50
+        SELECT trade_date, open_price, high_price, low_price, close_price, volume, moving_avg_20, moving_avg_50
         FROM (
-            SELECT CAST(trade_date AS DATE) AS trade_date, close_price, moving_avg_20, moving_avg_50
-            FROM price_metrics
-            WHERE ticker = #{symbol}
-            ORDER BY trade_date DESC
+            SELECT CAST(pm.trade_date AS DATE) AS trade_date,
+                   cp.open AS open_price,
+                   cp.high AS high_price,
+                   cp.low AS low_price,
+                   pm.close_price,
+                   cp.volume,
+                   pm.moving_avg_20,
+                   pm.moving_avg_50
+            FROM price_metrics pm
+            LEFT JOIN clean_prices cp ON cp.symbol = pm.ticker AND cp.date = pm.trade_date
+            WHERE pm.ticker = #{symbol}
+            ORDER BY pm.trade_date DESC
             LIMIT #{days}
         ) recent
         ORDER BY trade_date

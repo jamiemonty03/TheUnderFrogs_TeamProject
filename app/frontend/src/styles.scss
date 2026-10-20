@@ -171,6 +171,30 @@ html {
   color: var(--ts-loss);
 }
 
+.inline-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border: 1px solid var(--ts-danger-border);
+  border-radius: 12px;
+  background: var(--ts-danger-bg);
+  color: var(--ts-danger-text);
+
+  button {
+    padding: 0.35rem 0.75rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
 .button--danger {
   color: var(--ts-danger-text);
 }
@@ -231,3 +255,28 @@ html {
   border: 1px solid var(--ts-border);
 }
 
+
+// A price that has just ticked: a soft tint that fades out over FLASH_MS (see shared/price-flash).
+.price-flash {
+  display: inline-block;
+  margin: -0.35rem -0.65rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+}
+
+.price-flash--up {
+  --price-flash-tint: color-mix(in srgb, var(--ts-frog) 14%, transparent);
+  animation: price-flash 3s ease-out;
+}
+
+.price-flash--down {
+  --price-flash-tint: color-mix(in srgb, var(--ts-loss) 14%, transparent);
+  animation: price-flash 3s ease-out;
+}
+
+@keyframes price-flash {
+  from {
+    background-color: var(--price-flash-tint);
+    box-shadow: 0 0 12px 4px var(--price-flash-tint);
+  }
+}

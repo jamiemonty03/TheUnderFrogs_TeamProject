@@ -33,20 +33,19 @@ public class AlpacaPriceSource implements PriceSource {
 
     @Override
     public Optional<BigDecimal> getPrice(InstrumentDto instrument, OrderSide side) {
-        Optional<BigDecimal> live = livePrice(instrument.symbol(), side);
-        if (live.isPresent()) {
-            log.info("Priced {} {} at {} from Alpaca", side, instrument.symbol(), live.get());
-            return live;
+        // Without Alpaca keys (local dev, tests) there are no live quotes: price from the daily close
+        if (!alpaca.isConfigured()) {
+            Optional<BigDecimal> close = fallback.getPrice(instrument, side);
+            log.info("Priced {} {} at {} from the daily close", side, instrument.symbol(), close.orElse(null));
+            return close;
         }
-        Optional<BigDecimal> close = fallback.getPrice(instrument, side);
-        log.info("Priced {} {} at {} from the daily close", side, instrument.symbol(), close.orElse(null));
-        return close;
+        // With Alpaca, only ever fill at a live price: no usable quote means the order waits
+        Optional<BigDecimal> live = livePrice(instrument.symbol(), side);
+        live.ifPresent(price -> log.info("Priced {} {} at {} from Alpaca", side, instrument.symbol(), price));
+        return live;
     }
 
     private Optional<BigDecimal> livePrice(String symbol, OrderSide side) {
-        if (!alpaca.isConfigured()) {
-            return Optional.empty();
-        }
         AlpacaQuote quote;
         try {
             quote = alpaca.latestQuotes(List.of(symbol)).get(symbol);

@@ -112,15 +112,19 @@
                 </td>
                 <td class="num">{{ row.price === null ? '—' : (row.price | currency: 'USD') }}</td>
                 <td class="num" [class]="trend(row)">
-                  @if (row.change; as change) {
-                    {{ change.amount > 0 ? '▲' : change.amount < 0 ? '▼' : '' }}
-                    {{ change.amount | currency: 'USD' }}
-                  } @else {
-                    —
-                  }
+                  <span class="price-flash" [appPriceFlash]="row.price">
+                    @if (row.change; as change) {
+                      {{ change.amount > 0 ? '▲' : change.amount < 0 ? '▼' : '' }}
+                      {{ change.amount | currency: 'USD' }}
+                    } @else {
+                      —
+                    }
+                  </span>
                 </td>
                 <td class="num" [class]="trend(row)">
-                  {{ row.change === null ? '—' : (row.change.percent | number: '1.2-2') + '%' }}
+                  <span class="price-flash" [appPriceFlash]="row.price">{{
+                    row.change === null ? '—' : (row.change.percent | number: '1.2-2') + '%'
+                  }}</span>
                 </td>
                 <td class="market__actions">
                   <a

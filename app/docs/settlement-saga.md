@@ -39,6 +39,21 @@ message. Steps that already happened are skipped, missing steps are completed, a
 | FILL + BUY | debit cash | add position | `NEW → FILLED` | publish `ORDER_FILLED` |
 | FILL + SELL | reduce position | credit cash | `NEW → FILLED` | publish `ORDER_FILLED` |
 | REJECT | reverse anything an earlier attempt moved (normally a no-op) | | `NEW → REJECTED` | publish `ORDER_REJECTED` |
+| REST | nothing (the saga doesn't run) | | stays `NEW` | re-checked when the symbol's price next changes |
+
+**Limit orders rest.** When the market hasn't reached the order's limit (or there's no price yet), `FillRule` returns REST
+and the order stays NEW. Each time `MarketDataPoller` publishes a new price it raises an in-process `PriceChanged`
+event; `RestingOrderMatcher` then loads that symbol's NEW orders (`GET /orders/open?symbol=`) and runs each through
+`OrderExecutionService.execute` again. `execute` skips an order that is already being executed, so a new order and a
+price re-check can't settle it twice. Cash is not held while an order rests: if it's gone when the price matches, the
+debit fails and the order is REJECTED as usual.
+
+**Orders only fill while the market is open.** Before pricing an order, `OrderExecutionService` asks `MarketHours`,
+which reads Alpaca's market clock (`GET {ALPACA_TRADING_URL}/clock`, cached for 60s). While the market is closed the
+order rests even if its limit would match, and fills at the open, when quotes start moving again and the matcher
+re-checks it. With Alpaca configured, orders only ever fill at a live quote: a stale or unusable quote makes the order
+rest instead of falling back to the daily close. Without Alpaca keys (local dev, tests) the market counts as always
+open and orders fill at the daily close, as before.
 
 The amount is `fillPrice × quantity`, rounded to 2 decimal places.
 

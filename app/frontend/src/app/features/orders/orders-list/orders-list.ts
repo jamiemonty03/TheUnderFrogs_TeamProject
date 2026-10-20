@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -9,6 +10,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { Orders } from '../../../services/orders';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
@@ -29,6 +31,7 @@ export class OrdersList implements OnInit {
   private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
+  private readonly liveFeed = inject(LivePrices);
 
   readonly currentUser = this.auth.currentUser;
   readonly accountId = computed(() => this.currentUser()?.accountId ?? '');
@@ -43,11 +46,26 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'price', 'status'];
+  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'limit', 'price', 'status', 'actions'];
+  readonly cancelling = signal<string | null>(null);
+
+  private readonly livePrices = toSignal(this.liveFeed.watch(), {
+    initialValue: { prices: new Map(), stale: false },
+  });
+
+  // Orders with MARKET swapped for the live quote an order is checked against: the ask for a BUY, the bid for a SELL
+  readonly liveOrders = computed(() => {
+    const prices = this.livePrices().prices;
+    return this.orders().map((order) => {
+      const quote = prices.get(order.symbol);
+      const live = order.side === 'BUY' ? (quote?.ask ?? quote?.price) : (quote?.bid ?? quote?.price);
+      return live != null && live > 0 ? { ...order, price: this.formatPrice(live), live: true } : { ...order, live: false };
+    });
+  });
 
   readonly visibleOrders = computed(() => {
     const filter = this.activeFilter();
-    const orders = this.orders();
+    const orders = this.liveOrders();
     if (filter === 'ALL') {
       return orders;
     }
@@ -97,6 +115,26 @@ export class OrdersList implements OnInit {
       ...(data ? { data } : {}),
     }).afterClosed().subscribe((order: OrderResponse | undefined) => {
       this.loadOrders(order?.orderId);
+    });
+  }
+
+  cancelOrder(orderId: string): void {
+    this.cancelling.set(orderId);
+    this.ordersApi.cancelOrder(orderId).subscribe({
+      next: () => {
+        this.cancelling.set(null);
+        this.snackBar.openFromComponent(OrderSnackbar, {
+          data: { orderId, status: 'CANCELLED' },
+          duration: 5000,
+          panelClass: ['order-snackbar-panel'],
+        });
+        this.loadOrders();
+      },
+      error: () => {
+        this.cancelling.set(null);
+        this.snackBar.open("Couldn't cancel the order. It may already have filled.", 'Dismiss', { duration: 7000 });
+        this.loadOrders();
+      },
     });
   }
 
@@ -155,16 +193,24 @@ export class OrdersList implements OnInit {
         duration: 7000,
         panelClass: ['order-snackbar-panel'],
       });
+    } else if (order.orderStatus === 'NEW') {
+      this.snackBar.openFromComponent(OrderSnackbar, {
+        data: { orderId: order.orderId, status: 'NEW', priceLimit: order.priceLimit },
+        duration: 7000,
+        panelClass: ['order-snackbar-panel'],
+      });
     }
   }
 
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
+      id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,
       quantity: order.quantity,
       price: this.formatPrice(marketPrices.get(order.symbol)),
+      limit: this.formatPrice(order.priceLimit),
       status: order.orderStatus,
     };
   }

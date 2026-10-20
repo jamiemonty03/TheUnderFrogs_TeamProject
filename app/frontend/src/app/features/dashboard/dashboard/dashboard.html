@@ -115,6 +115,34 @@
     </div>
   </div>
 
+  <section class="card" aria-labelledby="allocation-title">
+    <h2 id="allocation-title" class="card__title">Allocation</h2>
+    @if (valuationLoading()) {
+      <output class="dashboard__status">
+        <mat-progress-spinner mode="indeterminate" diameter="20" />
+        Loading…
+      </output>
+    } @else if (valuationError()) {
+      <p class="dashboard__error-text" role="alert">Unavailable</p>
+    } @else if (holdings().length === 0) {
+      <p class="card__hint">You don't hold anything yet.</p>
+    } @else {
+      <app-allocation [holdings]="holdings()" />
+    }
+  </section>
+
+  <div class="dashboard__insights">
+    <section class="card" aria-labelledby="performance-title">
+      <h2 id="performance-title" class="card__title">Performance</h2>
+      <app-performance [positions]="filteredPositions()" [positionsLoading]="positionsLoading()" />
+    </section>
+
+    <section class="card" aria-labelledby="recent-orders-title">
+      <h2 id="recent-orders-title" class="card__title">Recent orders</h2>
+      <app-recent-orders />
+    </section>
+  </div>
+
   <section class="card" aria-labelledby="positions-title">
     <div class="dashboard__positions-header">
       <h2 id="positions-title" class="card__title">Positions</h2>
@@ -160,7 +188,7 @@
       }
 
       <div class="dashboard__table-scroll">
-        <table mat-table [dataSource]="rows()" matSort (matSortChange)="sort.set($event)">
+        <table mat-table [dataSource]="rows()" [trackBy]="trackHolding" matSort (matSortChange)="sort.set($event)">
           <ng-container matColumnDef="symbol">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Symbol</th>
             <td mat-cell *matCellDef="let h">
@@ -215,12 +243,14 @@
               [class.gain]="h.unrealisedPnl > 0"
               [class.loss]="h.unrealisedPnl < 0"
             >
-              @if (h.unrealisedPnl === null) {
-                —
-              } @else {
-                {{ h.unrealisedPnl > 0 ? '▲' : h.unrealisedPnl < 0 ? '▼' : '' }}
-                {{ h.unrealisedPnl | currency: 'USD' }}
-              }
+              <span class="price-flash" [appPriceFlash]="h.price">
+                @if (h.unrealisedPnl === null) {
+                  —
+                } @else {
+                  {{ h.unrealisedPnl > 0 ? '▲' : h.unrealisedPnl < 0 ? '▼' : '' }}
+                  {{ h.unrealisedPnl | currency: 'USD' }}
+                }
+              </span>
             </td>
           </ng-container>
 
@@ -233,7 +263,9 @@
               [class.gain]="h.pnlPercent > 0"
               [class.loss]="h.pnlPercent < 0"
             >
-              {{ h.pnlPercent === null ? '—' : (h.pnlPercent | number: '1.2-2') + '%' }}
+              <span class="price-flash" [appPriceFlash]="h.price">{{
+                h.pnlPercent === null ? '—' : (h.pnlPercent | number: '1.2-2') + '%'
+              }}</span>
             </td>
           </ng-container>
 

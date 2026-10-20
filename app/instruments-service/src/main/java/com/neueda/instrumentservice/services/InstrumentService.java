@@ -1,6 +1,9 @@
 package com.neueda.instrumentservice.services;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,8 @@ import com.neueda.instrumentservice.mappers.TrackedTickerMapper;
 public class InstrumentService {
 
     private static final Logger log = LoggerFactory.getLogger(InstrumentService.class);
+    static final int MIN_NAME_SEARCH_LENGTH = 3;
+    static final int MAX_TICKER_MATCHES = 5;
 
     private final InstrumentMapper instrumentMapper;
     private final TrackedTickerMapper trackedTickerMapper;
@@ -35,6 +40,30 @@ public class InstrumentService {
         Instrument instrument = instrumentMapper.findBySymbol(symbol)
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
         return toResponse(instrument);
+    }
+
+    public List<InstrumentResponse> resolveTicker(String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        Optional<Instrument> exact = instrumentMapper.findBySymbol(cleanSymbol(query));
+        if (exact.isPresent()) {
+            return List.of(toResponse(exact.get()));
+        }
+        String name = query.strip().toLowerCase(Locale.ROOT);
+        if (name.length() < MIN_NAME_SEARCH_LENGTH) {
+            return List.of();
+        }
+        return instrumentMapper.findAll().stream()
+                .filter(instrument -> instrument.getName().toLowerCase(Locale.ROOT).contains(name))
+                .sorted(Comparator.comparing(Instrument::getSymbol))
+                .limit(MAX_TICKER_MATCHES)
+                .map(InstrumentService::toResponse)
+                .toList();
+    }
+
+    public static String cleanSymbol(String symbol) {
+        return symbol == null ? "" : symbol.replaceAll("[\\s$]", "").toUpperCase(Locale.ROOT);
     }
 
     /**

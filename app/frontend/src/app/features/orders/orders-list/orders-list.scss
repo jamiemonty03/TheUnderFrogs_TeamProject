@@ -157,6 +157,47 @@ mat-paginator {
 		color: var(--ts-neutral);
 	}
 
+	&__actions {
+		text-align: right;
+	}
+
+	&__cancel.mat-mdc-outlined-button {
+		--mat-button-outlined-label-text-color: var(--ts-sell);
+		--mat-button-outlined-outline-color: var(--ts-sell);
+		--mat-button-outlined-state-layer-color: var(--ts-sell);
+		--mat-button-outlined-ripple-color: color-mix(in srgb, var(--ts-sell) 12%, transparent);
+		color: var(--ts-sell);
+		border-color: var(--ts-sell);
+	}
+
+}
+
+.price-tag {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.1rem 0.4rem;
+	border-radius: 999px;
+	background: var(--ts-neutral-bg);
+	color: var(--ts-neutral);
+	font-size: 0.65rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+.price-tag--live {
+	background: var(--ts-success-bg);
+	color: var(--ts-frog);
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
 }
 
 @media (max-width: 1024px) {

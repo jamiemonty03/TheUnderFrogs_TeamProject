@@ -271,6 +271,16 @@
     text-align: right;
   }
 
+  .mat-mdc-cell.pos,
+  .mat-mdc-footer-cell.pos {
+    color: var(--ts-frog);
+  }
+
+  .mat-mdc-cell.neg,
+  .mat-mdc-footer-cell.neg {
+    color: var(--ts-loss);
+  }
+
   &__symbol {
     font-weight: 700;
 

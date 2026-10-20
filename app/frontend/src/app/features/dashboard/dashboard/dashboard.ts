@@ -16,7 +16,12 @@ import { Position, Positions } from '../../../services/positions';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { MarketOverview } from '../../instruments/market-overview/market-overview';
+import { PriceFlash } from '../../../shared/price-flash/price-flash';
+import { Allocation } from '../allocation/allocation';
+import { Performance } from '../performance/performance';
+import { RecentOrders } from '../recent-orders/recent-orders';
 import { sortHoldings, summarise, toHoldings } from '../portfolio';
+import { Holding } from '../portfolio.interfaces';
 
 const PRICES_FAILED = "Couldn't load the latest prices. Try again in a moment.";
 
@@ -32,6 +37,10 @@ const PRICES_FAILED = "Couldn't load the latest prices. Try again in a moment.";
     MatSortModule,
     MatTableModule,
     MarketOverview,
+    Allocation,
+    Performance,
+    RecentOrders,
+    PriceFlash,
   ],
   selector: 'app-dashboard',
   styleUrl: './dashboard.scss',
@@ -78,6 +87,8 @@ export class Dashboard {
   protected readonly firstName = computed(() => this.account()?.holderName.trim().split(/\s+/)[0] ?? '');
 
   protected readonly sort = signal<Sort>({ active: '', direction: '' });
+  // Keep each row's DOM across live ticks, so its price flash can see the change
+  protected readonly trackHolding = (_: number, h: Holding) => h.symbol;
   protected readonly filteredPositions = computed(() => {
     const selected = this.selectedPortfolioId();
     return selected === 'ALL'

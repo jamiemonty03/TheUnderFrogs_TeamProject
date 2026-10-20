@@ -285,6 +285,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /orders/open:
+    get:
+      summary: List resting (NEW) limit orders for a symbol, oldest first
+      description: Used by the trade executor to re-check limit orders when a price changes. Spans all accounts, so only SERVICE and ADMIN tokens may call it.
+      operationId: getOpenOrders
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: symbol
+          in: query
+          required: true
+          schema:
+            type: string
+            example: AAPL
+      responses:
+        '200':
+          description: NEW orders for the symbol
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Caller is not a service or admin (errorCode AUTH-403)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /client-trades:
     get:
       summary: Search historical client trades
@@ -504,7 +540,7 @@ components:
           format: decimal
           description: >
             Worst price per share you accept: the most you pay on a BUY, the least you receive on a SELL.
-            The order fills at the market price, or is rejected if the market is past this limit.
+            The order fills at the live market price once the market is open and reaches this limit, and stays NEW until then.
           example: 190.00
         idempotencyKey:
           type: string

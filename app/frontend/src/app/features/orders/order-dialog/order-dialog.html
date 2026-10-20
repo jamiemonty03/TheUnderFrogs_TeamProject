@@ -105,7 +105,22 @@
                 [formControl]="buyOrderStep.controls.priceLimit"
                 data-testid="buy-price-limit"
               />
+              <mat-hint>Buys once the market reaches this price or lower</mat-hint>
             </mat-form-field>
+
+            @if (buyMarket(); as market) {
+              <p class="order-dialog__market" data-testid="buy-market-price">
+                Market now: <strong>{{ market.price | currency }}</strong>
+                <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
+                  {{ market.source === 'live' ? 'Live ask' : 'Close' }}
+                </span>
+                @if (market.source === 'close') {
+                  <span class="order-dialog__market-note">Market closed. The order waits until it opens.</span>
+                } @else if (!buyFillsNow()) {
+                  <span class="order-dialog__market-note">Waits until the price drops to your limit</span>
+                }
+              </p>
+            }
 
             <p class="order-dialog__estimate">Estimated cost: {{ buyEstimate() | currency }}</p>
             @if (insufficientCash()) {
@@ -262,6 +277,33 @@
               />
             </mat-slider>
 
+            <mat-form-field appearance="outline" class="order-dialog__field">
+              <mat-label>Price limit</mat-label>
+              <input
+                matInput
+                type="number"
+                min="0.01"
+                step="0.01"
+                [formControl]="sellOrderStep.controls.priceLimit"
+                data-testid="sell-price-limit"
+              />
+              <mat-hint>Sells once the market reaches this price or higher</mat-hint>
+            </mat-form-field>
+
+            @if (sellMarket(); as market) {
+              <p class="order-dialog__market" data-testid="sell-market-price">
+                Market now: <strong>{{ market.price | currency }}</strong>
+                <span class="price-tag" [class.price-tag--live]="market.source === 'live'">
+                  {{ market.source === 'live' ? 'Live bid' : 'Close' }}
+                </span>
+                @if (market.source === 'close') {
+                  <span class="order-dialog__market-note">Market closed. The order waits until it opens.</span>
+                } @else if (!sellFillsNow()) {
+                  <span class="order-dialog__market-note">Waits until the price rises to your limit</span>
+                }
+              </p>
+            }
+
             <p class="order-dialog__estimate">
               Market value estimate: {{ sellEstimate() | currency }}
             </p>
@@ -309,7 +351,7 @@
               <p><strong>Portfolio:</strong> {{ portfolioName() }}</p>
               <p><strong>Quantity:</strong> {{ sellOrderStep.controls.quantity.value }}</p>
               <p>
-                <strong>Price limit:</strong> {{ selectedSellInstrument()?.marketPrice | currency }}
+                <strong>Price limit:</strong> {{ sellOrderStep.controls.priceLimit.value | currency }}
               </p>
             </div>
             @if (sellPlaced()) {
