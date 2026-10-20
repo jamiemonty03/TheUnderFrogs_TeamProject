@@ -1,0 +1,120 @@
+<ng-template #inlineText let-parts>
+  @for (part of parts; track $index) {
+    @if (part.bold) {
+      <strong>{{ part.text }}</strong>
+    } @else {
+      {{ part.text }}
+    }
+  }
+</ng-template>
+
+@if (entry().role === 'user' || entry().error) {
+  <p class="message__text">{{ entry().text }}</p>
+} @else {
+  <div class="reply" data-testid="assistant-reply">
+    @for (block of formatted(); track $index) {
+      @switch (block.kind) {
+        @case ('heading') {
+          <h3 class="reply__heading">
+            <ng-container *ngTemplateOutlet="inlineText; context: { $implicit: block.content }" />
+          </h3>
+        }
+        @case ('bullets') {
+          <ul class="reply__list">
+            @for (item of block.items; track $index) {
+              <li><ng-container *ngTemplateOutlet="inlineText; context: { $implicit: item }" /></li>
+            }
+          </ul>
+        }
+        @case ('numbered') {
+          <ol class="reply__list">
+            @for (item of block.items; track $index) {
+              <li><ng-container *ngTemplateOutlet="inlineText; context: { $implicit: item }" /></li>
+            }
+          </ol>
+        }
+        @case ('table') {
+          <div class="reply__table-wrap">
+            <table class="reply__table">
+              <thead>
+                <tr>
+                  @for (cell of block.header; track $index) {
+                    <th>
+                      <ng-container *ngTemplateOutlet="inlineText; context: { $implicit: cell }" />
+                    </th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of block.rows; track $index) {
+                  <tr>
+                    @for (cell of row; track $index) {
+                      <td>
+                        <ng-container
+                          *ngTemplateOutlet="inlineText; context: { $implicit: cell }"
+                        />
+                      </td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @default {
+          <p class="reply__paragraph">
+            @for (line of block.lines; track $index) {
+              @if (!$first) {
+                <br />
+              }
+              <ng-container *ngTemplateOutlet="inlineText; context: { $implicit: line }" />
+            }
+          </p>
+        }
+      }
+    }
+  </div>
+}
+
+@if (entry().response; as response) {
+  <p
+    class="message__badge"
+    [class.message__badge--raw]="!response.aiSummary"
+    data-testid="assistant-badge"
+  >
+    @if (response.aiSummary) {
+      ✓ Checked against our data
+    } @else {
+      AI summary unavailable, showing the raw data
+    }
+  </p>
+
+  @if (response.sources.length > 0) {
+    <ul class="sources" aria-label="Sources">
+      @for (source of response.sources; track $index) {
+        <li class="source" data-testid="assistant-source">
+          <span class="source__type">{{ sourceLabels[source.type] }} · {{ source.symbol }}</span>
+          @if (source.url) {
+            <a class="source__link" [href]="source.url" target="_blank" rel="noopener noreferrer">{{
+              source.label
+            }}</a>
+          } @else {
+            <span class="source__label">{{ source.label }}</span>
+          }
+          @if (source.asOf) {
+            <time class="source__time" [attr.datetime]="source.asOf">
+              as of {{ source.asOf | date: 'd MMM, HH:mm' }}
+            </time>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <p class="message__disclaimer">
+    {{ response.disclaimer }}
+    @if (response.model) {
+      <span class="message__model">Answered by {{ response.model }}</span>
+    }
+  </p>
+}

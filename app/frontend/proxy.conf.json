@@ -35,6 +35,13 @@
     "secure": false,
     "changeOrigin": true
   },
+  "/api/assistant": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "proxyTimeout": 120000,
+    "timeout": 120000
+  },
   "/api/orders": {
     "target": "http://localhost:8083",
     "secure": false,
