@@ -28,6 +28,7 @@ test('the lily pad opens the assistant, which answers with its sources without c
     await route.fulfill({ json: ANSWER });
   });
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await useSavedLogin(page);
 
   const pad = page.getByTestId('assistant-lily-pad');
