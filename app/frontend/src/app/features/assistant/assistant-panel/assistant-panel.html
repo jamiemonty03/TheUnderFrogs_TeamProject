@@ -1,0 +1,105 @@
+<div class="card">
+  <header class="card__header">
+    <div class="brand">
+      <svg class="brand__logo" viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          class="brand__leaf"
+          d="M32 4a28 28 0 1 0 27.6 23.3L32 32l9.6-26.3A28 28 0 0 0 32 4Z"
+        />
+        <path
+          class="brand__veins"
+          d="M32 32 12 18M32 32 8 36M32 32l-14 20M32 32l8 26M32 32l24 12"
+        />
+      </svg>
+      <span class="brand__name">Lily Pad</span>
+      <span class="brand__tag">AI research</span>
+    </div>
+    <button
+      type="button"
+      class="card__close"
+      aria-label="Close assistant"
+      data-testid="assistant-close"
+      (click)="chat.close()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+    </button>
+  </header>
+
+  <div class="card__body" #chatLog aria-live="polite">
+    @if (chat.entries().length === 0) {
+      <app-assistant-welcome [selected]="topic()?.id ?? null" (choose)="chooseTopic($event)" />
+    }
+
+    @for (entry of chat.entries(); track entry.id) {
+      <app-assistant-message [entry]="entry" animate.enter="message--enter" />
+    }
+
+    @if (chat.pending()) {
+      <div class="hops" data-testid="assistant-thinking" aria-label="The assistant is thinking">
+        <span></span><span></span><span></span>
+      </div>
+    }
+  </div>
+
+  @if (chat.entries().length > 0) {
+    <div class="topic-strip" aria-label="Topics">
+      @for (item of topics; track item.id) {
+        <button
+          type="button"
+          class="topic-chip"
+          [class.topic-chip--active]="topic()?.id === item.id"
+          [attr.aria-pressed]="topic()?.id === item.id"
+          [disabled]="chat.pending()"
+          data-testid="assistant-topic"
+          (click)="chooseTopic(item)"
+        >
+          <app-topic-icon [topic]="item.id" />
+          {{ item.title }}
+        </button>
+      }
+    </div>
+  }
+
+  <form class="ask" (submit)="$event.preventDefault(); send()">
+    @if (topic(); as selected) {
+      <div class="ask__topic" data-testid="assistant-selected-topic">
+        <app-topic-icon [topic]="selected.id" />
+        {{ selected.title }}
+        <button type="button" class="ask__clear" aria-label="Clear topic" (click)="clearTopic()">
+          ✕
+        </button>
+      </div>
+    }
+    <div class="ask__box">
+      <textarea
+        #questionInput
+        class="ask__input"
+        rows="1"
+        aria-label="Your question"
+        data-testid="assistant-input"
+        [placeholder]="placeholder()"
+        [maxLength]="maxLength"
+        [value]="draft()"
+        (input)="onInput($event)"
+        (keydown)="onKeydown($event)"
+      ></textarea>
+      <button
+        type="submit"
+        class="ask__send"
+        aria-label="Ask"
+        data-testid="assistant-send"
+        [disabled]="!canSend()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
+      </button>
+    </div>
+    @if (draft().length > maxLength - 100) {
+      <p class="ask__count">{{ draft().length }}/{{ maxLength }}</p>
+    }
+  </form>
+
+  <p class="card__footnote">
+    Market answers depend on available data and link to retrieved sources. No portfolio analysis,
+    recommendations or trading actions.
+  </p>
+</div>

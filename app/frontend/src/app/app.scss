@@ -1,3 +1,32 @@
+:host {
+	--assistant-panel-width: min(28rem, 42vw);
+	display: block;
+}
+
+:host(.with-shell) {
+	padding-bottom: 6rem;
+}
+
+main,
+app-news-footer {
+	display: block;
+	transition: margin-right 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (min-width: 64rem) {
+	:host(.assistant-open) main,
+	:host(.assistant-open) app-news-footer {
+		margin-right: var(--assistant-panel-width);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	main,
+	app-news-footer {
+		transition: none;
+	}
+}
+
 .page-shell {
 	padding: 1rem;
 }
