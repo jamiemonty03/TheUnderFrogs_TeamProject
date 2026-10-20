@@ -117,6 +117,35 @@
           </svg>
           <span>Wallet</span>
         </button>
+        @if (isAdmin()) {
+          <a
+            mat-menu-item
+            class="nav-bar__dashboard"
+            href="http://10.9.79.41:8080/d/dg1opelx7aqkgc/dashboard?from=now-6h&amp;to=now&amp;timezone=browser&amp;var-service=$__all"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="grafana-dashboard"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5M4 19h16M8 16v-5M12 16V7M16 16v-3" />
+            </svg>
+            <span>Monitoring</span>
+          </a>
+          <a
+            mat-menu-item
+            class="nav-bar__dashboard"
+            href="http://10.9.79.41:8085"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="python-dashboard"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 20V10M12 20V4M19 20v-7" />
+              <path d="M3 20h18" />
+            </svg>
+            <span>Analytics</span>
+          </a>
+        }
         @if (themes.theme() === 'dark') {
           <button mat-menu-item type="button" (click)="themes.toggle()" data-testid="theme-toggle">
             <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">

@@ -2,7 +2,7 @@ import { Page, expect } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-/** The seeded demo trader. Override with E2E_USERNAME / E2E_PASSWORD. */
+/** The seeded demo admin. Override with E2E_USERNAME / E2E_PASSWORD. */
 export const DEMO_USER = {
   username: process.env['E2E_USERNAME'] ?? 'demo',
   password: process.env['E2E_PASSWORD'] ?? 'Demo123!',
