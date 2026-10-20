@@ -20,7 +20,7 @@ import { PricePoint } from '../../../services/interfaces/instruments.interfaces'
 import { ClientTradeResponse } from '../../../services/interfaces/orders.interfaces';
 import { Orders } from '../../../services/orders';
 import { Position } from '../../../services/positions';
-import { RANGES, SERIES, crosshair, token } from '../../instruments/price-chart/price-chart';
+import { RANGES, SERIES, crosshair, money, token } from '../../instruments/price-chart/price-chart';
 
 const HISTORY_FAILED = "Couldn't load price history. Try again in a moment.";
 const TRADES_FAILED = "Couldn't load your trade history. Try again in a moment.";
@@ -196,7 +196,6 @@ function sliceRange<T>(points: T[], range: PerformanceRange): T[] {
   return Number.isFinite(days) ? points.slice(-days) : points;
 }
 
-const money = (value: number) => value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 const signedMoney = (value: number) => `${value > 0 ? '+' : ''}${money(value)}`;
 
 @Component({
