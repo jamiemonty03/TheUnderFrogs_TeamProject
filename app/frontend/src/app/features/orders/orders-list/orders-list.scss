@@ -66,6 +66,7 @@
 
 .orders-table-wrap {
 	overflow-x: auto;
+	position: relative;
 }
 
 mat-paginator {
@@ -187,14 +188,6 @@ mat-paginator {
 	color: var(--ts-frog);
 }
 
-.visually-hidden {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	clip: rect(0 0 0 0);
-	white-space: nowrap;
-}
 
 @media (max-width: 1024px) {
 	.orders-page {

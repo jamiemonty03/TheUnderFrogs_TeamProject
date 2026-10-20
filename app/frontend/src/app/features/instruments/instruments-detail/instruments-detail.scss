@@ -133,6 +133,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+@media (max-width: 600px) {
+  .instrument__holding {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.35rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--ts-divider);
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+}
+
 .instrument__holding-name {
   font-weight: 600;
 }
