@@ -165,6 +165,28 @@ describe('AuthLayout', () => {
     expect(quotes()).toContain('NVDA ▼ 5.00%');
   });
 
+  it('flashes a ticker change green when its live price rises and red when it falls', () => {
+    const tick = (price: number) => {
+      liveFeed.next({
+        prices: new Map([['NVDA', { symbol: 'NVDA', price, bid: null, ask: null, quoteTime: '2026-10-15T14:30:00Z' }]]),
+        stale: false,
+      });
+      fixture.detectChanges();
+    };
+    const nvdaChange = () =>
+      Array.from(page.querySelectorAll('.auth__quote'))
+        .find((li) => li.textContent?.includes('NVDA'))!
+        .querySelector('.auth__quote-change')!;
+
+    tick(104); // up from the 103.02 close
+    expect(nvdaChange().classList).toContain('price-flash--up');
+
+    tick(99);
+    expect(nvdaChange().classList).toContain('price-flash--down');
+    expect(nvdaChange().classList).not.toContain('price-flash--up');
+    expect(nvdaChange().classList).toContain('auth__quote-change--down'); // the up/down colour survives the flash
+  });
+
   it('leaves out a symbol that has no price', async () => {
     TestBed.resetTestingModule();
     prices = of(new Map([...PRICES, quote('NVDA', null)]));

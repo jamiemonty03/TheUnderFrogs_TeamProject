@@ -5,13 +5,14 @@ import { catchError, map, of } from 'rxjs';
 import { Instruments, LatestPrice, LivePrice, dayChange } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
 import { Theme } from '../../../services/theme';
+import { PriceFlash } from '../../../shared/price-flash/price-flash';
 
 export type AuthTab = 'login' | 'register';
 
 const TICKER = ['AAPL', 'MSFT', 'TSLA', 'SPY', 'NVDA', 'BND'];
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, PriceFlash],
   selector: 'app-auth-layout',
   styleUrl: './auth-layout.scss',
   templateUrl: './auth-layout.html',
@@ -46,11 +47,10 @@ export class AuthLayout {
     TICKER.flatMap((symbol) => {
       const price = this.prices().get(symbol);
       const quote = this.live().get(symbol);
-      const change = price
-        ? dayChange({ price: quote?.price ?? price.price, previousClose: price.previousClose })
-        : null;
+      const current = quote?.price ?? price?.price ?? null;
+      const change = price ? dayChange({ price: current, previousClose: price.previousClose }) : null;
       return change
-        ? [{ symbol, up: change.percent >= 0, percent: Math.abs(change.percent).toFixed(2) }]
+        ? [{ symbol, price: current, up: change.percent >= 0, percent: Math.abs(change.percent).toFixed(2) }]
         : [];
     }),
   );

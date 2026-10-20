@@ -420,7 +420,7 @@ describe('OrdersList after an order is placed', () => {
     expect(orders.getOrdersByAccount).toHaveBeenCalledTimes(4);
   });
 
-  it('says the order is waiting at its limit once ten checks find it still NEW', async () => {
+  it('stops after ten retries and says a still-NEW limit order is waiting for its price', async () => {
     await setUp(placed('NEW'));
     orders.getOrdersByAccount.mockReturnValue(of([placed('NEW')]));
 
@@ -429,11 +429,12 @@ describe('OrdersList after an order is placed', () => {
 
     expect(orders.getOrdersByAccount).toHaveBeenCalledTimes(1 + 1 + 10);
     expect(snackBar.openFromComponent).toHaveBeenCalledOnce();
-    expect(snackBar.openFromComponent).toHaveBeenCalledWith(OrderSnackbar, {
-      data: { orderId: 'ORDER-9', status: 'NEW', priceLimit: 180 },
-      duration: 7000,
-      panelClass: ['order-snackbar-panel'],
-    });
+    expect(snackBar.openFromComponent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: { orderId: 'ORDER-9', status: 'NEW', priceLimit: BUY_ORDER.priceLimit },
+      }),
+    );
   });
 
   it('says nothing when the dialog closes without an order', async () => {

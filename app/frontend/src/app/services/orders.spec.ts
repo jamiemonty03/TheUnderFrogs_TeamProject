@@ -2,7 +2,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-
 import { OrderResponse, PlaceOrderRequest } from './interfaces/orders.interfaces';
 import { Orders } from './orders';
 
@@ -34,7 +33,7 @@ describe('Orders', () => {
 
   afterEach(() => http.verify());
 
-it("loads an account's orders with a GET", async () => {
+  it("loads an account's orders with a GET", async () => {
     const result = firstValueFrom(service.getOrdersByAccount('ACC0011'));
 
     const request = http.expectOne('/api/orders/account/ACC0011');

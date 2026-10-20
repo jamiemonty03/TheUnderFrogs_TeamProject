@@ -8,4 +8,6 @@ public record NewsResponse(
         String articleUrl,
         Instant publishedAt,
         Instant updatedAt,
-        List<String> symbols) {}
+        List<String> symbols,
+        String summary,
+        String source) {}
