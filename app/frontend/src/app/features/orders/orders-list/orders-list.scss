@@ -234,3 +234,10 @@ mat-paginator {
 		}
 	}
 }
+
+@media (max-width: 600px) {
+	.mat-column-limit,
+	.mat-column-price {
+		display: none;
+	}
+}

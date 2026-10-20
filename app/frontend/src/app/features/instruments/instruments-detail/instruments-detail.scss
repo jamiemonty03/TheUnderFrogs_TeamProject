@@ -212,3 +212,23 @@
     font-size: 0.85rem;
   }
 }
+
+@media (max-width: 600px) {
+  .instrument__article {
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+
+    a {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      overflow: hidden;
+    }
+
+    time {
+      font-size: 0.75rem;
+    }
+  }
+}

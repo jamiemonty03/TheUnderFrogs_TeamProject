@@ -322,3 +322,12 @@ th.num ::ng-deep .mat-sort-header-container {
   color: var(--ts-neutral);
 }
 
+@media (max-width: 600px) {
+  .mat-column-name,
+  .mat-column-quantity,
+  .mat-column-averageCost,
+  .mat-column-unrealisedPnl,
+  .mat-column-weight {
+    display: none;
+  }
+}
