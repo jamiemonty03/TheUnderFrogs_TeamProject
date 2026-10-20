@@ -194,79 +194,55 @@ pipeline {
             }
         }
 
+        // Sequential: waitForQualityGate checks the build's most recent analysis, so each gate must run right after its own scan.
         stage('SonarQube Analysis') {
-            parallel {
+            stages {
                 stage('Accounts Service') {
                     steps {
                         withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/accounts-service/target/site/jacoco/jacoco.xml'
+                            sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service"'
+                        }
+                        timeout(time: 5, unit: 'MINUTES') {
+                            waitForQualityGate abortPipeline: true
                         }
                     }
                 }
                 stage('Instruments Service') {
                     steps {
                         withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/instruments-service/target/site/jacoco/jacoco.xml'
+                            sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service"'
                         }
-                    }
-                }
-                stage('Orders Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/orders-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-                stage('Positions Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/positions-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-                stage('Trade Executor') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor" -Dsonar.coverage.jacoco.xmlReportPaths=app/trade-executor/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Quality Gates') {
-            parallel {
-                stage('Accounts Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
-                }
-                stage('Instruments Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
+                        timeout(time: 5, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
                     }
                 }
                 stage('Orders Service') {
                     steps {
-                        timeout(time: 1, unit: 'HOURS') {
+                        withSonarQubeEnv('SonarQube') {
+                            sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service"'
+                        }
+                        timeout(time: 5, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
                     }
                 }
                 stage('Positions Service') {
                     steps {
-                        timeout(time: 1, unit: 'HOURS') {
+                        withSonarQubeEnv('SonarQube') {
+                            sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service"'
+                        }
+                        timeout(time: 5, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
                     }
                 }
                 stage('Trade Executor') {
                     steps {
-                        timeout(time: 1, unit: 'HOURS') {
+                        withSonarQubeEnv('SonarQube') {
+                            sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor"'
+                        }
+                        timeout(time: 5, unit: 'MINUTES') {
                             waitForQualityGate abortPipeline: true
                         }
                     }
