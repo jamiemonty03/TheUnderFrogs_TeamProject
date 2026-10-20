@@ -257,15 +257,13 @@ html {
   white-space: nowrap;
 }
 
-// Set the colour Material's outlined button reads, since a plain `color` here loses to Material's own rule
-// The dashboard's Live / Close price tag, for the Portfolios page's holdings table
-.holdings-table .price-tag {
+.price-tag {
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0.1rem 0.4rem;
   border-radius: 999px;
   background: var(--ts-neutral-bg);
-  color: var(--ts-neutral);
+  color: var(--ts-text-muted);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -273,7 +271,7 @@ html {
   vertical-align: middle;
 }
 
-.holdings-table .price-tag--live {
+.price-tag--live {
   background: var(--ts-success-bg);
   color: var(--ts-frog);
 }

@@ -151,22 +151,6 @@
   font-weight: 600;
 }
 
-.price-tag {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--ts-neutral-bg);
-  color: var(--ts-neutral);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.price-tag--live {
-  background: var(--ts-success-bg);
-  color: var(--ts-frog);
-}
-
 // Set the colour Material's outlined button reads; a plain `color` loses to Material's own rule
 .buy {
   --mat-button-outlined-label-text-color: var(--ts-frog);

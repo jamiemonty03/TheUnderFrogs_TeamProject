@@ -25,7 +25,6 @@
 
 }
 
-
 .orders-card {
 	background: var(--ts-bg-raised);
 	border: 1px solid var(--ts-divider);
@@ -63,7 +62,6 @@
 		margin-bottom: -1.25rem;
 	}
 }
-
 
 .orders-table-wrap {
 	overflow-x: auto;
@@ -152,7 +150,7 @@ mat-paginator {
 
 	&__status--cancelled {
 		background: var(--ts-neutral-bg);
-		color: var(--ts-neutral);
+		color: var(--ts-text-muted);
 	}
 
 	&__actions {
@@ -169,26 +167,6 @@ mat-paginator {
 	}
 
 }
-
-.price-tag {
-	display: inline-block;
-	margin-left: 0.4rem;
-	padding: 0.1rem 0.4rem;
-	border-radius: 999px;
-	background: var(--ts-neutral-bg);
-	color: var(--ts-neutral);
-	font-size: 0.65rem;
-	font-weight: 700;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	vertical-align: middle;
-}
-
-.price-tag--live {
-	background: var(--ts-success-bg);
-	color: var(--ts-frog);
-}
-
 
 @media (max-width: 1024px) {
 	.orders-page {
