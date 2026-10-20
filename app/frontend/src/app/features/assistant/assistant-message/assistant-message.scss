@@ -1,0 +1,167 @@
+:host {
+	display: block;
+	max-width: 92%;
+	padding: 0.75rem 0.9rem;
+	border-radius: 0.9rem;
+	font-size: 0.9rem;
+	line-height: 1.5;
+}
+
+:host(.message--user) {
+	align-self: flex-end;
+	background: var(--ts-frog-tint);
+	color: var(--ts-frog-light);
+	border-bottom-right-radius: 0.3rem;
+}
+
+:host(.message--answer) {
+	align-self: stretch;
+	max-width: none;
+	border: 1px solid var(--ts-border);
+	background: #0b1a12;
+	color: var(--ts-text);
+}
+
+:host(.message--error) {
+	border-color: var(--ts-danger-border);
+	background: var(--ts-danger-bg);
+	color: var(--ts-danger-text);
+}
+
+.message__text {
+	margin: 0;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
+}
+
+.reply {
+	overflow-wrap: anywhere;
+
+	> :first-child {
+		margin-top: 0;
+	}
+
+	> :last-child {
+		margin-bottom: 0;
+	}
+
+	strong {
+		color: var(--ts-frog-light);
+		font-weight: 600;
+	}
+
+	&__heading {
+		margin: 0.9rem 0 0.4rem;
+		color: var(--ts-text);
+		font-size: 0.95rem;
+		font-weight: 600;
+	}
+
+	&__paragraph {
+		margin: 0.55rem 0;
+	}
+
+	&__list {
+		margin: 0.5rem 0;
+		padding-left: 1.2rem;
+
+		li {
+			margin: 0.25rem 0;
+		}
+
+		li::marker {
+			color: var(--ts-frog);
+		}
+	}
+
+	&__table-wrap {
+		margin: 0.6rem 0;
+		overflow-x: auto;
+	}
+
+	&__table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.8rem;
+		font-variant-numeric: tabular-nums;
+
+		th,
+		td {
+			padding: 0.4rem 0.55rem;
+			border-bottom: 1px solid var(--ts-divider);
+			text-align: left;
+			white-space: nowrap;
+		}
+
+		th {
+			color: var(--ts-text-muted);
+			font-weight: 600;
+		}
+
+		tbody tr:last-child td {
+			border-bottom: none;
+		}
+	}
+}
+
+.message__badge {
+	display: inline-block;
+	margin: 0.75rem 0 0;
+	padding: 0.15rem 0.55rem;
+	border-radius: 999px;
+	background: var(--ts-success-bg);
+	color: var(--ts-frog);
+	font-size: 0.72rem;
+	font-weight: 600;
+
+	&--raw {
+		background: var(--ts-neutral-bg);
+		color: var(--ts-text-muted);
+	}
+}
+
+.sources {
+	display: grid;
+	gap: 0.35rem;
+	margin: 0.65rem 0 0;
+	padding: 0.6rem 0 0;
+	border-top: 1px solid var(--ts-divider);
+	list-style: none;
+}
+
+.source {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.15rem 0.45rem;
+	font-size: 0.75rem;
+
+	&__type {
+		color: var(--ts-frog);
+		font-weight: 600;
+	}
+
+	&__link {
+		color: var(--ts-info);
+		overflow-wrap: anywhere;
+	}
+
+	&__label {
+		color: var(--ts-text-secondary);
+	}
+
+	&__time {
+		color: var(--ts-text-muted);
+	}
+}
+
+.message__disclaimer {
+	margin: 0.65rem 0 0;
+	color: var(--ts-text-muted);
+	font-size: 0.7rem;
+}
+
+.message__model {
+	display: block;
+	margin-top: 0.15rem;
+	opacity: 0.8;
+}

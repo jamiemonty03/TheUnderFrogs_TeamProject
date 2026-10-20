@@ -1,0 +1,22 @@
+<h2 class="title">What’s moving beneath the surface?</h2>
+<p class="lead">
+  Choose a starting point. We’ll help shape your question, then open a focused research card.
+</p>
+<div class="topics">
+  @for (item of topics; track item.id) {
+    <button
+      type="button"
+      class="topic"
+      [class.topic--active]="selected() === item.id"
+      [attr.aria-pressed]="selected() === item.id"
+      data-testid="assistant-topic"
+      (click)="choose.emit(item)"
+    >
+      <span class="topic__title">
+        <app-topic-icon [topic]="item.id" />
+        {{ item.title }}
+      </span>
+      <span class="topic__description">{{ item.description }}</span>
+    </button>
+  }
+</div>
