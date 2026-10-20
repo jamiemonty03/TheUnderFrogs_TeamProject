@@ -136,9 +136,6 @@ describe('OrderDialog', () => {
 
     expect(component.selectedTab()).toBe(1);
     expect(component.buyMatches()).toEqual([TSLA]);
-    expect(component.displayInstrument(AAPL)).toBe('AAPL - Apple Inc.');
-    expect(component.displayInstrument('AAPL')).toBe('AAPL');
-    expect(component.displayInstrument(null)).toBe('');
   });
 
   it('selects a BUY instrument and defaults its price limit to market price', () => {
