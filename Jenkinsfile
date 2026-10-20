@@ -4,6 +4,9 @@ pipeline {
         jdk 'JDK21'
         maven 'maven'
     }
+    environment {
+        npm_config_cache = "${WORKSPACE}/.npm-cache"
+    }
     stages {
         stage('Checkout') {
             steps {
@@ -41,41 +44,6 @@ pipeline {
             }
         }
 
-        stage('Unit Tests') {
-            parallel {
-                stage('Test Accounts Service') {
-                    steps {
-                        sh 'mvn -B -f app/accounts-service/pom.xml test'
-                    }
-                }
-                stage('Test Instruments Service') {
-                    steps {
-                        sh 'mvn -B -f app/instruments-service/pom.xml test'
-                    }
-                }
-                stage('Test Orders Service') {
-                    steps {
-                        sh 'mvn -B -f app/orders-service/pom.xml test'
-                    }
-                }
-                stage('Test Positions Service') {
-                    steps {
-                        sh 'mvn -B -f app/positions-service/pom.xml test'
-                    }
-                }
-                stage('Test Trade Executor') {
-                    steps {
-                        sh 'mvn -B -f app/trade-executor/pom.xml test'
-                    }
-                }
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/*/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
         stage('Prepare Environment') {
             steps {
                 sh '''
@@ -97,55 +65,124 @@ pipeline {
             }
         }
 
-        stage('Auth Service Tests') {
-            agent {
-                docker {
-                    image 'node:24'
-                    args '--network host'
-                    reuseNode true
-                }
+        // Batches keep peak memory inside ~4 GB: 
+        stage('Unit Tests: Batch 1') {
+            environment {
+                JAVA_TOOL_OPTIONS = '-Xmx1g'
             }
-            steps {
-                dir('app/auth-service') {
-                    sh 'node -v'
-                    sh 'npm ci'
-                    sh 'npm run test:cov'
-                    sh 'npm run test:e2e'
+            parallel {
+                stage('Test: Orders Service') {
+                    steps {
+                        sh 'mvn -B -f app/orders-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/orders-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Accounts Service') {
+                    steps {
+                        sh 'mvn -B -f app/accounts-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/accounts-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Instruments Service') {
+                    steps {
+                        sh 'mvn -B -f app/instruments-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/instruments-service/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Frontend') {
-            agent {
-                docker {
-                    image 'node:24'
-                    reuseNode true
-                }
+        stage('Unit Tests: Batch 2') {
+            environment {
+                JAVA_TOOL_OPTIONS = '-Xmx1g'
             }
-            steps {
-                dir('app/frontend') {
-                    sh 'node -v'
-                    sh 'npm ci'
-                    sh 'npm run lint'
-                    sh 'npm test -- --watch=false --coverage'
-                    sh 'npm run build'
+            parallel {
+                stage('Test: Positions Service') {
+                    steps {
+                        sh 'mvn -B -f app/positions-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/positions-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Trade Executor') {
+                    steps {
+                        sh 'mvn -B -f app/trade-executor/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/trade-executor/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Python Tests') {
+                    steps {
+                        sh '''
+                            docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 python sh -c \
+                                "python -m pytest /db/tests -p no:cacheprovider --junitxml=/db/tests/reports/pytest-db.xml; s=\\$?; chown -R $(id -u):$(id -g) /db/tests/reports; exit \\$s"
+                            docker-compose build trade-analytics-service
+                            docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD/app/trade-analytics-service/tests:/app/tests" trade-analytics-service sh -c \
+                                "python -m pytest tests -p no:cacheprovider --junitxml=tests/reports/pytest-analytics.xml; s=\\$?; chown -R $(id -u):$(id -g) tests/reports; exit \\$s"
+                        '''
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/instruments-service/db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Python Tests') {
-            steps {
-                sh '''
-                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 python sh -c \
-                        "python -m pytest /db/tests -p no:cacheprovider --junitxml=/db/tests/reports/pytest-db.xml; s=\\$?; chown -R $(id -u):$(id -g) /db/tests/reports; exit \\$s"
-                    docker-compose build trade-analytics-service
-                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD/app/trade-analytics-service/tests:/app/tests" trade-analytics-service sh -c \
-                        "python -m pytest tests -p no:cacheprovider --junitxml=tests/reports/pytest-analytics.xml; s=\\$?; chown -R $(id -u):$(id -g) tests/reports; exit \\$s"
-                '''
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+        stage('Unit Tests: Batch 3') {
+            parallel {
+                stage('Auth Service Tests') {
+                    agent {
+                        docker {
+                            image 'node:24'
+                            args '--network host'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('app/auth-service') {
+                            sh 'node -v'
+                            sh 'npm ci'
+                            sh 'npm run test:cov'
+                            sh 'npm run test:e2e'
+                        }
+                    }
+                }
+                stage('Frontend') {
+                    agent {
+                        docker {
+                            image 'node:24'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('app/frontend') {
+                            sh 'node -v'
+                            sh 'npm ci'
+                            sh 'npm run lint'
+                            sh 'npm test -- --watch=false --coverage'
+                            sh 'npm run build'
+                        }
+                    }
                 }
             }
         }
@@ -191,82 +228,58 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            parallel {
-                stage('Accounts Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/accounts-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
+        // One stage per service, in order: waitForQualityGate checks the build's most recent analysis, so each gate must run right after its own scan.
+        stage('Sonar: Accounts Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/accounts-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-accounts-service -Dsonar.projectName="Accounts Service"'
                 }
-                stage('Instruments Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/instruments-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-                stage('Orders Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/orders-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-                stage('Positions Service') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service" -Dsonar.coverage.jacoco.xmlReportPaths=app/positions-service/target/site/jacoco/jacoco.xml'
-                        }
-                    }
-                }
-                stage('Trade Executor') {
-                    steps {
-                        withSonarQubeEnv('SonarQube') {
-                            sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor" -Dsonar.coverage.jacoco.xmlReportPaths=app/trade-executor/target/site/jacoco/jacoco.xml'
-                        }
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
 
-        stage('Quality Gates') {
-            parallel {
-                stage('Accounts Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+        stage('Sonar: Instruments Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/instruments-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-instruments-service -Dsonar.projectName="Instruments Service"'
                 }
-                stage('Instruments Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
-                stage('Orders Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+            }
+        }
+
+        stage('Sonar: Orders Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/orders-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-orders-service -Dsonar.projectName="Orders Service"'
                 }
-                stage('Positions Service') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
-                stage('Trade Executor') {
-                    steps {
-                        timeout(time: 1, unit: 'HOURS') {
-                            waitForQualityGate abortPipeline: true
-                        }
-                    }
+            }
+        }
+
+        stage('Sonar: Positions Service') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/positions-service/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-positions-service -Dsonar.projectName="Positions Service"'
+                }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Sonar: Trade Executor') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn -B -f app/trade-executor/pom.xml sonar:sonar -Dsonar.projectKey=theunderfrogs-trade-executor -Dsonar.projectName="Trade Executor"'
+                }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
