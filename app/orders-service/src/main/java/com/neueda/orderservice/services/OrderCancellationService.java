@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +25,18 @@ public class OrderCancellationService {
 
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderStatusMetrics statusMetrics;
 
     public OrderCancellationService(OrderRepository orderRepository, ApplicationEventPublisher eventPublisher) {
+        this(orderRepository, eventPublisher, null);
+    }
+
+    @Autowired
+    public OrderCancellationService(OrderRepository orderRepository, ApplicationEventPublisher eventPublisher,
+            OrderStatusMetrics statusMetrics) {
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
+        this.statusMetrics = statusMetrics;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -45,6 +54,10 @@ public class OrderCancellationService {
 
         log.info("Order cancelled {} {} {}", kv("orderId", orderId), kv("accountId", order.getAccountId()),
                 kv("symbol", order.getSymbol()));
+
+        if (statusMetrics != null) {
+            statusMetrics.record(OrderStatus.CANCELLED);
+        }
 
         eventPublisher.publishEvent(new OrderCancelledApplicationEvent(this, new OrderCancelledPayload(
                 order.getOrderId(),
