@@ -39,6 +39,24 @@ describe('NewsFooter', () => {
     expect(link?.rel).toContain('noreferrer');
   });
 
+  it('lists up to four tickers, then how many more, so one story cannot fill its card', () => {
+    const page = createNewsFooter(
+      of([
+        {
+          headline: 'Stocks moving premarket',
+          articleUrl: 'https://example.com/movers',
+          publishedAt: '2026-10-20T08:00:00Z',
+          updatedAt: '2026-10-20T08:00:00Z',
+          symbols: ['AIXI', 'AMRO', 'AMZN', 'AURE', 'BAOS', 'CLNN', 'GCDT'],
+        },
+      ]),
+    );
+
+    expect(page.querySelector('.news-footer__symbols')?.textContent?.trim()).toBe(
+      'AIXI · AMRO · AMZN · AURE +3',
+    );
+  });
+
   it('shows a quiet empty state when no articles are returned', () => {
     const page = createNewsFooter(of([]));
 
