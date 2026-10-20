@@ -5,8 +5,11 @@ import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
@@ -17,10 +20,21 @@ import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
 import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { OrderSnackbar } from '../order-snackbar/order-snackbar';
 import { forkJoin } from 'rxjs';
-import { OrderFilter, OrderRow } from './orders-list.interfaces';
+import { OrderFilter, OrderRow, OrderSideFilter } from './orders-list.interfaces';
 
 @Component({
-  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatSnackBarModule, MatTableModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatChipsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatSelectModule,
+    MatSnackBarModule,
+    MatTableModule,
+  ],
   selector: 'app-orders-list',
   styleUrl: './orders-list.scss',
   templateUrl: './orders-list.html',
@@ -39,8 +53,11 @@ export class OrdersList implements OnInit {
   readonly accountId = computed(() => this.currentUser()?.accountId ?? '');
 
   readonly filters: OrderFilter[] = ['ALL', 'NEW', 'FILLED', 'REJECTED', 'CANCELLED'];
+  readonly sideFilters: OrderSideFilter[] = ['ALL', 'BUY', 'SELL'];
 
   readonly activeFilter = signal<OrderFilter>('ALL');
+  readonly activeSideFilter = signal<OrderSideFilter>('ALL');
+  readonly symbolQuery = signal('');
   readonly pageIndex = signal(0);
   readonly pageSize = signal(10);
   readonly pageSizeOptions = [10, 25, 50];
@@ -66,12 +83,16 @@ export class OrdersList implements OnInit {
   });
 
   readonly visibleOrders = computed(() => {
-    const filter = this.activeFilter();
+    const statusFilter = this.activeFilter();
+    const sideFilter = this.activeSideFilter();
+    const symbolQuery = this.symbolQuery().trim().toUpperCase();
     const orders = this.liveOrders();
-    if (filter === 'ALL') {
-      return orders;
-    }
-    return orders.filter((order) => order.status === filter);
+    return orders.filter((order) => {
+      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const matchesSide = sideFilter === 'ALL' || order.side === sideFilter;
+      const matchesSymbol = !symbolQuery || order.symbol.includes(symbolQuery);
+      return matchesStatus && matchesSide && matchesSymbol;
+    });
   });
 
   readonly pagedOrders = computed(() => {
@@ -94,6 +115,28 @@ export class OrdersList implements OnInit {
   setFilter(filter: OrderFilter): void {
     this.activeFilter.set(filter);
     this.pageIndex.set(0);
+  }
+
+  setSideFilter(filter: OrderSideFilter): void {
+    this.activeSideFilter.set(filter);
+    this.pageIndex.set(0);
+  }
+
+  setSymbolQuery(query: string): void {
+    this.symbolQuery.set(query);
+    this.pageIndex.set(0);
+  }
+
+  clearFilters(): void {
+    this.activeFilter.set('ALL');
+    this.activeSideFilter.set('ALL');
+    this.symbolQuery.set('');
+    this.pageIndex.set(0);
+  }
+
+  getSideCount(side: OrderSideFilter): number {
+    const orders = this.orders();
+    return side === 'ALL' ? orders.length : orders.filter((order) => order.side === side).length;
   }
 
   setPage(event: PageEvent): void {

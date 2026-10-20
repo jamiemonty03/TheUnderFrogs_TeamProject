@@ -119,6 +119,25 @@ describe('OrdersList', () => {
     expect(component.getFilterCount('REJECTED')).toBe(0);
   });
 
+  it('filters by side and symbol, and clear filters restores the full list', () => {
+    component.pageIndex.set(2);
+    component.setSideFilter('SELL');
+    component.setSymbolQuery('ts');
+
+    expect(component.activeSideFilter()).toBe('SELL');
+    expect(component.pageIndex()).toBe(0);
+    expect(component.visibleOrders().map((order) => order.symbol)).toEqual(['TSLA']);
+    expect(component.getSideCount('BUY')).toBe(1);
+    expect(component.getSideCount('SELL')).toBe(1);
+
+    component.clearFilters();
+
+    expect(component.activeFilter()).toBe('ALL');
+    expect(component.activeSideFilter()).toBe('ALL');
+    expect(component.symbolQuery()).toBe('');
+    expect(component.visibleOrders()).toHaveLength(2);
+  });
+
   it('updates pagination state and returns the current page', () => {
     component.pageSize.set(1);
     component.setPage({ pageIndex: 1, pageSize: 1, length: 2 });
