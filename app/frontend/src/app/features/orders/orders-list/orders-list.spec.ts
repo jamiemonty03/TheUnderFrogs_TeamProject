@@ -154,6 +154,7 @@ describe('OrdersList', () => {
       width: '920px',
       maxWidth: '95vw',
       panelClass: 'order-dialog-panel',
+      ariaLabelledBy: 'order-dialog-title',
     });
     expect(orders.getOrdersByAccount).toHaveBeenCalledTimes(2);
   });

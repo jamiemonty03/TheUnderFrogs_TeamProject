@@ -17,7 +17,7 @@ import { LivePrices } from '../../../services/live-prices';
 import { Orders } from '../../../services/orders';
 import { OrderNotifier } from '../../../services/order-notifier';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
-import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
+import { ORDER_DIALOG_TITLE_ID, OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { OrderSnackbar } from '../order-snackbar/order-snackbar';
 import { forkJoin } from 'rxjs';
 import { OrderFilter, OrderRow, OrderSideFilter } from './orders-list.interfaces';
@@ -157,6 +157,7 @@ export class OrdersList implements OnInit {
       width: '920px',
       maxWidth: '95vw',
       panelClass: 'order-dialog-panel',
+      ariaLabelledBy: ORDER_DIALOG_TITLE_ID,
       ...(data ? { data } : {}),
     }).afterClosed().subscribe((order: OrderResponse | undefined) => {
       this.loadOrders();

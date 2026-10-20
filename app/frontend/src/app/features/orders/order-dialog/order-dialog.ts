@@ -30,6 +30,9 @@ import { map, startWith } from 'rxjs';
 
 type Instrument = TradingInstrument;
 
+/** Pass as ariaLabelledBy when opening the dialog, so screen readers announce it as "Place Order". */
+export const ORDER_DIALOG_TITLE_ID = 'order-dialog-title';
+
 /** The price an order would trade at right now: the live ask for a BUY, the live bid for a SELL, else the last close. */
 export interface MarketQuote {
   price: number;

@@ -1,6 +1,6 @@
 :host {
-	--card-bg: #0f2219;
-	--tile-bg: #0b1a12;
+	--card-bg: var(--ts-surface);
+	--tile-bg: var(--ts-bg-raised);
 	position: fixed;
 	top: var(--nav-offset, 0px);
 	right: 0;

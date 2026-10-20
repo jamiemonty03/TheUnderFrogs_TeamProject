@@ -22,7 +22,11 @@ import { Portfolios } from '../../../services/portfolios';
 import { Positions } from '../../../services/positions';
 import { OrderNotifier } from '../../../services/order-notifier';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
-import { OrderDialog, OrderDialogData } from '../../orders/order-dialog/order-dialog';
+import {
+  ORDER_DIALOG_TITLE_ID,
+  OrderDialog,
+  OrderDialogData,
+} from '../../orders/order-dialog/order-dialog';
 import { PriceChart } from '../price-chart/price-chart';
 
 type Status = 'loading' | 'ready' | 'not-found' | 'error';
@@ -43,6 +47,7 @@ export const ORDER_TICKET: MatDialogConfig = {
   position: { top: '0', right: '0' },
   hasBackdrop: false,
   panelClass: ['order-dialog-panel', 'order-ticket'],
+  ariaLabelledBy: ORDER_DIALOG_TITLE_ID,
 };
 
 @Component({

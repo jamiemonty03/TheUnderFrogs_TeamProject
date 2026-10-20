@@ -72,7 +72,7 @@ describe('app routes', () => {
 
     it('finds the pages to check', () => {
       expect(protectedUrls).toEqual(
-        expect.arrayContaining(['/dashboard', '/orders', '/positions', '/instruments']),
+        expect.arrayContaining(['/dashboard', '/orders', '/positions', '/instruments/1']),
       );
     });
   });
@@ -118,6 +118,10 @@ describe('app routes', () => {
 
     it('opens the dashboard when visiting the site', async () => {
       expect(await open('/')).toBe('/dashboard');
+    });
+
+    it('sends /instruments to the dashboard, where the markets table is', async () => {
+      expect(await open('/instruments')).toBe('/dashboard');
     });
 
     it.each(protectedUrls.filter((url) => url !== '/wallet/return'))('can open %s', async (url) => {

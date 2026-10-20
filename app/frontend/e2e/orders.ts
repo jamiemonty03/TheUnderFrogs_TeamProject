@@ -7,7 +7,7 @@ export async function buyFromOrdersPage(
   portfolioId?: string,
 ) {
   await page.getByTestId('nav-orders').click();
-  await page.getByTestId('new-order').click();
+  await page.getByTestId('place-order').click();
 
   await page.getByTestId('buy-instrument').fill(symbol);
   await page.getByTestId(`buy-option-${symbol}`).click();
