@@ -44,62 +44,6 @@ pipeline {
             }
         }
 
-        // One service at a time: five Spring Boot test JVMs plus Testcontainers at once runs the box out of memory.
-        stage('Test: Accounts Service') {
-            steps {
-                sh 'mvn -B -f app/accounts-service/pom.xml test'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/accounts-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Test: Instruments Service') {
-            steps {
-                sh 'mvn -B -f app/instruments-service/pom.xml test'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/instruments-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Test: Orders Service') {
-            steps {
-                sh 'mvn -B -f app/orders-service/pom.xml test'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/orders-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Test: Positions Service') {
-            steps {
-                sh 'mvn -B -f app/positions-service/pom.xml test'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/positions-service/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('Test: Trade Executor') {
-            steps {
-                sh 'mvn -B -f app/trade-executor/pom.xml test'
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/trade-executor/target/surefire-reports/*.xml'
-                }
-            }
-        }
-
         stage('Prepare Environment') {
             steps {
                 sh '''
@@ -121,55 +65,124 @@ pipeline {
             }
         }
 
-        stage('Auth Service Tests') {
-            agent {
-                docker {
-                    image 'node:24'
-                    args '--network host'
-                    reuseNode true
-                }
+        // Batches keep peak memory inside ~4 GB: 
+        stage('Unit Tests: Batch 1') {
+            environment {
+                JAVA_TOOL_OPTIONS = '-Xmx1g'
             }
-            steps {
-                dir('app/auth-service') {
-                    sh 'node -v'
-                    sh 'npm ci'
-                    sh 'npm run test:cov'
-                    sh 'npm run test:e2e'
+            parallel {
+                stage('Test: Orders Service') {
+                    steps {
+                        sh 'mvn -B -f app/orders-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/orders-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Accounts Service') {
+                    steps {
+                        sh 'mvn -B -f app/accounts-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/accounts-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Instruments Service') {
+                    steps {
+                        sh 'mvn -B -f app/instruments-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/instruments-service/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Frontend') {
-            agent {
-                docker {
-                    image 'node:24'
-                    reuseNode true
-                }
+        stage('Unit Tests: Batch 2') {
+            environment {
+                JAVA_TOOL_OPTIONS = '-Xmx1g'
             }
-            steps {
-                dir('app/frontend') {
-                    sh 'node -v'
-                    sh 'npm ci'
-                    sh 'npm run lint'
-                    sh 'npm test -- --watch=false --coverage'
-                    sh 'npm run build'
+            parallel {
+                stage('Test: Positions Service') {
+                    steps {
+                        sh 'mvn -B -f app/positions-service/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/positions-service/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Test: Trade Executor') {
+                    steps {
+                        sh 'mvn -B -f app/trade-executor/pom.xml test'
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/trade-executor/target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+                stage('Python Tests') {
+                    steps {
+                        sh '''
+                            docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 python sh -c \
+                                "python -m pytest /db/tests -p no:cacheprovider --junitxml=/db/tests/reports/pytest-db.xml; s=\\$?; chown -R $(id -u):$(id -g) /db/tests/reports; exit \\$s"
+                            docker-compose build trade-analytics-service
+                            docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD/app/trade-analytics-service/tests:/app/tests" trade-analytics-service sh -c \
+                                "python -m pytest tests -p no:cacheprovider --junitxml=tests/reports/pytest-analytics.xml; s=\\$?; chown -R $(id -u):$(id -g) tests/reports; exit \\$s"
+                        '''
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'app/instruments-service/db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+                        }
+                    }
                 }
             }
         }
 
-        stage('Python Tests') {
-            steps {
-                sh '''
-                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 python sh -c \
-                        "python -m pytest /db/tests -p no:cacheprovider --junitxml=/db/tests/reports/pytest-db.xml; s=\\$?; chown -R $(id -u):$(id -g) /db/tests/reports; exit \\$s"
-                    docker-compose build trade-analytics-service
-                    docker-compose run --rm --no-deps -e PYTHONDONTWRITEBYTECODE=1 -v "$PWD/app/trade-analytics-service/tests:/app/tests" trade-analytics-service sh -c \
-                        "python -m pytest tests -p no:cacheprovider --junitxml=tests/reports/pytest-analytics.xml; s=\\$?; chown -R $(id -u):$(id -g) tests/reports; exit \\$s"
-                '''
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true, testResults: 'app/instruments-service/db/tests/reports/*.xml, app/trade-analytics-service/tests/reports/*.xml'
+        stage('Unit Tests: Batch 3') {
+            parallel {
+                stage('Auth Service Tests') {
+                    agent {
+                        docker {
+                            image 'node:24'
+                            args '--network host'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('app/auth-service') {
+                            sh 'node -v'
+                            sh 'npm ci'
+                            sh 'npm run test:cov'
+                            sh 'npm run test:e2e'
+                        }
+                    }
+                }
+                stage('Frontend') {
+                    agent {
+                        docker {
+                            image 'node:24'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir('app/frontend') {
+                            sh 'node -v'
+                            sh 'npm ci'
+                            sh 'npm run lint'
+                            sh 'npm test -- --watch=false --coverage'
+                            sh 'npm run build'
+                        }
+                    }
                 }
             }
         }
