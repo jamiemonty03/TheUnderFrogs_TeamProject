@@ -206,6 +206,8 @@ seed_db orders-db    client_trades app/orders-service/db/seed/client-trades.sql
     ./app/auth-service/scripts/register-service-client.sh trade-executor app/trade-executor/.env >/dev/null \
         || error_exit "Failed to register the trade-executor client in auth-db"
     echo -e "${GREEN}✓ trade-executor client registered in auth-db${NC}"
+    ./db/scripts/load-demo-data.sh >/dev/null || error_exit "Failed to load the demo trader data"
+    echo -e "${GREEN}✓ demo trader history loaded${NC}"
 
 
 echo ""
