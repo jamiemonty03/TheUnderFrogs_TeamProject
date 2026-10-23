@@ -1,23 +1,40 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { Auth } from '../../../services/auth/auth';
 import { Instruments } from '../../../services/instruments';
+import { LivePrices } from '../../../services/live-prices';
 import { Orders } from '../../../services/orders';
+import { OrderNotifier } from '../../../services/order-notifier';
 import { OrderResponse } from '../../../services/interfaces/orders.interfaces';
-import { OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
+import { ORDER_DIALOG_TITLE_ID, OrderDialog, OrderDialogData } from '../order-dialog/order-dialog';
 import { OrderSnackbar } from '../order-snackbar/order-snackbar';
 import { forkJoin } from 'rxjs';
-import { OrderFilter, OrderRow } from './orders-list.interfaces';
+import { OrderFilter, OrderRow, OrderSideFilter } from './orders-list.interfaces';
 
 @Component({
-  imports: [CommonModule, MatButtonModule, MatChipsModule, MatDialogModule, MatPaginatorModule, MatSnackBarModule, MatTableModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatChipsModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatSelectModule,
+    MatSnackBarModule,
+    MatTableModule,
+  ],
   selector: 'app-orders-list',
   styleUrl: './orders-list.scss',
   templateUrl: './orders-list.html',
@@ -25,17 +42,22 @@ import { OrderFilter, OrderRow } from './orders-list.interfaces';
 export class OrdersList implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly notifier = inject(OrderNotifier);
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly auth = inject(Auth);
   private readonly instrumentsApi = inject(Instruments);
   private readonly ordersApi = inject(Orders);
+  private readonly liveFeed = inject(LivePrices);
 
   readonly currentUser = this.auth.currentUser;
   readonly accountId = computed(() => this.currentUser()?.accountId ?? '');
 
   readonly filters: OrderFilter[] = ['ALL', 'NEW', 'FILLED', 'REJECTED', 'CANCELLED'];
+  readonly sideFilters: OrderSideFilter[] = ['ALL', 'BUY', 'SELL'];
 
   readonly activeFilter = signal<OrderFilter>('ALL');
+  readonly activeSideFilter = signal<OrderSideFilter>('ALL');
+  readonly symbolQuery = signal('');
   readonly pageIndex = signal(0);
   readonly pageSize = signal(10);
   readonly pageSizeOptions = [10, 25, 50];
@@ -43,15 +65,34 @@ export class OrdersList implements OnInit {
   readonly isLoading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'price', 'status'];
+  readonly displayedColumns: string[] = ['placed', 'symbol', 'side', 'quantity', 'limit', 'price', 'status', 'actions'];
+  readonly cancelling = signal<string | null>(null);
+
+  private readonly livePrices = toSignal(this.liveFeed.watch(), {
+    initialValue: { prices: new Map(), stale: false },
+  });
+
+  // Orders with MARKET swapped for the live quote an order is checked against: the ask for a BUY, the bid for a SELL
+  readonly liveOrders = computed(() => {
+    const prices = this.livePrices().prices;
+    return this.orders().map((order) => {
+      const quote = prices.get(order.symbol);
+      const live = order.side === 'BUY' ? (quote?.ask ?? quote?.price) : (quote?.bid ?? quote?.price);
+      return live != null && live > 0 ? { ...order, price: this.formatPrice(live), live: true } : { ...order, live: false };
+    });
+  });
 
   readonly visibleOrders = computed(() => {
-    const filter = this.activeFilter();
-    const orders = this.orders();
-    if (filter === 'ALL') {
-      return orders;
-    }
-    return orders.filter((order) => order.status === filter);
+    const statusFilter = this.activeFilter();
+    const sideFilter = this.activeSideFilter();
+    const symbolQuery = this.symbolQuery().trim().toUpperCase();
+    const orders = this.liveOrders();
+    return orders.filter((order) => {
+      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const matchesSide = sideFilter === 'ALL' || order.side === sideFilter;
+      const matchesSymbol = !symbolQuery || order.symbol.includes(symbolQuery);
+      return matchesStatus && matchesSide && matchesSymbol;
+    });
   });
 
   readonly pagedOrders = computed(() => {
@@ -76,6 +117,28 @@ export class OrdersList implements OnInit {
     this.pageIndex.set(0);
   }
 
+  setSideFilter(filter: OrderSideFilter): void {
+    this.activeSideFilter.set(filter);
+    this.pageIndex.set(0);
+  }
+
+  setSymbolQuery(query: string): void {
+    this.symbolQuery.set(query);
+    this.pageIndex.set(0);
+  }
+
+  clearFilters(): void {
+    this.activeFilter.set('ALL');
+    this.activeSideFilter.set('ALL');
+    this.symbolQuery.set('');
+    this.pageIndex.set(0);
+  }
+
+  getSideCount(side: OrderSideFilter): number {
+    const orders = this.orders();
+    return side === 'ALL' ? orders.length : orders.filter((order) => order.side === side).length;
+  }
+
   setPage(event: PageEvent): void {
     this.pageIndex.set(event.pageIndex);
     this.pageSize.set(event.pageSize);
@@ -94,13 +157,37 @@ export class OrdersList implements OnInit {
       width: '920px',
       maxWidth: '95vw',
       panelClass: 'order-dialog-panel',
+      ariaLabelledBy: ORDER_DIALOG_TITLE_ID,
       ...(data ? { data } : {}),
     }).afterClosed().subscribe((order: OrderResponse | undefined) => {
-      this.loadOrders(order?.orderId);
+      this.loadOrders();
+      if (order) {
+        this.notifier.follow(order.orderId).subscribe(() => this.loadOrders());
+      }
     });
   }
 
-  private loadOrders(orderIdToNotify?: string, attempt = 0): void {
+  cancelOrder(orderId: string): void {
+    this.cancelling.set(orderId);
+    this.ordersApi.cancelOrder(orderId).subscribe({
+      next: () => {
+        this.cancelling.set(null);
+        this.snackBar.openFromComponent(OrderSnackbar, {
+          data: { orderId, status: 'CANCELLED' },
+          duration: 5000,
+          panelClass: ['order-snackbar-panel'],
+        });
+        this.loadOrders();
+      },
+      error: () => {
+        this.cancelling.set(null);
+        this.snackBar.open("Couldn't cancel the order. It may already have filled.", 'Dismiss', { duration: 7000 });
+        this.loadOrders();
+      },
+    });
+  }
+
+  private loadOrders(): void {
     const accountId = this.accountId();
     if (!accountId) {
       this.orders.set([]);
@@ -121,7 +208,6 @@ export class OrdersList implements OnInit {
         this.orders.set(newestFirst.map((row) => this.toOrderRow(row, marketPrices)));
         this.pageIndex.set(0);
         this.isLoading.set(false);
-        this.notifyForOrder(orders.find((order) => order.orderId === orderIdToNotify), orderIdToNotify, attempt);
       },
       error: () => {
         this.orders.set([]);
@@ -131,40 +217,15 @@ export class OrdersList implements OnInit {
     });
   }
 
-  private notifyForOrder(order: OrderResponse | undefined, orderId: string | undefined, attempt: number): void {
-    if (!order || !orderId) {
-      return;
-    }
-    if (order.orderStatus === 'NEW' && attempt < 10) {
-      window.setTimeout(() => this.loadOrders(orderId, attempt + 1), 500);
-      return;
-    }
-    if (order.orderStatus === 'FILLED') {
-      this.snackBar.openFromComponent(OrderSnackbar, {
-        data: { orderId: order.orderId, status: 'FILLED' },
-        duration: 5000,
-        panelClass: ['order-snackbar-panel'],
-      });
-    } else if (order.orderStatus === 'REJECTED') {
-      this.snackBar.openFromComponent(OrderSnackbar, {
-        data: {
-          orderId: order.orderId,
-          status: 'REJECTED',
-          reason: order.rejectionReason,
-        },
-        duration: 7000,
-        panelClass: ['order-snackbar-panel'],
-      });
-    }
-  }
-
   private toOrderRow(order: OrderResponse, marketPrices: Map<string, number>): OrderRow {
     return {
+      id: order.orderId,
       placed: this.formatDate(order.createdAt),
       symbol: order.symbol,
       side: order.side,
       quantity: order.quantity,
       price: this.formatPrice(marketPrices.get(order.symbol)),
+      limit: this.formatPrice(order.priceLimit),
       status: order.orderStatus,
     };
   }

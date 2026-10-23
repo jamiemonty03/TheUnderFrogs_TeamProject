@@ -21,6 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.client.ResourceAccessException;
 import com.neueda.tradeexecutor.clients.AlpacaMarketDataClient;
@@ -29,6 +30,7 @@ import com.neueda.tradeexecutor.dtos.AlpacaQuote;
 import com.neueda.tradeexecutor.dtos.PriceUpdatedPayload;
 import com.neueda.tradeexecutor.events.EventEnvelope;
 import com.neueda.tradeexecutor.events.EventTypes;
+import com.neueda.tradeexecutor.events.PriceChanged;
 import com.neueda.tradeexecutor.events.Topics;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,13 +41,14 @@ class MarketDataPollerTest {
     @Mock private InstrumentsClient instrumentsClient;
     @Mock private AlpacaMarketDataClient alpaca;
     @Mock private KafkaTemplate<String, Object> kafkaTemplate;
+    @Mock private ApplicationEventPublisher events;
 
     private MarketDataPoller poller;
 
     @BeforeEach
     void setUp() {
         poller = new MarketDataPoller(instrumentsClient, alpaca,
-                new QuoteValidator(Clock.fixed(NOW, ZoneOffset.UTC)), kafkaTemplate);
+                new QuoteValidator(Clock.fixed(NOW, ZoneOffset.UTC)), kafkaTemplate, events);
     }
 
     private void tradable(String... symbols) {
@@ -73,6 +76,17 @@ class MarketDataPollerTest {
         assertEquals(new BigDecimal("150.00"), payload.bid());
         assertEquals(new BigDecimal("150.10"), payload.ask());
         assertEquals("USD", payload.currency());
+    }
+
+    @Test
+    void raisesPriceChangedOnlyWhenAPriceIsPublished() {
+        tradable("AAPL");
+        when(alpaca.latestQuotes(List.of("AAPL"))).thenReturn(Map.of("AAPL", quote("150.00", "150.10")));
+
+        poller.poll();
+        poller.poll();
+
+        verify(events, times(1)).publishEvent(new PriceChanged("AAPL"));
     }
 
     @Test

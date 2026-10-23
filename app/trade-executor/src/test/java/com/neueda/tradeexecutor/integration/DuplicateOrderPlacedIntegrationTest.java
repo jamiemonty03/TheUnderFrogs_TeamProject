@@ -46,6 +46,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.tradeexecutor.clients.AccountsClient;
 import com.neueda.tradeexecutor.clients.AlpacaPriceSource;
+import com.neueda.tradeexecutor.services.MarketHours;
 import com.neueda.tradeexecutor.clients.InstrumentsClient;
 import com.neueda.tradeexecutor.clients.OrdersClient;
 import com.neueda.tradeexecutor.clients.PositionsClient;
@@ -105,6 +106,9 @@ class DuplicateOrderPlacedIntegrationTest {
     @MockBean
     private AlpacaPriceSource priceSource;
 
+    @MockBean
+    private MarketHours marketHours;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
@@ -112,6 +116,7 @@ class DuplicateOrderPlacedIntegrationTest {
         InstrumentDto instrument = new InstrumentDto(SYMBOL, "STOCK", true);
         when(instrumentsClient.getInstrument(SYMBOL)).thenReturn(Optional.of(instrument));
         when(priceSource.getPrice(any(), any())).thenReturn(Optional.of(MARKET));
+        when(marketHours.isOpen()).thenReturn(true);
     }
 
     @Test

@@ -1,79 +1,231 @@
 <div class="chart">
   <div class="chart__controls">
-    <div class="chart__ranges" role="group" aria-label="Chart range">
-      @for (r of ranges; track r.key) {
+    <div class="chart__toggles">
+      <div class="chart__ranges" role="group" aria-label="Chart type">
+        @for (m of modes; track m.key) {
+          <button
+            type="button"
+            class="chart__range"
+            [class.chart__range--active]="mode() === m.key"
+            [attr.aria-pressed]="mode() === m.key"
+            [disabled]="m.key === 'candles' && !hasCandles()"
+            [attr.title]="
+              m.key === 'candles' && !hasCandles() ? 'No open, high and low prices yet' : null
+            "
+            (click)="setMode(m.key)"
+            [attr.data-testid]="'mode-' + m.key"
+          >
+            {{ m.label }}
+          </button>
+        }
+      </div>
+      <div class="chart__ranges" role="group" aria-label="Chart range">
+        @for (r of ranges; track r.key) {
+          <button
+            type="button"
+            class="chart__range"
+            [class.chart__range--active]="!zoomed() && range() === r.key"
+            [attr.aria-pressed]="!zoomed() && range() === r.key"
+            (click)="setRange(r.key)"
+            [attr.data-testid]="'range-' + r.key"
+          >
+            {{ r.key }}
+          </button>
+        }
+      </div>
+      <div class="chart__ranges" role="group" aria-label="Zoom">
         <button
           type="button"
-          class="chart__range"
-          [class.chart__range--active]="range() === r.key"
-          [attr.aria-pressed]="range() === r.key"
-          (click)="setRange(r.key)"
-          [attr.data-testid]="'range-' + r.key"
+          class="chart__range chart__zoom"
+          [disabled]="!canZoomOut()"
+          (click)="zoomButton(1 / zoomStep)"
+          aria-label="Zoom out"
+          title="Zoom out (-)"
+          data-testid="zoom-out"
         >
-          {{ r.key }}
+          −
+        </button>
+        <button
+          type="button"
+          class="chart__range chart__zoom"
+          [disabled]="!canZoomIn()"
+          (click)="zoomButton(zoomStep)"
+          aria-label="Zoom in"
+          title="Zoom in (+)"
+          data-testid="zoom-in"
+        >
+          +
+        </button>
+      </div>
+      @if (zoomed()) {
+        <button type="button" class="chart__reset" (click)="resetZoom()" data-testid="zoom-reset">
+          Reset zoom
         </button>
       }
     </div>
-    @if (change(); as c) {
-      <p
-        class="chart__change"
-        [class.pos]="c.amount > 0"
-        [class.neg]="c.amount < 0"
-        data-testid="chart-change"
-      >
-        {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{ c.percent > 0 ? '+' : ''
-        }}{{ c.percent | number: '1.2-2' }}%) over {{ range() }}
-      </p>
-    }
+    <div class="chart__status">
+      @if (isLive()) {
+        <span
+          class="chart__live"
+          title="Today's candle moves with each live quote"
+          data-testid="chart-live"
+          >Live</span
+        >
+      }
+      @if (change(); as c) {
+        <p
+          class="chart__change"
+          [class.pos]="c.amount > 0"
+          [class.neg]="c.amount < 0"
+          data-testid="chart-change"
+        >
+          {{ c.amount > 0 ? '+' : '' }}{{ c.amount | currency: 'USD' }} ({{
+            c.percent > 0 ? '+' : ''
+          }}{{ c.percent | number: '1.2-2' }}%) over {{ period() }}
+        </p>
+      }
+    </div>
   </div>
 
+  @if (chartType() === 'bar') {
+    @if (ohlc(); as d) {
+      <dl class="chart__ohlc" data-testid="chart-ohlc">
+        <div class="chart__ohlc-date">{{ d.date | date: 'EEE d MMM y' }}</div>
+        <div>
+          <dt>O</dt>
+          <dd>{{ d.open === null ? '-' : (d.open | number: '1.2-2') }}</dd>
+        </div>
+        <div>
+          <dt>H</dt>
+          <dd>{{ d.high === null ? '-' : (d.high | number: '1.2-2') }}</dd>
+        </div>
+        <div>
+          <dt>L</dt>
+          <dd>{{ d.low === null ? '-' : (d.low | number: '1.2-2') }}</dd>
+        </div>
+        <div>
+          <dt>C</dt>
+          <dd>{{ d.close | number: '1.2-2' }}</dd>
+        </div>
+        @if (d.amount !== null) {
+          <div [class.pos]="d.amount > 0" [class.neg]="d.amount < 0">
+            <dt class="visually-hidden">Change</dt>
+            <dd>
+              {{ d.amount > 0 ? '+' : '' }}{{ d.amount | number: '1.2-2' }}
+              @if (d.percent !== null) {
+                ({{ d.percent > 0 ? '+' : '' }}{{ d.percent | number: '1.2-2' }}%)
+              }
+            </dd>
+          </div>
+        }
+        @if (d.volume !== null) {
+          <div>
+            <dt>Vol</dt>
+            <dd>{{ compact(d.volume) }}</dd>
+          </div>
+        }
+      </dl>
+    }
+  }
   <ul class="chart__legend" data-testid="chart-legend">
-    @for (s of series; track s.key) {
-      <li><span class="chart__key" [style.background]="s.colour"></span>{{ s.label }}</li>
+    @if (chartType() === 'bar') {
+      <li><span class="chart__candle" aria-hidden="true"></span>Daily candles</li>
+    } @else {
+      <li><span class="chart__key" [style.background]="series[0].colour"></span>Close</li>
+    }
+    @for (s of averages; track s.key) {
+      <li>
+        <button
+          type="button"
+          class="chart__indicator"
+          [attr.aria-pressed]="shownAverages().has(s.key)"
+          (click)="toggleAverage(s.key)"
+          [attr.data-testid]="'toggle-' + s.key"
+        >
+          <span class="chart__key" [style.background]="s.colour"></span>{{ s.label }}
+        </button>
+      </li>
     }
   </ul>
 
   <div
+    #plot
     class="chart__plot"
+    [class.chart__plot--tall]="chartType() === 'bar'"
+    [class.chart__plot--pannable]="canPan()"
+    [class.chart__plot--dragging]="dragging()"
     tabindex="0"
     role="img"
     [attr.aria-label]="
-      'Daily closing price over ' + range() + '. Use the arrow keys to step through the days.'
+      (chartType() === 'bar' ? 'Daily candlesticks over ' : 'Daily closing price over ') +
+      period() +
+      '. Use the arrow keys to step through the days, plus and minus to zoom, and Shift with the arrows to pan.'
     "
     (keydown)="onKeydown($event)"
     (blur)="clearActive()"
+    (wheel)="onWheel($event)"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp()"
+    (pointercancel)="onPointerUp()"
+    (dblclick)="resetZoom()"
     data-testid="price-chart"
   >
     <canvas
       baseChart
-      type="line"
+      [type]="chartType()"
       [data]="data()"
       [options]="options()"
       [plugins]="plugins"
     ></canvas>
   </div>
+  <p class="chart__hint" data-testid="chart-hint">
+    @if (canPan()) {
+      Drag to move through time, scroll to zoom, double-click to reset.
+    } @else {
+      Scroll or use + to zoom in, then drag to move through time.
+    }
+  </p>
 
   <details class="chart__table">
     <summary>Show as a table</summary>
-    <table data-testid="chart-table">
-      <thead>
-        <tr>
-          <th scope="col">Date</th>
-          @for (s of series; track s.key) {
-            <th scope="col">{{ s.label }}</th>
-          }
-        </tr>
-      </thead>
-      <tbody>
-        @for (p of tableRows(); track p.date) {
+    <div class="chart__table-scroll">
+      <table data-testid="chart-table">
+        <thead>
           <tr>
-            <td>{{ p.date | date: 'd MMM y' }}</td>
-            <td>{{ p.close | currency: 'USD' }}</td>
-            <td>{{ p.movingAvg20 === null ? '–' : (p.movingAvg20 | currency: 'USD') }}</td>
-            <td>{{ p.movingAvg50 === null ? '–' : (p.movingAvg50 | currency: 'USD') }}</td>
+            <th scope="col">Date</th>
+            @if (hasCandles()) {
+              <th scope="col">Open</th>
+              <th scope="col">High</th>
+              <th scope="col">Low</th>
+            }
+            @for (s of series; track s.key) {
+              <th scope="col">{{ s.label }}</th>
+            }
+            @if (hasCandles()) {
+              <th scope="col">Volume</th>
+            }
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (p of tableRows(); track p.date) {
+            <tr>
+              <td>{{ p.date | date: 'd MMM y' }}</td>
+              @if (hasCandles()) {
+                <td>{{ p.open === null ? '-' : (p.open | currency: 'USD') }}</td>
+                <td>{{ p.high === null ? '-' : (p.high | currency: 'USD') }}</td>
+                <td>{{ p.low === null ? '-' : (p.low | currency: 'USD') }}</td>
+              }
+              <td>{{ p.close | currency: 'USD' }}</td>
+              <td>{{ p.movingAvg20 === null ? '-' : (p.movingAvg20 | currency: 'USD') }}</td>
+              <td>{{ p.movingAvg50 === null ? '-' : (p.movingAvg50 | currency: 'USD') }}</td>
+              @if (hasCandles()) {
+                <td>{{ p.volume === null ? '-' : (p.volume | number) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </details>
 </div>

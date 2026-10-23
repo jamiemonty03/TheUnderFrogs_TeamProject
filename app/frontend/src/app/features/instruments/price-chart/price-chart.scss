@@ -12,6 +12,12 @@
   gap: 0.75rem;
 }
 
+.chart__toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .chart__ranges {
   display: flex;
   gap: 0.25rem;
@@ -42,6 +48,78 @@
   &--active {
     background: var(--ts-frog-tint);
     color: var(--ts-text);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.chart__ohlc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.9rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+
+  div {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  dt {
+    color: var(--ts-text-muted);
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--ts-text);
+  }
+
+  .pos dd {
+    color: var(--ts-frog);
+  }
+
+  .neg dd {
+    color: var(--ts-loss);
+  }
+}
+
+.chart__ohlc-date {
+  color: var(--ts-text-secondary);
+}
+
+
+.chart__candle {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 12px;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    border-radius: 1px;
+  }
+
+  &::before {
+    left: 0;
+    top: 3px;
+    height: 8px;
+    background: var(--ts-up);
+  }
+
+  &::after {
+    right: 0;
+    top: 0;
+    height: 7px;
+    background: var(--ts-down);
   }
 }
 
@@ -79,11 +157,20 @@
   position: relative;
   height: 260px;
 
+  &--tall {
+    height: 380px;
+  }
+
   &:focus-visible {
     outline: 2px solid var(--ts-frog);
     outline-offset: 4px;
     border-radius: 4px;
   }
+}
+
+.chart__table-scroll {
+  position: relative;
+  overflow-x: auto;
 }
 
 .chart__table {
@@ -116,5 +203,125 @@
 
   td {
     color: var(--ts-text);
+  }
+}
+
+.chart__plot {
+  cursor: crosshair;
+  touch-action: pan-y;
+  user-select: none;
+
+  &--pannable {
+    cursor: grab;
+  }
+
+  &--dragging {
+    cursor: grabbing;
+  }
+}
+
+.chart__zoom {
+  min-width: 2rem;
+  padding-inline: 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chart__indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.55rem;
+  border: 1px dashed var(--ts-divider);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ts-text-muted);
+  font: inherit;
+  cursor: pointer;
+
+  .chart__key {
+    opacity: 0.4;
+  }
+
+  &:hover {
+    color: var(--ts-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ts-frog);
+    outline-offset: 2px;
+  }
+
+  &[aria-pressed='true'] {
+    border-style: solid;
+    color: var(--ts-text-secondary);
+
+    .chart__key {
+      opacity: 1;
+    }
+  }
+}
+
+.chart__reset {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--ts-divider);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ts-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--ts-frog-tint);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ts-frog);
+    outline-offset: 2px;
+  }
+}
+
+.chart__hint {
+  margin: 0;
+  color: var(--ts-text-muted);
+  font-size: 0.75rem;
+}
+
+.chart__status {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.chart__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ts-frog);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  &::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: chart-live-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes chart-live-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart__live::before {
+    animation: none;
   }
 }

@@ -6,6 +6,12 @@
   color: var(--ts-text);
 }
 
+@media (min-width: 1100px) {
+  .instrument--with-ticket {
+    padding-right: calc(420px + 1.25rem);
+  }
+}
+
 .instrument__state {
   display: flex;
   flex-direction: column;
@@ -127,24 +133,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+@media (max-width: 600px) {
+  .instrument__holding {
+    grid-template-columns: 1fr auto;
+    row-gap: 0.35rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--ts-divider);
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+}
+
 .instrument__holding-name {
   font-weight: 600;
-}
-
-.price-tag {
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--ts-neutral-bg);
-  color: var(--ts-neutral);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.price-tag--live {
-  background: var(--ts-success-bg);
-  color: var(--ts-frog);
 }
 
 // Set the colour Material's outlined button reads; a plain `color` loses to Material's own rule
@@ -190,5 +194,25 @@
   time {
     flex-shrink: 0;
     font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .instrument__article {
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+
+    a {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      overflow: hidden;
+    }
+
+    time {
+      font-size: 0.75rem;
+    }
   }
 }

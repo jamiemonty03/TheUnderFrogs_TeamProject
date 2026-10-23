@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
+import { MetricsController } from './metrics.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -28,7 +29,7 @@ import { throttleConfig } from './config/throttle.config';
     TokensModule,
     ClientsModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MetricsController],
   providers: [AppService],
 })
 export class AppModule {}

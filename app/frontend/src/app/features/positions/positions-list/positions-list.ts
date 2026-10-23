@@ -16,7 +16,9 @@ import { LivePrices } from '../../../services/live-prices';
 import { Portfolio, PortfolioRisk } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { HoldingRow, Position } from '../../../services/interfaces/positions.interfaces';
+import { PriceFlash } from '../../../shared/price-flash/price-flash';
 import { Positions } from '../../../services/positions';
+import { Allocation } from '../../dashboard/allocation/allocation';
 import { summarise, toHoldings } from '../../dashboard/portfolio';
 
 export const ALL_HOLDINGS = 'ALL';
@@ -28,6 +30,7 @@ type SortKey = keyof HoldingRow;
 
 @Component({
   imports: [
+    Allocation,
     CurrencyPipe,
     DatePipe,
     DecimalPipe,
@@ -39,6 +42,7 @@ type SortKey = keyof HoldingRow;
     MatSelectModule,
     MatSortModule,
     MatTableModule,
+    PriceFlash,
   ],
   selector: 'app-positions-list',
   styleUrl: './positions-list.scss',
@@ -101,7 +105,7 @@ export class PositionsList implements OnInit {
   private readonly heldPositions = computed(() => this.positions().filter((p) => p.quantity > 0));
 
   // The dashboard's own calculations, so both pages show the same numbers
-  private readonly holdings = computed(() =>
+  protected readonly holdings = computed(() =>
     toHoldings(this.heldPositions(), this.prices(), this.livePrices()),
   );
 
@@ -129,6 +133,9 @@ export class PositionsList implements OnInit {
       weight: h.weight,
     }));
   });
+
+  // Keep each row's DOM across live ticks, so its price flash can see the change
+  protected readonly trackRow = (_: number, row: HoldingRow) => `${row.portfolioId ?? 'MAIN'}:${row.symbol}`;
 
   protected readonly rows = computed<HoldingRow[]>(() => {
     const { active, direction } = this.sort();

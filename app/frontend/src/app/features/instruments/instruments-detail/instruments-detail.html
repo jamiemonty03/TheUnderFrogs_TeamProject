@@ -1,4 +1,8 @@
-<section class="instrument" data-testid="instrument-page">
+<section
+  class="instrument"
+  [class.instrument--with-ticket]="ticketOpen()"
+  data-testid="instrument-page"
+>
   @switch (status()) {
     @case ('loading') {
       <p class="instrument__state" data-testid="instrument-loading">Loading {{ symbol() }}…</p>
@@ -53,22 +57,24 @@
 
           <div class="instrument__actions">
             @if (i.tradable) {
-              <a
+              <button
                 mat-stroked-button
+                type="button"
                 class="buy"
-                routerLink="/orders"
-                [queryParams]="{ new: true, symbol: i.symbol, side: 'BUY' }"
+                (click)="openOrder('BUY')"
                 data-testid="instrument-buy"
-                >Buy</a
               >
-              <a
+                Buy
+              </button>
+              <button
                 mat-stroked-button
+                type="button"
                 class="sell"
-                routerLink="/orders"
-                [queryParams]="{ new: true, symbol: i.symbol, side: 'SELL' }"
+                (click)="openOrder('SELL')"
                 data-testid="instrument-sell"
-                >Sell</a
               >
+                Sell
+              </button>
             } @else {
               <span class="instrument__meta" data-testid="instrument-not-tradable"
                 >Not tradable</span
@@ -90,7 +96,7 @@
             }
             @case ('ready') {
               @if (history().length) {
-                <app-price-chart [points]="history()" />
+                <app-price-chart [points]="history()" [live]="live()" />
               } @else {
                 <p class="instrument__muted" data-testid="history-empty">No price history yet.</p>
               }
@@ -142,19 +148,15 @@
                       h.marketValue === null ? '-' : (h.marketValue | currency: 'USD')
                     }}</span>
                     @if (i.tradable) {
-                      <a
+                      <button
                         mat-stroked-button
+                        type="button"
                         class="sell"
-                        routerLink="/orders"
-                        [queryParams]="{
-                          new: true,
-                          symbol: i.symbol,
-                          side: 'SELL',
-                          portfolioId: h.portfolioId,
-                        }"
+                        (click)="openOrder('SELL', h.portfolioId, h.portfolioName)"
                         [attr.aria-label]="'Sell ' + i.symbol + ' from ' + h.portfolioName"
-                        >Sell</a
                       >
+                        Sell
+                      </button>
                     }
                   </li>
                 }

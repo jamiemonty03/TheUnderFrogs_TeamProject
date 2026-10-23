@@ -1,11 +1,12 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { Accounts } from '../../../services/accounts';
 import { Instruments, LatestPrice } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
+import { LivePriceFeed } from '../../../services/interfaces/instruments.interfaces';
 import { Portfolio } from '../../../services/interfaces/portfolios.interfaces';
 import { Portfolios } from '../../../services/portfolios';
 import { Position } from '../../../services/interfaces/positions.interfaces';
@@ -196,6 +197,36 @@ describe('PositionsList (Portfolios page)', () => {
     expect(liveFeed.watch).toHaveBeenLastCalledWith(['AAPL']);
   });
 
+  it('flashes P&L, P&L % and day change, not the price, as a live price moves', async () => {
+    const feed = new Subject<LivePriceFeed>();
+    liveFeed.watch.mockReturnValue(feed.asObservable());
+    positions.getPositions.mockReturnValue(of([position('PF0011', 'AAPL', 10, 100)]));
+    await click('portfolio-PF0011');
+    const tick = (price: number) => {
+      feed.next({ prices: new Map([['AAPL', { symbol: 'AAPL', price, bid: null, ask: null, quoteTime: '' }]]), stale: false });
+      fixture.detectChanges();
+    };
+    const row = () => fixture.nativeElement.querySelector('tr.mat-mdc-row') as HTMLElement;
+    const flashing = (direction: 'up' | 'down') =>
+      Array.from(row().querySelectorAll(`.price-flash--${direction}`)).map((el) => (el.closest('td') as HTMLElement).className);
+
+    tick(130);
+    const firstRow = row();
+    tick(131);
+
+    expect(row()).toBe(firstRow); // the row is updated in place, not rebuilt
+    expect(flashing('up')).toEqual([
+      expect.stringContaining('mat-column-pnl '),
+      expect.stringContaining('mat-column-pnlPercent'),
+      expect.stringContaining('mat-column-dayChange'),
+    ]);
+    expect(row().querySelector('td.mat-column-price .price-flash')).toBeNull();
+
+    tick(129);
+    expect(flashing('down')).toHaveLength(3);
+    expect(flashing('up')).toHaveLength(0);
+  });
+
   it('colours gains green and losses red', () => {
     const pnlCells = fixture.nativeElement.querySelectorAll('td.mat-column-pnl.mat-mdc-cell');
     expect(pnlCells[0].classList).toContain('pos');
@@ -299,6 +330,30 @@ describe('PositionsList (Portfolios page)', () => {
     expect(rowCount()).toBe(2);
     expect(headers()).not.toContain('Portfolio');
     expect(el('portfolio-PF0012')!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  describe('allocation', () => {
+    const weighting = () =>
+      el('allocation')!.querySelector('[role="img"]')!.getAttribute('aria-label');
+
+    it('shows how all holdings are weighted, with AAPL from both portfolios as one', () => {
+      expect(weighting()).toBe('Portfolio weighting: AAPL 65.1%, NVDA 34.9%');
+      expect(el('allocation')!.querySelectorAll('li')).toHaveLength(2);
+    });
+
+    it("follows the selected portfolio's holdings", async () => {
+      await click('portfolio-PF0012');
+
+      expect(weighting()).toBe('Portfolio weighting: NVDA 65.2%, AAPL 34.8%');
+    });
+
+    it('is hidden when there is nothing held', async () => {
+      positions.getPositions.mockReturnValue(of([]));
+
+      await click('portfolio-PF0011');
+
+      expect(el('allocation')).toBeNull();
+    });
   });
 
   it('shows an empty state when a portfolio has no holdings', async () => {

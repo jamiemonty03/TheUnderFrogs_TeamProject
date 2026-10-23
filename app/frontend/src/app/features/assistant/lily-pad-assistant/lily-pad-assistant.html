@@ -1,0 +1,29 @@
+@if (chat.open()) {
+  <app-assistant-panel
+    animate.enter="chat--enter"
+    animate.leave="chat--leave"
+  ></app-assistant-panel>
+} @else {
+  <button
+    type="button"
+    class="pad"
+    aria-expanded="false"
+    aria-label="Open AI assistant"
+    data-testid="assistant-lily-pad"
+    animate.enter="pad--enter"
+    animate.leave="pad--leave"
+    (click)="chat.toggle()"
+  >
+    <span class="pad__ripples" aria-hidden="true"><span></span><span></span><span></span></span>
+    <svg class="pad__leaf" viewBox="0 0 64 64" aria-hidden="true">
+      <path
+        class="pad__leaf-body"
+        d="M32 4a28 28 0 1 0 27.6 23.3L32 32l9.6-26.3A28 28 0 0 0 32 4Z"
+      />
+      <path class="pad__veins" d="M32 32 12 18M32 32 8 36M32 32l-14 20M32 32l8 26M32 32l24 12" />
+    </svg>
+    @if (chat.pending()) {
+      <span class="pad__pending" aria-hidden="true"></span>
+    }
+  </button>
+}

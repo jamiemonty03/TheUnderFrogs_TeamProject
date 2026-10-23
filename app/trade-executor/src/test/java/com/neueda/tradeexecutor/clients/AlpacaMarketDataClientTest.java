@@ -18,15 +18,41 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import com.neueda.tradeexecutor.dtos.AlpacaClock;
 import com.neueda.tradeexecutor.dtos.AlpacaQuote;
 
 class AlpacaMarketDataClientTest {
+
+    private static final String TRADING_URL = "https://paper-api.alpaca.markets/v2";
+
+    @Test
+    void readsTheMarketClockFromTheTradingApiWithAlpacaHeaders() {
+        MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
+        AlpacaMarketDataClient client = new AlpacaMarketDataClient(
+                new RestTemplateBuilder(customizer), "PKTESTKEY", "test-secret", TRADING_URL);
+        MockRestServiceServer alpaca = customizer.getServer();
+
+        alpaca.expect(requestTo(TRADING_URL + "/clock"))
+                .andExpect(header("APCA-API-KEY-ID", "PKTESTKEY"))
+                .andExpect(header("APCA-API-SECRET-KEY", "test-secret"))
+                .andRespond(withSuccess("""
+                        {"timestamp":"2026-10-19T08:00:00-04:00","is_open":false,
+                         "next_open":"2026-10-19T09:30:00-04:00","next_close":"2026-10-19T16:00:00-04:00"}
+                        """, MediaType.APPLICATION_JSON));
+
+        AlpacaClock clock = client.marketClock();
+
+        assertFalse(clock.isOpen());
+        assertEquals(Instant.parse("2026-10-19T13:30:00Z"), clock.nextOpen());
+        assertEquals(Instant.parse("2026-10-19T20:00:00Z"), clock.nextClose());
+        alpaca.verify();
+    }
 
     @Test
     void fetchesAllSymbolsInOneRequestWithOnlyAlpacaHeaders() {
         MockServerRestTemplateCustomizer customizer = new MockServerRestTemplateCustomizer();
         AlpacaMarketDataClient client = new AlpacaMarketDataClient(
-                new RestTemplateBuilder(customizer), "PKTESTKEY", "test-secret");
+                new RestTemplateBuilder(customizer), "PKTESTKEY", "test-secret", TRADING_URL);
         MockRestServiceServer alpaca = customizer.getServer();
 
         alpaca.expect(requestTo(AlpacaMarketDataClient.DATA_URL + "/stocks/quotes/latest?symbols=AAPL,MSFT&feed=iex"))
@@ -52,7 +78,7 @@ class AlpacaMarketDataClientTest {
 
     @Test
     void isNotConfiguredWithoutKeys() {
-        AlpacaMarketDataClient client = new AlpacaMarketDataClient(new RestTemplateBuilder(), "", "");
+        AlpacaMarketDataClient client = new AlpacaMarketDataClient(new RestTemplateBuilder(), "", "", TRADING_URL);
 
         assertFalse(client.isConfigured());
     }

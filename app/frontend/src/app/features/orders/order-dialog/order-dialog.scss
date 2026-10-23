@@ -50,6 +50,23 @@
 		color: var(--ts-text-secondary);
 	}
 
+	&__market {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--ts-text-secondary);
+
+		strong {
+			color: var(--ts-text);
+		}
+
+	}
+
+	&__market-note {
+		display: block;
+		margin-top: 0.15rem;
+		font-size: 0.8rem;
+	}
+
 	&__estimate {
 		margin: 0;
 		font-size: 1rem;

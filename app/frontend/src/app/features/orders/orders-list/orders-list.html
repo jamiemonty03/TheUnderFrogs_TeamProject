@@ -5,8 +5,8 @@
 			<h1 class="orders-page__title">Orders</h1>
 		</div>
 
-		<button mat-flat-button type="button" class="orders-page__new-order" (click)="openOrderDialog()" data-testid="new-order">
-			+ New order
+		<button mat-flat-button type="button" class="orders-page__place-order" (click)="openOrderDialog()" data-testid="place-order">
+			Place order
 		</button>
 	</header>
 
@@ -24,6 +24,39 @@
 				</mat-chip-option>
 			}
 		</mat-chip-listbox>
+
+		<div class="orders-card__controls" aria-label="Additional order filters">
+			<mat-form-field appearance="outline" class="orders-card__search">
+				<mat-label>Symbol</mat-label>
+				<input
+					matInput
+					type="search"
+					placeholder="AAPL or TSLA"
+					[value]="symbolQuery()"
+					(input)="setSymbolQuery($any($event.target).value)"
+					data-testid="orders-symbol-filter"
+				/>
+			</mat-form-field>
+
+			<mat-form-field appearance="outline" class="orders-card__side-filter">
+				<mat-label>Side</mat-label>
+				<mat-select
+					[value]="activeSideFilter()"
+					(selectionChange)="setSideFilter($event.value)"
+					data-testid="orders-side-filter"
+				>
+					@for (side of sideFilters; track side) {
+						<mat-option [value]="side">
+							{{ side === 'ALL' ? 'All sides' : side }} ({{ getSideCount(side) }})
+						</mat-option>
+					}
+				</mat-select>
+			</mat-form-field>
+
+			<button mat-button type="button" (click)="clearFilters()" data-testid="clear-order-filters">
+				Clear filters
+			</button>
+		</div>
 
 		<div class="orders-table-wrap">
 			<table mat-table [dataSource]="pagedOrders()" class="orders-table" data-testid="orders-table">
@@ -55,9 +88,19 @@
 					<td mat-cell *matCellDef="let order" class="orders-table__qty">{{ order.quantity }}</td>
 				</ng-container>
 
+				<ng-container matColumnDef="limit">
+					<th mat-header-cell *matHeaderCellDef>LIMIT</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__price" data-testid="order-limit">{{ order.limit }}</td>
+				</ng-container>
+
 				<ng-container matColumnDef="price">
-					<th mat-header-cell *matHeaderCellDef>PRICE</th>
-					<td mat-cell *matCellDef="let order" class="orders-table__price">{{ order.price }}</td>
+					<th mat-header-cell *matHeaderCellDef>MARKET</th>
+					<td mat-cell *matCellDef="let order" class="orders-table__price" data-testid="order-market">
+						{{ order.price }}
+						@if (order.price !== 'N/A') {
+							<span class="price-tag" [class.price-tag--live]="order.live">{{ order.live ? 'Live' : 'Close' }}</span>
+						}
+					</td>
 				</ng-container>
 
 				<ng-container matColumnDef="status">
@@ -73,6 +116,25 @@
 						>
 							{{ order.status }}
 						</span>
+					</td>
+				</ng-container>
+
+				<ng-container matColumnDef="actions">
+					<th mat-header-cell *matHeaderCellDef><span class="visually-hidden">Actions</span></th>
+					<td mat-cell *matCellDef="let order" class="orders-table__actions">
+						@if (order.status === 'NEW') {
+							<button
+								mat-stroked-button
+								type="button"
+								class="orders-table__cancel"
+								(click)="cancelOrder(order.id)"
+								[disabled]="cancelling() === order.id"
+								[attr.aria-label]="'Cancel order for ' + order.symbol"
+								data-testid="cancel-order"
+							>
+								{{ cancelling() === order.id ? 'Cancelling…' : 'Cancel' }}
+							</button>
+						}
 					</td>
 				</ng-container>
 

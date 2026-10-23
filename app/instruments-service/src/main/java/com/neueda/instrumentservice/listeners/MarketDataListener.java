@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neueda.instrumentservice.dtos.responses.LivePriceResponse;
+import com.neueda.instrumentservice.services.LatestQuoteCache;
 import com.neueda.instrumentservice.websockets.LivePriceSocketHandler;
 
 @Component
@@ -23,10 +24,12 @@ public class MarketDataListener extends AbstractConsumerSeekAware {
     private static final Logger log = LoggerFactory.getLogger(MarketDataListener.class);
 
     private final LivePriceSocketHandler socket;
+    private final LatestQuoteCache quotes;
     private final ObjectMapper mapper;
 
-    public MarketDataListener(LivePriceSocketHandler socket, ObjectMapper mapper) {
+    public MarketDataListener(LivePriceSocketHandler socket, LatestQuoteCache quotes, ObjectMapper mapper) {
         this.socket = socket;
+        this.quotes = quotes;
         this.mapper = mapper;
     }
 
@@ -49,7 +52,9 @@ public class MarketDataListener extends AbstractConsumerSeekAware {
                 log.warn("Skipping PRICE_UPDATED event {} with missing fields", event.eventId());
                 return;
             }
-            socket.broadcast(new LivePriceResponse(p.symbol(), p.price(), p.bid(), p.ask(), p.quoteTime()));
+            LivePriceResponse quote = new LivePriceResponse(p.symbol(), p.price(), p.bid(), p.ask(), p.quoteTime());
+            quotes.record(quote);
+            socket.broadcast(quote);
         } catch (Exception e) {
             log.warn("Skipping unreadable market-data message: {}", e.getMessage());
         }

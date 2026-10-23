@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import com.neueda.tradeexecutor.dtos.AlpacaQuote;
 import com.neueda.tradeexecutor.dtos.PriceUpdatedPayload;
 import com.neueda.tradeexecutor.events.EventEnvelope;
 import com.neueda.tradeexecutor.events.EventTypes;
+import com.neueda.tradeexecutor.events.PriceChanged;
 import com.neueda.tradeexecutor.events.Topics;
 
 @Service
@@ -27,14 +29,17 @@ public class MarketDataPoller {
     private final AlpacaMarketDataClient alpaca;
     private final QuoteValidator quoteValidator;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ApplicationEventPublisher events;
     private final Map<String, AlpacaQuote> lastPublished = new ConcurrentHashMap<>();
 
     public MarketDataPoller(InstrumentsClient instrumentsClient, AlpacaMarketDataClient alpaca,
-            QuoteValidator quoteValidator, KafkaTemplate<String, Object> kafkaTemplate) {
+            QuoteValidator quoteValidator, KafkaTemplate<String, Object> kafkaTemplate,
+            ApplicationEventPublisher events) {
         this.instrumentsClient = instrumentsClient;
         this.alpaca = alpaca;
         this.quoteValidator = quoteValidator;
         this.kafkaTemplate = kafkaTemplate;
+        this.events = events;
     }
 
     @Scheduled(fixedDelayString = "${market-data.poll-interval-ms}", initialDelay = 10_000)
@@ -61,6 +66,7 @@ public class MarketDataPoller {
                 symbol, QuoteValidator.mid(quote), quote.bp(), quote.ap(), "USD", quote.t());
         kafkaTemplate.send(Topics.MARKET_DATA, symbol, EventEnvelope.of(EventTypes.PRICE_UPDATED, symbol, payload));
         lastPublished.put(symbol, quote);
+        events.publishEvent(new PriceChanged(symbol));
     }
 
     static List<List<String>> batches(List<String> symbols, int size) {

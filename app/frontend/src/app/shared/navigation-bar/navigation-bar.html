@@ -1,21 +1,33 @@
 <header class="nav-bar">
   <div class="nav-bar__top">
     <a class="nav-bar__brand" routerLink="/dashboard" aria-label="UnderFrogs Trade home">
-      <img class="nav-bar__brand-mark" src="/brand/toadstock-logo-dark.svg" alt="UnderFrogs logo" />
+      <img class="nav-bar__brand-mark" [src]="logo()" alt="UnderFrogs logo" />
     </a>
 
-    <button
-      mat-icon-button
-      type="button"
-      class="nav-bar__menu-toggle"
-      aria-label="Toggle navigation menu"
-      [attr.aria-expanded]="isMenuOpen"
-      (click)="toggleMenu()"
-    >
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-      <span class="nav-bar__menu-line"></span>
-    </button>
+    <div class="nav-bar__top-actions">
+      <button
+        type="button"
+        class="nav-bar__account-toggle"
+        [matMenuTriggerFor]="accountMenu"
+        data-testid="account-menu-mobile"
+        [attr.aria-label]="'Account menu for ' + username()"
+      >
+        {{ initial() }}
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        class="nav-bar__menu-toggle"
+        aria-label="Toggle navigation menu"
+        [attr.aria-expanded]="isMenuOpen"
+        (click)="toggleMenu()"
+      >
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+        <span class="nav-bar__menu-line"></span>
+      </button>
+    </div>
   </div>
 
   <div class="nav-bar__content" [class.nav-bar__content--open]="isMenuOpen">
@@ -117,6 +129,65 @@
           </svg>
           <span>Wallet</span>
         </button>
+        @if (isAdmin()) {
+          <a
+            mat-menu-item
+            class="nav-bar__dashboard"
+            href="http://10.9.79.41:8080/d/dg1opelx7aqkgc/dashboard?from=now-2d&to=now&timezone=browser&var-service=$__all"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="grafana-dashboard"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5M4 19h16M8 16v-5M12 16V7M16 16v-3" />
+            </svg>
+            <span>Monitoring</span>
+          </a>
+          <a
+            mat-menu-item
+            class="nav-bar__dashboard"
+            href="http://10.9.79.41:8085"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="python-dashboard"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 20V10M12 20V4M19 20v-7" />
+              <path d="M3 20h18" />
+            </svg>
+            <span>Analytics</span>
+          </a>
+        }
+        @if (themes.theme() === 'dark') {
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
+            </svg>
+            <span>Light mode</span>
+          </button>
+        } @else {
+          <button
+            mat-menu-item
+            type="button"
+            class="nav-bar__theme"
+            (click)="themes.toggle()"
+            data-testid="theme-toggle"
+          >
+            <svg class="nav-bar__menu-icon" matMenuItemIcon viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+            </svg>
+            <span>Dark mode</span>
+          </button>
+        }
         <button
           mat-menu-item
           type="button"

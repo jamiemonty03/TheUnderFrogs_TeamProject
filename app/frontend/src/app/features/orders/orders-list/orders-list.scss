@@ -5,7 +5,7 @@
 	&__header {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
+		align-items: flex-end;
 		gap: 1rem;
 		margin-bottom: 1.25rem;
 	}
@@ -23,26 +23,6 @@
 		letter-spacing: -0.02em;
 	}
 
-	&__new-order {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.55rem;
-		border-radius: 0.9rem;
-		padding: 0 1.5rem;
-		font-size: 1.6rem;
-		font-weight: 700;
-		height: 5.5rem;
-	}
-
-	&__new-order.mdc-button {
-		min-width: unset;
-		box-shadow: none;
-		background: var(--ts-frog);
-		color: var(--ts-on-frog);
-		--mdc-filled-button-container-color: var(--ts-frog);
-		--mdc-filled-button-label-text-color: var(--ts-on-frog);
-	}
 }
 
 .orders-card {
@@ -61,11 +41,31 @@
 	&__dot {
 		opacity: 0.8;
 	}
-}
 
+	&__controls {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+		margin: 0 0 1rem;
+	}
+
+	&__search {
+		width: min(20rem, 100%);
+	}
+
+	&__side-filter {
+		width: 11rem;
+	}
+
+	&__controls mat-form-field {
+		margin-bottom: -1.25rem;
+	}
+}
 
 .orders-table-wrap {
 	overflow-x: auto;
+	position: relative;
 }
 
 mat-paginator {
@@ -106,10 +106,6 @@ mat-paginator {
 	.mdc-data-table__row,
 	.mat-mdc-header-row {
 		background: transparent;
-	}
-
-	&__id {
-		color: var(--ts-text-muted);
 	}
 
 	&__qty,
@@ -154,7 +150,20 @@ mat-paginator {
 
 	&__status--cancelled {
 		background: var(--ts-neutral-bg);
-		color: var(--ts-neutral);
+		color: var(--ts-text-muted);
+	}
+
+	&__actions {
+		text-align: right;
+	}
+
+	&__cancel.mat-mdc-outlined-button {
+		--mat-button-outlined-label-text-color: var(--ts-sell);
+		--mat-button-outlined-outline-color: var(--ts-sell);
+		--mat-button-outlined-state-layer-color: var(--ts-sell);
+		--mat-button-outlined-ripple-color: color-mix(in srgb, var(--ts-sell) 12%, transparent);
+		color: var(--ts-sell);
+		border-color: var(--ts-sell);
 	}
 
 }
@@ -165,7 +174,7 @@ mat-paginator {
 			font-size: 2.4rem;
 		}
 
-		&__new-order {
+		&__place-order {
 			font-size: 1.5rem;
 		}
 	}
@@ -180,7 +189,7 @@ mat-paginator {
 			align-items: stretch;
 		}
 
-		&__new-order {
+		&__place-order {
 			width: 100%;
 		}
 	}
@@ -188,8 +197,17 @@ mat-paginator {
 	.orders-card {
 		padding: 0.7rem;
 
+		&__controls {
+			align-items: stretch;
+		}
+
 		&__filter {
 			font-size: 1.1rem;
+		}
+
+		&__search,
+		&__side-filter {
+			width: 100%;
 		}
 	}
 
@@ -202,5 +220,12 @@ mat-paginator {
 		th {
 			font-size: 0.9rem;
 		}
+	}
+}
+
+@media (max-width: 600px) {
+	.mat-column-limit,
+	.mat-column-price {
+		display: none;
 	}
 }

@@ -7,6 +7,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, map, of, switchMap, timer } from 'rxjs';
 import { AssetClass, Instruments, LIVE_POLL_MS, LatestPrice, LivePrice } from '../../../services/instruments';
 import { LivePrices } from '../../../services/live-prices';
+import { PriceFlash } from '../../../shared/price-flash/price-flash';
 import { MarketRow, filterRows, indexTiles, latestTradeDate, movers, toMarketRows } from './market';
 
 const TABS: { assetClass: AssetClass; label: string }[] = [
@@ -16,7 +17,7 @@ const TABS: { assetClass: AssetClass; label: string }[] = [
 ];
 
 @Component({
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, RouterLink, MatButtonModule, MatProgressSpinnerModule],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet, RouterLink, MatButtonModule, MatProgressSpinnerModule, PriceFlash],
   selector: 'app-market-overview',
   styleUrl: './market-overview.scss',
   templateUrl: './market-overview.html',

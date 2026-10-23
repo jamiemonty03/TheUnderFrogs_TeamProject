@@ -26,13 +26,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/orders/orders-list/orders-list').then((m) => m.OrdersList),
       },
-      {
-        path: 'instruments',
-        loadComponent: () =>
-          import('./features/instruments/instruments-list/instruments-list').then(
-            (m) => m.InstrumentsList,
-          ),
-      },
+      { path: 'instruments', redirectTo: 'dashboard', pathMatch: 'full' },
       {
         path: 'instruments/:id',
         loadComponent: () =>

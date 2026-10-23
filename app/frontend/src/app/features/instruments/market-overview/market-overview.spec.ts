@@ -143,6 +143,29 @@ describe('MarketOverview', () => {
     expect(cells(rows()[1])[2]).toBe('Close');
   });
 
+  it('flashes the change cells, not the price, green when a live price rises, red when it falls', async () => {
+    await setUp();
+    const tick = (price: number) => {
+      liveFeed.next({
+        prices: new Map([['AAPL', { symbol: 'AAPL', price, bid: null, ask: null, quoteTime: '2026-10-13T14:30:00Z' }]]),
+        stale: false,
+      });
+      fixture.detectChanges();
+    };
+    const flashed = (direction: 'up' | 'down') =>
+      rows()[0].querySelectorAll(`.price-flash--${direction}`).length;
+
+    tick(190.51);
+    expect(flashed('up')).toBe(2); // change and change %
+    expect(cells(rows()[0])[3]).toBe('$190.51'); // the price itself doesn't flash
+    expect(rows()[0].querySelectorAll('td')[3].querySelector('.price-flash')).toBeNull();
+
+    tick(189);
+    expect(flashed('down')).toBe(2);
+    expect(flashed('up')).toBe(0);
+    expect(rows()[0].querySelectorAll('td.gain')).toHaveLength(2); // the trend colour survives the flash
+  });
+
   it('refreshes every 30 seconds', async () => {
     const moved = new Map(PRICES).set('AAPL', latest('AAPL', 'Apple Inc.', 'Equity', 200, 187.51));
     await setUp(of(PRICES), of(moved));
