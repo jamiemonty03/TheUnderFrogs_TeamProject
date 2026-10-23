@@ -1,0 +1,4 @@
+*
+!app/*/db/schema
+!app/*/db/seed
+!tofu/images/db-init/db-init.sh

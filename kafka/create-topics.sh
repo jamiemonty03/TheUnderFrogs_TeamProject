@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-BOOTSTRAP=kafka:9092
+BOOTSTRAP=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
 TOPICS=/opt/kafka/bin/kafka-topics.sh
 DAY=86400000 
 

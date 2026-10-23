@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (git-ignored) and fill in.
+
+aws_region   = "eu-west-1"
+# AWS CLI profile to deploy with (aws configure list-profiles). Remove to use the default credentials.
+aws_profile  = "training"
+project_name = "underfrogs"
+
+# Use the git commit so every apply after a code change rebuilds and redeploys:
+#   tofu apply -var "image_tag=$(git rev-parse --short HEAD)"
+image_tag = "latest"
+
+# Your public IP, to reach Grafana, Prometheus, Kafka UI and the dashboard. Find it with: curl -s https://checkip.amazonaws.com
+admin_cidr_blocks = []
+
+# Optional third-party keys. Leave empty to run without them, as with the .env.example files.
+stripe_secret_key = ""
+alpaca_key_id     = ""
+alpaca_secret_key = ""
+ai_api_key        = ""

@@ -1,0 +1,43 @@
+# monitoring/prometheus/prometheus.yml, with compose's container names swapped for Cloud Map names.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  - job_name: trade-executor
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [trade-executor.${domain}:8081]
+
+  - job_name: accounts-service
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: [accounts-service.${domain}:8081]
+
+  - job_name: instruments-service
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: [instruments-service.${domain}:8081]
+
+  - job_name: orders-service
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: [orders-service.${domain}:8081]
+
+  - job_name: positions-service
+    metrics_path: /api/actuator/prometheus
+    static_configs:
+      - targets: [positions-service.${domain}:8081]
+
+  - job_name: auth-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: [auth-service.${domain}:8081]
+
+  - job_name: frontend
+    static_configs:
+      - targets: [nginx-exporter.${domain}:9113]
