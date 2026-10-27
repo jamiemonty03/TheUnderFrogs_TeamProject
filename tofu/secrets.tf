@@ -27,6 +27,11 @@ resource "random_password" "grafana" {
   special = false
 }
 
+resource "random_password" "cloudfront_origin" {
+  length  = 48
+  special = false
+}
+
 locals {
   jwt_key_id = "auth-${formatdate("YYYYMMDDhhmmss", time_static.jwt.rfc3339)}"
 

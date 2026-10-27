@@ -1,6 +1,11 @@
 output "app_url" {
-  description = "The trading app."
-  value       = local.public_url
+  description = "HTTPS URL for the trading app, served by CloudFront."
+  value       = local.cloudfront_url
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for invalidations and operations."
+  value       = aws_cloudfront_distribution.app.id
 }
 
 output "admin_urls" {

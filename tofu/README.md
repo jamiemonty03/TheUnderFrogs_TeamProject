@@ -27,9 +27,9 @@ Terraform also defines four short-lived Fargate setup tasks. `db-init` creates t
 ### How the pieces connect
 
 ```text
-Browser -> public Application Load Balancer -> frontend (Nginx)
-                                      |---- /auth -> auth-service
-                                      |---- /api  -> application services
+Browser -> CloudFront (HTTPS) -> Application Load Balancer -> frontend (Nginx)
+                                                     |---- /auth -> auth-service
+                                                     |---- /api  -> application services
 
 Private ECS services -> Cloud Map DNS (`<service>.underfrogs.local`)
                     |-> RDS PostgreSQL (six databases on one instance)
@@ -40,7 +40,7 @@ Terraform -> ECR image build/push -> ECS task definitions and services
           -> one-off Fargate setup tasks
 ```
 
-The single HTTP load balancer listens on port 80 for the app. Admin ports 8080, 8085, 8086, and 9090 are opened only for the CIDRs in `admin_cidr_blocks`; leave that list empty to keep those listeners closed to inbound traffic. Services without an ALB listener are reachable only inside the VPC.
+The app's public URL is the CloudFront distribution. CloudFront forwards viewer headers, cookies, and query strings to the frontend; caching is disabled so API/auth responses and personalized content are not cached. The ALB accepts frontend-origin traffic only from CloudFront's origin-facing network and requires a generated origin-verification header. Admin ports 8080, 8085, 8086, and 9090 remain on the ALB and are opened only for the CIDRs in `admin_cidr_blocks`; leave that list empty to keep those listeners closed to inbound traffic.
 
 | docker-compose | AWS |
 |---|---|
@@ -50,7 +50,7 @@ The single HTTP load balancer listens on port 80 for the app. Admin ports 8080, 
 | Every other service | An ECS Fargate service, in private subnets |
 | Images built locally | ECR, one repository per image |
 | Container names (`auth-service:8081`) | Cloud Map DNS: `auth-service.underfrogs.local:8081` |
-| Published ports | Public load balancer: `:80` app; `:8080` Grafana, `:8085` dashboard, `:8086` Kafka UI, `:9090` Prometheus (admin ports only open to `admin_cidr_blocks`) |
+| Browser entry point | CloudFront provides the HTTPS app URL and forwards requests to the frontend ALB listener; admin tools remain on ALB ports `:8080`, `:8085`, `:8086`, and `:9090` (restricted to `admin_cidr_blocks`) |
 | `.env` files | Secrets Manager. Passwords, the JWT signing key and the trade-executor client secret are generated; third-party keys come from variables. |
 
 `locals.tf` is the place to start reading: it lists every service the way `docker-compose.yml` does.
@@ -88,7 +88,7 @@ tofu output admin_urls
 tofu output -raw grafana_admin_password   # user: admin
 ```
 
-The Java services take a minute or two to become healthy after the apply finishes.
+The Java services take a minute or two to become healthy after the apply finishes. CloudFront distribution deployment can take several minutes; use `tofu output -raw app_url` to get its HTTPS URL once Terraform completes.
 
 ## Redeploy after a code change
 
@@ -107,6 +107,7 @@ Terraform files split the stack by responsibility:
 | File | Responsibility |
 |---|---|
 | `providers.tf`, `versions.tf`, `variables.tf` | AWS provider/profile, required OpenTofu/provider versions, and configurable inputs. |
+| `cloudfront.tf` | HTTPS CloudFront distribution, request/cache policies, and guarded ALB origin rule. |
 | `locals.tf` | Central service catalog: image names, ports, environment, secret references, health checks, and task sizes. Start here when adding or changing a service. |
 | `network.tf`, `security.tf` | VPC, public/private subnets, internet/NAT routing, and network access rules. |
 | `rds.tf`, `msk.tf` | Shared private PostgreSQL instance and private Kafka cluster. |
@@ -137,6 +138,12 @@ aws sts get-caller-identity --profile training
 
 The `Account` should be `081452990196` for this deployment. If OpenTofu reports an unexpected account, stop before applying and check `aws_profile`, the active shell/environment, and the AWS profile configuration. AWS access keys belong in the AWS credential chain, not in Terraform variables or `terraform.tfvars`. Application secrets in Secrets Manager are unrelated to OpenTofu's AWS authentication.
 
+## CloudFront behavior
+
+Visitors use the CloudFront HTTPS URL. CloudFront forwards requests to the frontend listener on the ALB; Nginx continues to proxy API/auth paths. The distribution forwards viewer headers other than `Host`, all cookies, and all query strings. Caching is disabled initially, which is deliberate for login, API, and personalized responses. The ALB security group allows port 80 only from AWS's CloudFront origin-facing prefix list, and its frontend listener returns `403` unless the generated origin-verification header is present. The admin ALB listeners are separate and retain their `admin_cidr_blocks` restrictions.
+
+This gives HTTPS from the browser to CloudFront, but CloudFront currently talks to the ALB over HTTP. For a custom hostname and TLS on the origin hop, add an ALB HTTPS listener and ACM certificate in `eu-west-1`, and configure the CloudFront alias and viewer certificate in `us-east-1`. Static asset caching can be added as a separate behavior after verifying the frontend's cache headers and hashed asset names; keep `/api/*` and `/auth/*` uncached.
+
 ## Debugging
 
 - Logs are in CloudWatch under `/ecs/underfrogs/<service>`. For example: `aws logs tail /ecs/underfrogs/orders-service --follow --profile training --region eu-west-1`
@@ -158,7 +165,7 @@ For team use, configure a shared encrypted S3 backend with state locking before 
 
 ## Cost and teardown
 
-It costs roughly **$250–300 a month** while running: Fargate about $150, MSK $66, NAT gateway $33, load balancer $17, RDS $13, plus small amounts for Secrets Manager, logs and ECR. Remove everything with:
+It costs roughly **$250–300 a month** while running before CloudFront request/data-transfer charges: Fargate about $150, MSK $66, NAT gateway $33, load balancer $17, RDS $13, plus small amounts for Secrets Manager, logs and ECR. CloudFront cost depends on traffic and cache behavior. Remove everything with:
 
 ```bash
 tofu destroy
@@ -169,6 +176,7 @@ By default `skip_final_snapshot = true`, so destroying deletes the database data
 ## Things to know
 
 - **Destroy is destructive.** With the default `skip_final_snapshot = true`, RDS data is deleted. Set it to `false` and verify the plan if the database must be retained.
-- **HTTP only.** There is no domain or certificate yet. HTTPS needs an ACM certificate and a `:443` listener.
+- **CloudFront TLS.** The default CloudFront hostname supports HTTPS for visitors. The CloudFront-to-ALB origin hop currently uses HTTP inside AWS; end-to-end TLS and a custom app domain require an ACM certificate in `eu-west-1` for the ALB plus a viewer certificate in `us-east-1` for CloudFront.
+- **CloudFront caching.** Responses are intentionally uncached initially. Add a separate static-asset behavior only after confirming fingerprinted asset URLs and cache headers; keep `/api/*` and `/auth/*` uncached.
 - **Prometheus and Grafana keep no data across restarts.** Their config is provisioned, so only metrics history and UI-made changes are lost. Add EFS volumes if that matters.
 - **Changes outside this folder:** `app/frontend/nginx.conf` is now a template (`NGINX_RESOLVER`, `SERVICE_DOMAIN`), and `kafka/create-topics.sh` reads `KAFKA_BOOTSTRAP_SERVERS`. The defaults keep docker-compose working exactly as before.
