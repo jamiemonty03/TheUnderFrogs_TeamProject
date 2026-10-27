@@ -11,6 +11,8 @@ export const databaseConfig = (): TypeOrmModuleOptions => ({
   username: process.env.DB_USERNAME!,
   password: process.env.DB_PASSWORD!,
   database: process.env.DB_NAME!,
+  // RDS only accepts encrypted connections; the docker-compose Postgres has no SSL, so it stays off there.
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities: [User, Auth, RefreshToken, ServiceClient],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',

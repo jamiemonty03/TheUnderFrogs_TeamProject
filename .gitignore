@@ -17,3 +17,8 @@ app/auth-service/build
 tests/reports/
 
 *.pdf
+
+tofu/.terraform/
+*.tfstate
+*.tfstate.*
+tofu/terraform.tfvars

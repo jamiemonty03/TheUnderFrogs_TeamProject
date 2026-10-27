@@ -1,0 +1,8 @@
+*
+!db
+!app/instruments-service/db/etl
+!app/instruments-service/db/schema
+!app/instruments-service/db/tests
+**/__pycache__
+**/.pytest_cache
+**/tests/reports
