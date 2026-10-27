@@ -2,7 +2,33 @@
 # (see local.alb_ports). The frontend's nginx proxies all /api and /auth traffic, as in compose.
 
 locals {
-  alb_services = { for k, v in local.services : k => v if try(v.alb_port, null) != null }
+  alb_services = {
+    frontend = {
+      alb_port    = local.alb_ports["frontend"]
+      port        = 80
+      health_path = "/"
+    }
+    grafana = {
+      alb_port    = local.alb_ports["grafana"]
+      port        = 3000
+      health_path = "/api/health"
+    }
+    python = {
+      alb_port    = local.alb_ports["python"]
+      port        = 8080
+      health_path = "/"
+    }
+    kafka-ui = {
+      alb_port    = local.alb_ports["kafka-ui"]
+      port        = 8086
+      health_path = "/"
+    }
+    prometheus = {
+      alb_port    = local.alb_ports["prometheus"]
+      port        = 9090
+      health_path = "/-/healthy"
+    }
+  }
 }
 
 resource "aws_lb" "this" {
@@ -43,7 +69,17 @@ resource "aws_lb_listener" "this" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.this[each.key].arn
+    type             = each.key == "frontend" ? "fixed-response" : "forward"
+    target_group_arn = each.key == "frontend" ? null : aws_lb_target_group.this[each.key].arn
+
+    dynamic "fixed_response" {
+      for_each = each.key == "frontend" ? [true] : []
+
+      content {
+        content_type = "text/plain"
+        message_body = "Forbidden"
+        status_code  = "403"
+      }
+    }
   }
 }

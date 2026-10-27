@@ -27,9 +27,10 @@ locals {
     k => "http://${k}.${local.domain}:8081"
   }
 
-  public_url = "http://${aws_lb.this.dns_name}"
-  kafka      = aws_msk_cluster.this.bootstrap_brokers
-  db_host    = aws_db_instance.this.address
+  public_url     = "http://${aws_lb.this.dns_name}"
+  cloudfront_url = "https://${aws_cloudfront_distribution.app.domain_name}"
+  kafka          = aws_msk_cluster.this.bootstrap_brokers
+  db_host        = aws_db_instance.this.address
   jdbc = {
     for db in ["accounts_db", "instruments_db", "orders_db", "positions_db", "analytics_db"] :
     db => "jdbc:postgresql://${local.db_host}:5432/${db}"
@@ -69,7 +70,7 @@ locals {
       env = merge(local.java_env, {
         SPRING_DATASOURCE_URL      = local.jdbc["accounts_db"]
         SPRING_DATASOURCE_USERNAME = "postgres"
-        FRONTEND_URL               = local.public_url
+        FRONTEND_URL               = local.cloudfront_url
       })
       secrets = merge(
         { SPRING_DATASOURCE_PASSWORD = local.secret["DB_PASSWORD"] },
@@ -169,7 +170,7 @@ locals {
         DB_SSL               = "true"
         JWT_KEY_ID           = local.jwt_key_id
         ACCOUNTS_SERVICE_URL = local.url["accounts-service"]
-        CORS_ORIGIN          = local.public_url
+        CORS_ORIGIN          = local.cloudfront_url
       }
       secrets = {
         DB_PASSWORD     = local.secret["DB_PASSWORD"]
